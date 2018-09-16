@@ -1,0 +1,5 @@
+# vim swap files
+.*.sw?
+.sw?
+#OS X specific files.
+.DS_store
