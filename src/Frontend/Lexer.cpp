@@ -5,7 +5,7 @@
 
 using namespace gross;
 
-Lexer::Lexer(const std::istream &IS)
+Lexer::Lexer(std::istream &IS)
   : Input(IS),
     LastChar(' '),
     Buffer(),
@@ -107,9 +107,9 @@ Lexer::Token Lexer::getNextToken() {
     case '!':
       if(Input.peek() != '=') {
         Diag.Error() << "expecting character '=', not '"
-                     << Input.peek() << "'\n";
+                     << (char)Input.peek() << "'\n";
       } else {
-        Buffer.push_back('=');
+        Buffer.push_back(Advance());
         CurToken = TOK_BIN_OP;
       }
       break;

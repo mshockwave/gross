@@ -9,13 +9,13 @@
 
 namespace gross {
 namespace Log {
-const std::ostream& E() {
+std::ostream& E() {
   return std::cerr;
 }
-const std::ostream& V() {
+std::ostream& V() {
   return std::cout;
 }
-const std::ostream& D() {
+std::ostream& D() {
   return std::cout;
 }
 } // end namespace Log
@@ -25,11 +25,11 @@ class Diagnostic {
 public:
   Diagnostic() : Abort(false) {}
 
-  const ostream& Warning() {
+  std::ostream& Warning() {
     return Log::E() << "Warning: ";
   }
 
-  const ostream& Error() {
+  std::ostream& Error() {
     Abort = true;
     return Log::E() << "Error: ";
   }

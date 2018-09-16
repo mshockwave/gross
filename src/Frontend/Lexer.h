@@ -6,7 +6,7 @@
 
 namespace gross {
 class Lexer {
-  const std::istream &Input;
+  std::istream &Input;
 
   char LastChar;
 
@@ -55,7 +55,7 @@ public:
     TOK_RETURN
   };
 
-  Lexer(const std::istream &IS);
+  Lexer(std::istream &IS);
 
   // Step forward
   Token getNextToken();
