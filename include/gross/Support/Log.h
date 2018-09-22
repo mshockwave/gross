@@ -9,12 +9,17 @@
 
 namespace gross {
 namespace Log {
+inline
 std::ostream& E() {
   return std::cerr;
 }
+
+inline
 std::ostream& V() {
   return std::cout;
 }
+
+inline
 std::ostream& D() {
   return std::cout;
 }
