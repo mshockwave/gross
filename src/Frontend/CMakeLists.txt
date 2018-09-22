@@ -1,6 +1,7 @@
 
 set(_SOURCE_FILES
     Lexer.cpp
+    Parser.cpp
     )
 
 add_library(GrossFrontend OBJECT
