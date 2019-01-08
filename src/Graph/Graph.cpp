@@ -2,3 +2,6 @@
 
 using namespace gross;
 
+void Graph::InsertNode(Node* N) {
+  Nodes.emplace_back(N);
+}

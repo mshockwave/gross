@@ -16,16 +16,21 @@ enum ID : unsigned {
   BinGt,
   BinEq,
   BinNe,
+  // Control opcodes
+  If,
+  Region,
   Start,
   End,
   Return,
   Call,
+  Arguments,
+  MemLoad,
+  MemStore,
   // High-level primitives
   SrcSymbolName,
   SrcVarDecl,
   SrcArrayDecl,
   SrcArrayAccess,
-  SrcIfStmt,
   SrcWhileStmt,
   SrcAssignStmt,
   // Low(machine)-level opcodes

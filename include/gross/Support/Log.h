@@ -11,17 +11,17 @@ namespace gross {
 namespace Log {
 inline
 std::ostream& E() {
-  return std::cerr;
+  return std::cerr << "[Error] ";
 }
 
 inline
 std::ostream& V() {
-  return std::cout;
+  return std::cout << "[Verbose] ";
 }
 
 inline
 std::ostream& D() {
-  return std::cout;
+  return std::cout << "[Debug] ";
 }
 } // end namespace Log
 

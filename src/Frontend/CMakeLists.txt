@@ -16,6 +16,7 @@ if(GROSS_ENABLE_UNIT_TESTS)
     ${_TEST_SOURCE_FILES})
   target_link_libraries(GrossFrontendTest
     $<TARGET_OBJECTS:GrossFrontend>
+    $<TARGET_OBJECTS:GrossGraph>
     gtest_main)
   gtest_add_tests(TARGET GrossFrontendTest)
   add_dependencies(unittests GrossFrontendTest)
