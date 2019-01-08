@@ -3,9 +3,9 @@
 using namespace gross;
 
 Node::Node(IrOpcode::ID OC,
-           const std::initializer_list<Node*>& ValueInputs,
-           const std::initializer_list<Node*>& ControlInputs,
-           const std::initializer_list<Node*>& EffectInputs)
+           const std::vector<Node*>& ValueInputs,
+           const std::vector<Node*>& ControlInputs,
+           const std::vector<Node*>& EffectInputs)
   : Op(OC),
     NumValueInput(ValueInputs.size()),
     NumControlInput(ControlInputs.size()),

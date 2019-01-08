@@ -6,6 +6,7 @@ enum ID : unsigned {
   None = 0,
   // Common opcodes
   ConstantInt,
+  ConstantStr,
   BinAdd,
   BinSub,
   BinMul,
@@ -27,7 +28,6 @@ enum ID : unsigned {
   MemLoad,
   MemStore,
   // High-level primitives
-  SrcSymbolName,
   SrcVarDecl,
   SrcArrayDecl,
   SrcArrayAccess,

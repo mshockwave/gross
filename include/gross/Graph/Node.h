@@ -2,7 +2,6 @@
 #define GROSS_GRAPH_NODE_H
 #include "gross/Graph/Opcodes.h"
 #include "gross/Support/Log.h"
-#include <initializer_list>
 #include <unordered_map>
 #include <vector>
 
@@ -61,9 +60,9 @@ public:
       NumEffectInput(0) {}
 
   Node(IrOpcode::ID OC,
-       const std::initializer_list<Node*>& Values,
-       const std::initializer_list<Node*>& Controls = {},
-       const std::initializer_list<Node*>& Effects = {});
+       const std::vector<Node*>& Values,
+       const std::vector<Node*>& Controls = {},
+       const std::vector<Node*>& Effects = {});
 };
 
 template<typename ValueT>

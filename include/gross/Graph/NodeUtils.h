@@ -53,7 +53,29 @@ struct NodeBuilder {
 };
 
 template<>
-struct NodeBuilder<IrOpcode::SrcSymbolName> {
+struct NodeBuilder<IrOpcode::ConstantInt> {
+  NodeBuilder(Graph* graph, int32_t val)
+    : G(graph), Val(val) {}
+
+  Node* Build() {
+    if(auto* N = G->ConstNumberPool.find_node(Val))
+      return N;
+    else {
+      // New constant Node
+      Node* NewN = new Node(IrOpcode::ConstantInt);
+      G->ConstNumberPool.insert({NewN, Val});
+      G->InsertNode(NewN);
+      return NewN;
+    }
+  }
+
+public:
+  Graph* G;
+  int32_t Val;
+};
+
+template<>
+struct NodeBuilder<IrOpcode::ConstantStr> {
   NodeBuilder(Graph* graph, const std::string& Name)
     : G(graph),
       SymName(Name) {}
@@ -63,7 +85,7 @@ struct NodeBuilder<IrOpcode::SrcSymbolName> {
       return N;
     else {
       // New constant Node
-      Node* NewN = new Node(IrOpcode::SrcSymbolName);
+      Node* NewN = new Node(IrOpcode::ConstantStr);
       G->ConstStrPool.insert({NewN, SymName});
       G->InsertNode(NewN);
       return NewN;
@@ -86,7 +108,7 @@ struct NodeBuilder<IrOpcode::SrcVarDecl> {
   }
 
   Node* Build() {
-    Node* SymNameNode = NodeBuilder<IrOpcode::SrcSymbolName>(G, SymName).Build();
+    Node* SymNameNode = NodeBuilder<IrOpcode::ConstantStr>(G, SymName).Build();
     // Value dependency
     Node* VarDeclNode = new Node(IrOpcode::SrcVarDecl, {SymNameNode});
     SymNameNode->Users.push_back(VarDeclNode);
@@ -97,6 +119,47 @@ struct NodeBuilder<IrOpcode::SrcVarDecl> {
 private:
   Graph *G;
   std::string SymName;
+};
+
+template<>
+struct NodeBuilder<IrOpcode::SrcArrayDecl> {
+  NodeBuilder(Graph *graph)
+    : G(graph) {}
+
+  NodeBuilder& SetSymbolName(const std::string& Name) {
+    SymName = Name;
+    return *this;
+  }
+
+  // add new dimension
+  NodeBuilder& AddDim(Node* DN) {
+    Dims.push_back(DN);
+    return *this;
+  }
+  NodeBuilder& AddConstDim(uint32_t Dim) {
+    assert(Dim > 0);
+    NodeBuilder<IrOpcode::ConstantInt> NB(G, static_cast<int32_t>(Dim));
+    return AddDim(NB.Build());
+  }
+
+  Node* Build() {
+    Node* SymNode = NodeBuilder<IrOpcode::ConstantStr>(G, SymName).Build();
+    // value dependency
+    // 0: symbol string
+    // 1..N: dimension expression
+    std::vector<Node*> ValDeps{SymNode};
+    ValDeps.insert(ValDeps.end(), Dims.begin(), Dims.end());
+    Node* ArrDeclNode = new Node(IrOpcode::SrcArrayDecl, ValDeps);
+    for(auto* N : ValDeps)
+      N->Users.push_back(ArrDeclNode);
+    G->InsertNode(ArrDeclNode);
+    return ArrDeclNode;
+  }
+
+private:
+  Graph *G;
+  std::string SymName;
+  std::vector<Node*> Dims;
 };
 
 } // end namespace gross
