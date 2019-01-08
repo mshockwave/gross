@@ -23,6 +23,13 @@ class Graph {
 
 public:
   void InsertNode(Node* N);
+
+  size_t getNumConstStr() const {
+    return ConstStrPool.size();
+  }
+  size_t getNumConstNumber() const {
+    return ConstNumberPool.size();
+  }
 };
 } // end namespace gross
 #endif

@@ -93,6 +93,8 @@ public:
     Value2Node.insert(std::make_pair(Pair.second, Pair.first));
     return true;
   }
+
+  size_t size() const { return Value2Node.size(); }
 };
 } // end namespace gross
 #endif
