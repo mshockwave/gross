@@ -75,17 +75,23 @@ Lexer::Token Lexer::getNextToken() {
   } else {
     Buffer.push_back(LastChar);
     switch(LastChar) {
-    case ']':
     case '[':
-      CurToken = TOK_BRACKET;
+      CurToken = TOK_L_BRACKET;
+      break;
+    case ']':
+      CurToken = TOK_R_BRACKET;
       break;
     case '(':
+      CurToken = TOK_L_PARAN;
+      break;
     case ')':
-      CurToken = TOK_PARAN;
+      CurToken = TOK_R_PARAN;
       break;
     case '{':
+      CurToken = TOK_L_CUR_BRACKET;
+      break;
     case '}':
-      CurToken = TOK_CUR_BRACKET;
+      CurToken = TOK_R_CUR_BRACKET;
       break;
     case '<': {
       if(Input.peek() == '-') {

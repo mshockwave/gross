@@ -32,9 +32,12 @@ public:
     // Operations
     TOK_BIN_OP,
     // Brackets
-    TOK_BRACKET,
-    TOK_PARAN,
-    TOK_CUR_BRACKET,
+    TOK_L_BRACKET,
+    TOK_R_BRACKET,
+    TOK_L_PARAN,
+    TOK_R_PARAN,
+    TOK_L_CUR_BRACKET,
+    TOK_R_CUR_BRACKET,
     // Primitives
     TOK_IDENT,
     TOK_NUMBER,

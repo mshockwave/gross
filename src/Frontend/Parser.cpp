@@ -5,9 +5,11 @@
 
 using namespace gross;
 
+/// Note: For each ParseXXX, it would expect the lexer cursor
+/// starting on the first token of its semantic rule.
 bool Parser::Parse() {
   auto Tok = NextTok();
-  for(; Tok != Lexer::TOK_EOF; Tok = NextTok()) {
+  while(Tok != Lexer::TOK_EOF) {
     switch(Tok) {
     case Lexer::TOK_VAR:
       if(!ParseVarDecl<IrOpcode::SrcVarDecl>())
@@ -47,13 +49,12 @@ bool Parser::ParseTypeDecl(NodeBuilder<IrOpcode::SrcArrayDecl>& NB) {
   Lexer::Token Tok;
   while(true) {
     Tok = NextTok();
-    // FIXME: Change to LEFT_BRACKET
-    if(Tok != Lexer::TOK_BRACKET) break;
-    Tok = NextTok();
+    if(Tok != Lexer::TOK_L_BRACKET) break;
+    (void) NextTok();
     Node* ExprNode = ParseExpr();
     NB.AddDim(ExprNode);
-    // FIXME: Change to RIGHT_BRACKET
-    if(Tok != Lexer::TOK_BRACKET) {
+    Tok = CurTok();
+    if(Tok != Lexer::TOK_R_BRACKET) {
       Log::E() << "Expecting close bracket\n";
       return false;
     }
@@ -93,6 +94,9 @@ bool Parser::ParseVarDecl() {
     Tok = NextTok();
   }
 
+  assert(Tok == Lexer::TOK_SEMI_COLON &&
+         "Expecting semi-colon");
+  (void) NextTok();
   return true;
 }
 
@@ -109,7 +113,7 @@ bool Parser::ParseFuncDecl() {
   const auto& FuncName = TokBuffer();
   // TODO: Create start node and register function
   Tok = NextTok();
-  if(Tok == Lexer::TOK_PARAN) {
+  if(Tok == Lexer::TOK_L_PARAN) {
     // TODO: Argument list
     Tok = NextTok();
   }
