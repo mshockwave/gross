@@ -6,8 +6,14 @@
 #include <utility>
 
 namespace gross {
-// Forward declaration
+// Forward declarations
+namespace IrOpcode {
+  enum ID : unsigned;
+};
 class Graph;
+class Node;
+template<IrOpcode::ID OC>
+struct NodeBuilder;
 
 // Just a small wrapper providing
 // iterable stack implementation
@@ -88,9 +94,13 @@ class Parser {
 
   class SymbolLookup;
 
+  template<IrOpcode::ID OC>
+  bool ParseTypeDecl(NodeBuilder<OC>& NB);
+
+  template<IrOpcode::ID OC>
   bool ParseVarDecl();
 
-  bool ParseArrayDecl();
+  Node* ParseExpr();
 
   bool ParseFuncDecl();
 

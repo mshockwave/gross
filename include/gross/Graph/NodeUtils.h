@@ -141,6 +141,10 @@ struct NodeBuilder<IrOpcode::SrcArrayDecl> {
     NodeBuilder<IrOpcode::ConstantInt> NB(G, static_cast<int32_t>(Dim));
     return AddDim(NB.Build());
   }
+  NodeBuilder& ResetDims() {
+    Dims.clear();
+    return *this;
+  }
 
   Node* Build() {
     Node* SymNode = NodeBuilder<IrOpcode::ConstantStr>(G, SymName).Build();

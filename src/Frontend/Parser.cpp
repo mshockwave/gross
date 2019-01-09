@@ -10,12 +10,12 @@ bool Parser::Parse() {
   for(; Tok != Lexer::TOK_EOF; Tok = NextTok()) {
     switch(Tok) {
     case Lexer::TOK_VAR:
-      if(!ParseVarDecl())
+      if(!ParseVarDecl<IrOpcode::SrcVarDecl>())
         return false;
       else
         break;
     case Lexer::TOK_ARRAY:
-      if(!ParseArrayDecl())
+      if(!ParseVarDecl<IrOpcode::SrcArrayDecl>())
         return false;
       else
         break;
@@ -32,48 +32,72 @@ bool Parser::Parse() {
   return true;
 }
 
-bool Parser::ParseVarDecl() {
-  Lexer::Token Tok = NextTok();
-  if(Tok == Lexer::TOK_IDENT) {
-    auto SymName = TokBuffer();
-    SymbolLookup Lookup(*this, SymName);
-    if(Lookup.InCurrentScope())
+template<IrOpcode::ID OC>
+bool Parser::ParseTypeDecl(NodeBuilder<OC>& NB) {
+  gross_unreachable("Unimplemented");
+  return false;
+}
+template<>
+bool Parser::ParseTypeDecl(NodeBuilder<IrOpcode::SrcVarDecl>& NB) {
+  (void) NextTok();
+  return true;
+}
+template<>
+bool Parser::ParseTypeDecl(NodeBuilder<IrOpcode::SrcArrayDecl>& NB) {
+  Lexer::Token Tok;
+  while(true) {
+    Tok = NextTok();
+    // FIXME: Change to LEFT_BRACKET
+    if(Tok != Lexer::TOK_BRACKET) break;
+    Tok = NextTok();
+    Node* ExprNode = ParseExpr();
+    NB.AddDim(ExprNode);
+    // FIXME: Change to RIGHT_BRACKET
+    if(Tok != Lexer::TOK_BRACKET) {
+      Log::E() << "Expecting close bracket\n";
       return false;
-    NodeBuilder<IrOpcode::SrcVarDecl> VDB(&G);
-    auto* VarDeclNode = VDB.SetSymbolName(SymName)
-                           .Build();
+    }
+  }
+  return true;
+}
+
+template<IrOpcode::ID OC>
+bool Parser::ParseVarDecl() {
+  NodeBuilder<OC> NB(&G);
+  if(!ParseTypeDecl(NB)) return false;
+
+  Lexer::Token Tok = CurTok();
+  std::string SymName;
+  while(true) {
+    if(Tok != Lexer::TOK_IDENT) {
+      Log::E() << "Expecting identifier\n";
+      return false;
+    }
+    SymName = TokBuffer();
+    SymbolLookup Lookup(*this, SymName);
+    if(Lookup.InCurrentScope()) {
+      Log::E() << "variable already declared in this scope\n";
+      return false;
+    }
+    auto* VarDeclNode = NB.SetSymbolName(SymName)
+                          .Build();
     CurSymTable().insert({SymName, VarDeclNode});
 
     Tok = NextTok();
-    for(; Tok == Lexer::TOK_COMMA; Tok = NextTok()) {
-      Tok = NextTok();
-      if(Tok != Lexer::TOK_IDENT) {
-        Log::E() << "Expecting identifier after comma\n";
-        return false;
-      }
-      SymName = TokBuffer();
-      SymbolLookup Lookup(*this, SymName);
-      if(Lookup.InCurrentScope())
-        return false;
-      auto* VarDeclNode = VDB.SetSymbolName(SymName)
-                             .Build();
-      CurSymTable().insert({SymName, VarDeclNode});
-    }
-    if(Tok != Lexer::TOK_SEMI_COLON){
-      Log::E() << "Expecting ';' "
-               << "at the end of var declaration\n";
+    if(Tok == Lexer::TOK_SEMI_COLON)
+      break;
+    else if(Tok != Lexer::TOK_COMMA) {
+      Log::E() << "Expecting semicolomn or comma\n";
       return false;
     }
-  }else {
-    Log::E() << "Expecting identifier\n";
-    return false;
+    Tok = NextTok();
   }
 
   return true;
 }
 
-bool Parser::ParseArrayDecl() {
-  return true;
+Node* Parser::ParseExpr() {
+  return nullptr;
 }
 
 bool Parser::ParseFuncDecl() {
