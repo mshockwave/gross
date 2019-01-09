@@ -80,10 +80,6 @@ class Parser {
     = ScopedSymTable<SymTableTy>;
   ScopedSymTableTy SymTable;
 
-  void NewSymScope() {
-    SymTable.new_scope();
-  }
-
   const SymTableTy& CurSymTable() const { return SymTable.top(); }
   SymTableTy& CurSymTable() { return SymTable.top(); }
 
@@ -94,6 +90,19 @@ class Parser {
 
   class SymbolLookup;
 
+public:
+  Parser(std::istream& IS, Graph& graph)
+    : G(graph),
+      Lex(IS) {}
+
+  Lexer& getLexer() { return Lex; }
+
+  void NewSymScope() {
+    SymTable.new_scope();
+  }
+
+  bool Parse();
+
   template<IrOpcode::ID OC>
   bool ParseTypeDecl(NodeBuilder<OC>& NB);
 
@@ -103,13 +112,6 @@ class Parser {
   Node* ParseExpr();
 
   bool ParseFuncDecl();
-
-public:
-  Parser(std::istream& IS, Graph& graph)
-    : G(graph),
-      Lex(IS) {}
-
-  bool Parse();
 };
 
 class Parser::SymbolLookup {

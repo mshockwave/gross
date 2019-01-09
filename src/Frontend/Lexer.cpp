@@ -64,7 +64,6 @@ Lexer::Token Lexer::getNextToken() {
     else
       CurToken = TOK_IDENT;
 
-    LastChar = Advance();
   } else if(std::isdigit(LastChar)) {
     // Numbers
     while(std::isdigit(LastChar)) {
@@ -131,6 +130,7 @@ Lexer::Token Lexer::getNextToken() {
     case '/':
       CurToken = TOK_BIN_OP;
       break;
+    case '\0':
     case EOF:
       CurToken = TOK_EOF;
       break;

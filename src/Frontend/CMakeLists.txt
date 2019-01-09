@@ -10,6 +10,7 @@ add_library(GrossFrontend OBJECT
 if(GROSS_ENABLE_UNIT_TESTS)
   set(_TEST_SOURCE_FILES
       LexerTest.cpp
+      ParserTest.cpp
       )
 
   add_executable(GrossFrontendTest

@@ -4,7 +4,7 @@
 
 using namespace gross;
 
-TEST(GrossFrontendTest, TestLexer) {
+TEST(LexerTest, TestBasicTokens) {
   std::stringstream SS;
   {
     // Some keywords
@@ -44,5 +44,14 @@ TEST(GrossFrontendTest, TestLexer) {
     ASSERT_EQ(L.getNextToken(), Lexer::TOK_BIN_OP);
     ASSERT_EQ(L.getNextToken(), Lexer::TOK_BIN_OP);
     ASSERT_EQ(L.getNextToken(), Lexer::TOK_BIN_OP);
+  }
+  SS.clear();
+  {
+    // keywords, identifiers, and symbols
+    SS << "var foo;";
+    Lexer L(SS);
+    ASSERT_EQ(L.getNextToken(), Lexer::TOK_VAR);
+    ASSERT_EQ(L.getNextToken(), Lexer::TOK_IDENT);
+    ASSERT_EQ(L.getNextToken(), Lexer::TOK_SEMI_COLON);
   }
 }
