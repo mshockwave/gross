@@ -63,8 +63,19 @@ public:
   // Step forward
   Token getNextToken();
   // Get current token
-  inline Token getToken() { return CurToken; }
+  inline Token getToken() const { return CurToken; }
   const std::string& getBuffer() const { return Buffer; }
+
+  // Some utilities
+  // binary operator
+  bool isBinOpStar() const {
+    return getToken() == TOK_BIN_OP &&
+           getBuffer() == "*";
+  }
+  bool isBinOpSlash() const {
+    return getToken() == TOK_BIN_OP &&
+           getBuffer() == "/";
+  }
 
 private:
   Token CurToken;

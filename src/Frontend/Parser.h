@@ -109,6 +109,8 @@ public:
   template<IrOpcode::ID OC>
   bool ParseVarDecl();
 
+  Node* ParseTerm();
+  Node* ParseFactor();
   Node* ParseExpr();
 
   bool ParseFuncDecl();

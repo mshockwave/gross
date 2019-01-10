@@ -2,6 +2,7 @@
 #include "gross/Graph/Graph.h"
 #include "gross/Graph/NodeUtils.h"
 #include "Parser.h"
+#include <cstdlib>
 
 using namespace gross;
 
@@ -98,6 +99,56 @@ bool Parser::ParseVarDecl() {
          "Expecting semi-colon");
   (void) NextTok();
   return true;
+}
+
+Node* Parser::ParseFactor() {
+  // TODO: designator and funcCall rule
+
+  Node* FN = nullptr;
+  switch(CurTok()) {
+  case Lexer::TOK_NUMBER: {
+    auto val
+      = static_cast<int32_t>(std::atoi(TokBuffer().c_str()));
+    FN = NodeBuilder<IrOpcode::ConstantInt>(&G, val).Build();
+    break;
+  }
+  case Lexer::TOK_L_PARAN: {
+    (void) NextTok();
+    FN = ParseExpr();
+    if(CurTok() != Lexer::TOK_R_PARAN) {
+      Log::E() << "expecting close paran\n";
+      return nullptr;
+    }
+    break;
+  }
+  default:
+    Log::E() << "Unexpecting \"" << TokBuffer() << "\""
+             << " for factor\n";
+    return nullptr;
+  }
+
+  (void) NextTok();
+  return FN;
+}
+
+Node* Parser::ParseTerm() {
+  auto LHSFactor = ParseFactor();
+  if(!LHSFactor) return nullptr;
+
+  while(true) {
+    if(Lex.isBinOpStar() || Lex.isBinOpSlash()) {
+      auto Op = TokBuffer();
+      (void) NextTok();
+      auto* RHSFactor = ParseFactor();
+      if(!RHSFactor) return nullptr;
+      // TODO: create nodes
+    } else {
+      Log::E() << "Unexpecting token \'" << TokBuffer() << "\'\n";
+      break;
+    }
+  }
+
+  return nullptr;
 }
 
 Node* Parser::ParseExpr() {
