@@ -141,18 +141,50 @@ Node* Parser::ParseTerm() {
       (void) NextTok();
       auto* RHSFactor = ParseFactor();
       if(!RHSFactor) return nullptr;
-      // TODO: create nodes
+      if(Op == "*") {
+        LHSFactor = NodeBuilder<IrOpcode::BinMul>(&G)
+                    .LHS(LHSFactor).RHS(RHSFactor)
+                    .Build();
+      } else {
+        LHSFactor = NodeBuilder<IrOpcode::BinDiv>(&G)
+                    .LHS(LHSFactor).RHS(RHSFactor)
+                    .Build();
+      }
     } else {
       Log::E() << "Unexpecting token \'" << TokBuffer() << "\'\n";
       break;
     }
   }
 
-  return nullptr;
+  return LHSFactor;
 }
 
 Node* Parser::ParseExpr() {
-  return nullptr;
+  auto LHSTerm = ParseTerm();
+  if(!LHSTerm) return nullptr;
+
+  while(true) {
+    if(Lex.isBinOpPlus() || Lex.isBinOpMinus()) {
+      auto Op = TokBuffer();
+      (void) NextTok();
+      auto* RHSTerm = ParseTerm();
+      if(!RHSTerm) return nullptr;
+      if(Op == "+") {
+        LHSTerm = NodeBuilder<IrOpcode::BinAdd>(&G)
+                    .LHS(LHSTerm).RHS(RHSTerm)
+                    .Build();
+      } else {
+        LHSTerm = NodeBuilder<IrOpcode::BinSub>(&G)
+                    .LHS(LHSTerm).RHS(RHSTerm)
+                    .Build();
+      }
+    } else {
+      Log::E() << "Unexpecting token \'" << TokBuffer() << "\'\n";
+      break;
+    }
+  }
+
+  return LHSTerm;
 }
 
 bool Parser::ParseFuncDecl() {

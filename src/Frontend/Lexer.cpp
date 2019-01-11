@@ -70,7 +70,7 @@ Lexer::Token Lexer::getNextToken() {
       Buffer.push_back(LastChar);
       LastChar = Advance();
     }
-    return TOK_NUMBER;
+    CurToken = TOK_NUMBER;
   } else {
     Buffer.push_back(LastChar);
     switch(LastChar) {

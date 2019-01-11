@@ -76,6 +76,14 @@ public:
     return getToken() == TOK_BIN_OP &&
            getBuffer() == "/";
   }
+  bool isBinOpPlus() const {
+    return getToken() == TOK_BIN_OP &&
+           getBuffer() == "+";
+  }
+  bool isBinOpMinus() const {
+    return getToken() == TOK_BIN_OP &&
+           getBuffer() == "-";
+  }
 
 private:
   Token CurToken;
