@@ -2,6 +2,7 @@
 #define GROSS_GRAPH_NODE_UTILS_H
 #include "gross/Graph/Node.h"
 #include "gross/Graph/Graph.h"
+#include "gross/Support/type_traits.h"
 #include <string>
 
 namespace gross {
@@ -165,6 +166,51 @@ private:
   std::string SymName;
   std::vector<Node*> Dims;
 };
+
+namespace _details {
+// (Simple)Binary Ops
+template<IrOpcode::ID OC,
+         class SubT = NodeBuilder<OC>>
+struct BinOpNodeBuilder {
+  BinOpNodeBuilder(Graph* graph) : G(graph) {}
+
+  SubT& LHS(Node* N) {
+    LHSNode = N;
+    return downstream();
+  }
+  SubT& RHS(Node* N) {
+    RHSNode = N;
+    return downstream();
+  }
+
+  Node* Build() {
+    auto* BinOp = new Node(OC, {LHSNode, RHSNode});
+    LHSNode->Users.push_back(BinOp);
+    RHSNode->Users.push_back(BinOp);
+    G->InsertNode(BinOp);
+    return BinOp;
+  }
+
+protected:
+  Graph *G;
+  Node *LHSNode, *RHSNode;
+
+  SubT& downstream() { return *static_cast<SubT*>(this); }
+};
+} // end namespace _details
+
+#define TRIVIAL_BIN_OP_BUILDER(OC)  \
+template<>  \
+struct NodeBuilder<IrOpcode::OC> :  \
+  public _details::BinOpNodeBuilder<IrOpcode::OC> { \
+  NodeBuilder(Graph* graph) : BinOpNodeBuilder(graph) {}  \
+}
+
+TRIVIAL_BIN_OP_BUILDER(BinAdd);
+TRIVIAL_BIN_OP_BUILDER(BinSub);
+TRIVIAL_BIN_OP_BUILDER(BinMul);
+TRIVIAL_BIN_OP_BUILDER(BinDiv);
+#undef TRIVIAL_BIN_OP_BUILDER
 
 } // end namespace gross
 #endif

@@ -6,6 +6,12 @@
 #include <vector>
 
 namespace gross {
+// Forward declarations
+namespace _details {
+template<IrOpcode::ID OC,class SubT>
+struct BinOpNodeBuilder;
+} // end namespace _details
+
 class Node {
   template<IrOpcode::ID>
   friend class NodePropertiesBase;
@@ -13,6 +19,8 @@ class Node {
   friend class NodeProperties;
   template<IrOpcode::ID>
   friend class NodeBuilder;
+  template<IrOpcode::ID OC,class SubT>
+  friend struct _details::BinOpNodeBuilder;
 
   IrOpcode::ID Op;
 
@@ -25,6 +33,8 @@ class Node {
   std::vector<Node*> Users;
 
 public:
+  IrOpcode::ID getOp() const { return Op; }
+
   inline
   unsigned getNumValueInput() const { return NumValueInput; }
   inline

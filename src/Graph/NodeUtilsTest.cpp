@@ -10,6 +10,7 @@ TEST(NodeBuilderTest, TestConstantNode) {
   Node* NumNode = NodeBuilder<IrOpcode::ConstantInt>(&G, 87)
                   .Build();
   ASSERT_TRUE(NumNode);
+  EXPECT_EQ(NumNode->getOp(), IrOpcode::ConstantInt);
   EXPECT_EQ(NumNode->getNumValueInput(), 0);
   EXPECT_EQ(NumNode->getNumControlInput(), 0);
   EXPECT_EQ(NumNode->getNumEffectInput(), 0);
@@ -18,6 +19,7 @@ TEST(NodeBuilderTest, TestConstantNode) {
   Node* StrNode = NodeBuilder<IrOpcode::ConstantStr>(&G, "rem_the_best")
                   .Build();
   ASSERT_TRUE(StrNode);
+  EXPECT_EQ(StrNode->getOp(), IrOpcode::ConstantStr);
   EXPECT_EQ(StrNode->getNumValueInput(), 0);
   EXPECT_EQ(StrNode->getNumControlInput(), 0);
   EXPECT_EQ(StrNode->getNumEffectInput(), 0);
@@ -31,6 +33,7 @@ TEST(NodeBuilderTest, TestVarArrayDecls) {
                       .SetSymbolName("rem_my_wife")
                       .Build();
   ASSERT_TRUE(VarDeclNode);
+  EXPECT_EQ(VarDeclNode->getOp(), IrOpcode::SrcVarDecl);
   EXPECT_EQ(VarDeclNode->getNumValueInput(), 1);
   EXPECT_EQ(VarDeclNode->getNumControlInput(), 0);
   EXPECT_EQ(VarDeclNode->getNumEffectInput(), 0);
@@ -45,6 +48,7 @@ TEST(NodeBuilderTest, TestVarArrayDecls) {
                         .AddConstDim(7)
                         .Build();
     ASSERT_TRUE(ArrDeclNode);
+    EXPECT_EQ(ArrDeclNode->getOp(), IrOpcode::SrcArrayDecl);
     EXPECT_EQ(ArrDeclNode->getNumValueInput(), 4);
     EXPECT_EQ(ArrDeclNode->getNumControlInput(), 0);
     EXPECT_EQ(ArrDeclNode->getNumEffectInput(), 0);
@@ -61,10 +65,29 @@ TEST(NodeBuilderTest, TestVarArrayDecls) {
                         .AddDim(DimNode2)
                         .Build();
     ASSERT_TRUE(ArrDeclNode);
+    EXPECT_EQ(ArrDeclNode->getOp(), IrOpcode::SrcArrayDecl);
     EXPECT_EQ(ArrDeclNode->getNumValueInput(), 3);
     EXPECT_EQ(ArrDeclNode->getNumControlInput(), 0);
     EXPECT_EQ(ArrDeclNode->getNumEffectInput(), 0);
     EXPECT_EQ(G.getNumConstStr(), 2);
     EXPECT_EQ(G.getNumConstNumber(), 5);
   }
+}
+
+TEST(NodeBuilderTest, TestSimpleBinOps) {
+  Graph G;
+
+  auto* LHSNum = NodeBuilder<IrOpcode::ConstantInt>(&G, 94).Build();
+  auto* RHSNum = NodeBuilder<IrOpcode::ConstantInt>(&G, 87).Build();
+
+  // Since they share the same implementation
+  // we only need to test one of them
+  auto* NodeAdd = NodeBuilder<IrOpcode::BinAdd>(&G)
+                  .LHS(LHSNum).RHS(RHSNum)
+                  .Build();
+  ASSERT_TRUE(NodeAdd);
+  EXPECT_EQ(NodeAdd->getOp(), IrOpcode::BinAdd);
+  EXPECT_EQ(NodeAdd->getNumValueInput(), 2);
+  EXPECT_EQ(NodeAdd->getNumControlInput(), 0);
+  EXPECT_EQ(NodeAdd->getNumEffectInput(), 0);
 }
