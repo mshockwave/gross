@@ -97,16 +97,22 @@ Lexer::Token Lexer::getNextToken() {
         Buffer.push_back(Advance());
         CurToken = TOK_L_ARROW;
       } else {
-        if(Input.peek() == '=')
+        if(Input.peek() == '=') {
           Buffer.push_back(Advance());
-        CurToken = TOK_BIN_OP;
+          CurToken = TOK_REL_LE;
+        } else {
+          CurToken = TOK_REL_LT;
+        }
       }
       break;
     }
     case '>':
-      if(Input.peek() == '=')
+      if(Input.peek() == '=') {
         Buffer.push_back(Advance());
-      CurToken = TOK_BIN_OP;
+        CurToken = TOK_REL_GE;
+      } else {
+        CurToken = TOK_REL_GT;
+      }
       break;
     case '=':
     case '!':
@@ -115,7 +121,7 @@ Lexer::Token Lexer::getNextToken() {
                      << (char)Input.peek() << "'\n";
       } else {
         Buffer.push_back(Advance());
-        CurToken = TOK_BIN_OP;
+        CurToken = (LastChar == '='? TOK_REL_EQ : TOK_REL_NE);
       }
       break;
     case ',':

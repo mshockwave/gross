@@ -31,6 +31,12 @@ public:
     TOK_SEMI_COLON,
     // Operations
     TOK_BIN_OP,
+    TOK_REL_LE,
+    TOK_REL_LT,
+    TOK_REL_GE,
+    TOK_REL_GT,
+    TOK_REL_EQ,
+    TOK_REL_NE,
     // Brackets
     TOK_L_BRACKET,
     TOK_R_BRACKET,

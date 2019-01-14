@@ -36,14 +36,15 @@ TEST(LexerTest, TestBasicTokens) {
   SS.clear();
   {
     // assign and relation operators
-    SS << "<- >= < <= != ==";
+    SS << "<- > >= < <= != ==";
     Lexer L(SS);
     EXPECT_EQ(L.getNextToken(), Lexer::TOK_L_ARROW);
-    EXPECT_EQ(L.getNextToken(), Lexer::TOK_BIN_OP);
-    EXPECT_EQ(L.getNextToken(), Lexer::TOK_BIN_OP);
-    EXPECT_EQ(L.getNextToken(), Lexer::TOK_BIN_OP);
-    EXPECT_EQ(L.getNextToken(), Lexer::TOK_BIN_OP);
-    EXPECT_EQ(L.getNextToken(), Lexer::TOK_BIN_OP);
+    EXPECT_EQ(L.getNextToken(), Lexer::TOK_REL_GT);
+    EXPECT_EQ(L.getNextToken(), Lexer::TOK_REL_GE);
+    EXPECT_EQ(L.getNextToken(), Lexer::TOK_REL_LT);
+    EXPECT_EQ(L.getNextToken(), Lexer::TOK_REL_LE);
+    EXPECT_EQ(L.getNextToken(), Lexer::TOK_REL_NE);
+    EXPECT_EQ(L.getNextToken(), Lexer::TOK_REL_EQ);
   }
 }
 
