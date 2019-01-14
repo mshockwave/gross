@@ -112,6 +112,7 @@ public:
   Node* ParseTerm();
   Node* ParseFactor();
   Node* ParseExpr();
+  Node* ParseRelation();
 
   bool ParseFuncDecl();
 };

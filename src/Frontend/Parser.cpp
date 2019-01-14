@@ -189,6 +189,34 @@ Node* Parser::ParseExpr() {
   return LHSTerm;
 }
 
+Node* Parser::ParseRelation() {
+  auto* LHSExpr = ParseExpr();
+  if(!LHSExpr) return nullptr;
+
+  auto Tok = CurTok();
+  (void) NextTok();
+
+  auto* RHSExpr = ParseExpr();
+  if(!RHSExpr) return nullptr;
+#define REL_OP_BUILDER(ROP, OC) \
+  case Lexer::ROP:  \
+    return NodeBuilder<IrOpcode::OC>(&G)  \
+           .LHS(LHSExpr).RHS(RHSExpr) \
+           .Build()
+
+  switch(Tok) {
+  default:
+    return nullptr;
+  REL_OP_BUILDER(TOK_REL_LE, BinLe);
+  REL_OP_BUILDER(TOK_REL_LT, BinLt);
+  REL_OP_BUILDER(TOK_REL_GE, BinGe);
+  REL_OP_BUILDER(TOK_REL_GT, BinGt);
+  REL_OP_BUILDER(TOK_REL_EQ, BinEq);
+  REL_OP_BUILDER(TOK_REL_NE, BinNe);
+  }
+#undef REL_OP_BUILDER
+}
+
 bool Parser::ParseFuncDecl() {
   Lexer::Token Tok = NextTok();
   if(Tok != Lexer::TOK_IDENT) {

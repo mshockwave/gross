@@ -223,3 +223,51 @@ TEST(ParserTest, TestSimpleExpr) {
               .as<int32_t>(G), 7);
   }
 }
+
+TEST(ParserTest, TestRelation) {
+  std::stringstream SS;
+  {
+    // trivial
+    SS << "94 > 87";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    auto* RelNode = P.ParseRelation();
+    ASSERT_TRUE(NodeProperties<IrOpcode::BinGt>(RelNode));
+    Node *LHS = RelNode->getValueInput(0),
+         *RHS = RelNode->getValueInput(1);
+    EXPECT_EQ(NodeProperties<IrOpcode::ConstantInt>(LHS)
+              .as<int32_t>(G), 94);
+    EXPECT_EQ(NodeProperties<IrOpcode::ConstantInt>(RHS)
+              .as<int32_t>(G), 87);
+  }
+  SS.clear();
+  {
+    SS << "94 <= 87";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    auto* RelNode = P.ParseRelation();
+    ASSERT_TRUE(NodeProperties<IrOpcode::BinLe>(RelNode));
+    Node *LHS = RelNode->getValueInput(0),
+         *RHS = RelNode->getValueInput(1);
+    EXPECT_EQ(NodeProperties<IrOpcode::ConstantInt>(LHS)
+              .as<int32_t>(G), 94);
+    EXPECT_EQ(NodeProperties<IrOpcode::ConstantInt>(RHS)
+              .as<int32_t>(G), 87);
+  }
+  SS.clear();
+  {
+    // compound
+    SS << "94 + 87 != 49 / 78";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    auto* RelNode = P.ParseRelation();
+    ASSERT_TRUE(NodeProperties<IrOpcode::BinNe>(RelNode));
+    Node *LHS = RelNode->getValueInput(0),
+         *RHS = RelNode->getValueInput(1);
+    EXPECT_TRUE(NodeProperties<IrOpcode::BinAdd>(LHS));
+    EXPECT_TRUE(NodeProperties<IrOpcode::BinDiv>(RHS));
+  }
+}
