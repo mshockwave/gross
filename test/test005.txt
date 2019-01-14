@@ -1,0 +1,7 @@
+// This is a test comment
+main
+var a;
+{
+	let a <- ( ( ( 1 + 1 ) * 2 ) / 2 ) - 1;
+	call OutputNum(a)
+}.

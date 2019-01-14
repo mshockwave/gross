@@ -1,0 +1,19 @@
+main 
+    array [3] foo,boo;
+    var a,b,c;
+    {
+        let c <- foo[2*a-6];
+        while 2 < 3 do
+            let b <- foo[2*a-6];
+            while 4 < foo[2*a-6] do            
+                if 3 < 4 then
+                    let boo[c] <- 3
+                else
+                    let foo[2] <- 5
+                fi
+            od;
+            let c <- foo[2*a-6]
+        od;
+        let a <- foo[2*a-6]
+    }    
+.

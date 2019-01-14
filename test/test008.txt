@@ -1,0 +1,11 @@
+# While loop code generation test
+# Also ensures code gen can handle constants in the condition
+main
+var i, j;
+{
+	let i <- 0;
+	let j <- 0;
+	while i < 1000 do
+		let j <- j + 1
+	od
+}.

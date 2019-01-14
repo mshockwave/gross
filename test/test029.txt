@@ -1,0 +1,18 @@
+# Donated by Alex
+# Introduces copy propagation into the mix, but in my implementation, 
+# the q copy is killed by the while loop's phi function.
+main
+var q, foo, af, too;
+{
+	let q<-foo;
+	if 2 < 3 then            
+		while 4 > 6 do
+			let af <- foo+6;
+			let foo <- q+2;
+			let q<-foo
+		od;
+		let too <- foo+5
+	fi;
+	let af<-too+foo+q
+}
+.

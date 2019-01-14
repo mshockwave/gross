@@ -1,0 +1,12 @@
+# Brandis and Mossenbock test for while loops
+main
+var a, b;
+{
+	let a <- 1;
+	while a != b do
+		let b <- a + 1;
+		let a <- a * 2
+	od;
+	let b <- a
+}
+.

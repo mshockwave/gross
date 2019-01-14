@@ -1,0 +1,24 @@
+# Nested if/while testcase
+# Based on discussions with Alex, Marcelo, and Babak
+main
+var a, b, c, d, e;
+{
+	let a <- 1;
+	let b <- 2;
+	let c <- 3;
+	let d <- 4;
+	let e <- 5;
+	
+	while ( c + 4 ) < d do
+		if ( a + 5 - b ) > ( b * 6 ) then
+			let a <- a / c * d;
+			let d <- d - 1
+		else
+			let d <- a + b
+		fi
+	od;
+	
+	let e <- c - a + b;
+	let a <- a + b
+}
+.

@@ -1,0 +1,20 @@
+# I don't think this is a duplicate, but this test is similar to other
+# live range analysis tests.  
+# Based on test 022
+main
+var a, b, c;
+{
+	let a <- 1;
+	let b <- 2;
+	let c <- 3;
+	if b < c then
+		while ( b + 1 ) < c do
+			let a <- a + 1;
+			while ( b + 2 ) < c do
+				let b <- b + 1
+			od
+		od
+	fi;
+	let b <- c + 1
+}
+.
