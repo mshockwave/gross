@@ -145,13 +145,14 @@ Node* Parser::ParseTerm() {
         LHSFactor = NodeBuilder<IrOpcode::BinMul>(&G)
                     .LHS(LHSFactor).RHS(RHSFactor)
                     .Build();
-      } else {
+      } else if(Op == "/") {
         LHSFactor = NodeBuilder<IrOpcode::BinDiv>(&G)
                     .LHS(LHSFactor).RHS(RHSFactor)
                     .Build();
+      } else {
+        gross_unreachable("Unrecognized term op");
       }
     } else {
-      Log::E() << "Unexpecting token \'" << TokBuffer() << "\'\n";
       break;
     }
   }
@@ -173,13 +174,14 @@ Node* Parser::ParseExpr() {
         LHSTerm = NodeBuilder<IrOpcode::BinAdd>(&G)
                     .LHS(LHSTerm).RHS(RHSTerm)
                     .Build();
-      } else {
+      } else if(Op == "-") {
         LHSTerm = NodeBuilder<IrOpcode::BinSub>(&G)
                     .LHS(LHSTerm).RHS(RHSTerm)
                     .Build();
+      } else {
+        gross_unreachable("Unrecognized expr op");
       }
     } else {
-      Log::E() << "Unexpecting token \'" << TokBuffer() << "\'\n";
       break;
     }
   }

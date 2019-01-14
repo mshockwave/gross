@@ -1,5 +1,6 @@
 #include "Parser.h"
 #include "gross/Graph/Graph.h"
+#include "gross/Graph/NodeUtils.h"
 #include "gtest/gtest.h"
 #include <sstream>
 
@@ -30,7 +31,6 @@ TEST(ParserTest, TestScalarVarDecl) {
 
 // TODO: Test factor when its rules are completed
 
-// TODO: Check shape of the generated graph
 TEST(ParserTest, TestSimpleTerm) {
   std::stringstream SS;
   {
@@ -39,7 +39,16 @@ TEST(ParserTest, TestSimpleTerm) {
     Graph G;
     Parser P(SS, G);
     (void) P.getLexer().getNextToken();
-    EXPECT_TRUE(P.ParseTerm());
+    auto* TermNode = P.ParseTerm();
+    ASSERT_TRUE(TermNode);
+    EXPECT_EQ(TermNode->getOp(), IrOpcode::BinMul);
+
+    Node *LHS = TermNode->getValueInput(0),
+         *RHS = TermNode->getValueInput(1);
+    EXPECT_EQ(NodeProperties<IrOpcode::ConstantInt>(LHS)
+              .as<int32_t>(G), 94);
+    EXPECT_EQ(NodeProperties<IrOpcode::ConstantInt>(RHS)
+              .as<int32_t>(G), 87);
   }
   SS.clear();
   {
@@ -48,7 +57,32 @@ TEST(ParserTest, TestSimpleTerm) {
     Graph G;
     Parser P(SS, G);
     (void) P.getLexer().getNextToken();
-    EXPECT_TRUE(P.ParseTerm());
+    auto* TermNode = P.ParseTerm();
+    ASSERT_TRUE(TermNode);
+    EXPECT_EQ(TermNode->getOp(), IrOpcode::BinMul);
+
+    Node *LHS = nullptr, *RHS = nullptr;
+    // SubTree - * - 7
+    LHS = TermNode->getValueInput(0); // SubTree
+    RHS = TermNode->getValueInput(1); // 7
+    EXPECT_EQ(NodeProperties<IrOpcode::ConstantInt>(RHS)
+              .as<int32_t>(G), 7);
+    ASSERT_TRUE(NodeProperties<IrOpcode::BinDiv>(LHS));
+    TermNode = LHS;
+    // SubTree - / - 43
+    LHS = TermNode->getValueInput(0); // SubTree
+    RHS = TermNode->getValueInput(1); // 43
+    EXPECT_EQ(NodeProperties<IrOpcode::ConstantInt>(RHS)
+              .as<int32_t>(G), 43);
+    ASSERT_TRUE(NodeProperties<IrOpcode::BinMul>(LHS));
+    TermNode = LHS;
+    // 94 - * - 87
+    LHS = TermNode->getValueInput(0); // 94
+    RHS = TermNode->getValueInput(1); // 87
+    EXPECT_EQ(NodeProperties<IrOpcode::ConstantInt>(LHS)
+              .as<int32_t>(G), 94);
+    EXPECT_EQ(NodeProperties<IrOpcode::ConstantInt>(RHS)
+              .as<int32_t>(G), 87);
   }
 }
 

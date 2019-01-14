@@ -42,6 +42,20 @@ NODE_PROPERTIES(SrcVarDecl) {
     return NodePtr->getValueInput(0);
   }
 };
+
+NODE_PROPERTIES(ConstantInt) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(ConstantInt, N) {}
+
+  template<typename T>
+  T as(Graph& G) const {
+    if(!*this) return T();
+    if(auto* V = G.ConstNumberPool.find_value(NodePtr))
+      return static_cast<T>(*V);
+    else
+      return T();
+  }
+};
 #undef NODE_PROP_BASE
 #undef NODE_PROPERTIES
 

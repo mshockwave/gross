@@ -10,6 +10,8 @@ namespace gross {
 class Graph {
   template<IrOpcode::ID Op>
   friend class NodeBuilder;
+  template<IrOpcode::ID Op>
+  friend struct NodeProperties;
 
   std::vector<std::unique_ptr<Node>> Nodes;
 
