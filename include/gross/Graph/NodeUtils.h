@@ -232,5 +232,46 @@ TRIVIAL_BIN_OP_BUILDER(BinEq);
 TRIVIAL_BIN_OP_BUILDER(BinNe);
 #undef TRIVIAL_BIN_OP_BUILDER
 
+template<>
+struct NodeBuilder<IrOpcode::SrcAssignStmt> {
+  NodeBuilder(Graph *graph) : G(graph) {}
+
+  NodeBuilder& Dest(Node* N, Node* EffectNode = nullptr) {
+    DestNode = N;
+    EffectDep = EffectNode;
+    return *this;
+  }
+  NodeBuilder& Src(Node* N) {
+    SrcNode = N;
+    return *this;
+  }
+
+  Node* Build() {
+    // assign to scalar
+    if(NodeProperties<IrOpcode::SrcVarDecl>(DestNode)) {
+      std::vector<Node*> Effects;
+      if(EffectDep) Effects.push_back(EffectDep);
+      auto* N = new Node(IrOpcode::SrcAssignStmt,
+                         {DestNode, SrcNode},// value inputs
+                         {}/*control inputs*/,
+                         Effects/*effect inputs*/);
+      DestNode->Users.push_back(N);
+      SrcNode->Users.push_back(N);
+      if(EffectDep) EffectDep->Users.push_back(N);
+      G->InsertNode(N);
+      return N;
+    } else {
+      // TODO: assign to array element
+      gross_unreachable("Unimplemented");
+    }
+    return nullptr;
+  }
+
+private:
+  Graph *G;
+  Node *DestNode, *EffectDep,
+       *SrcNode;
+};
+
 } // end namespace gross
 #endif

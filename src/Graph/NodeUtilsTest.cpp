@@ -75,6 +75,7 @@ TEST(NodeBuilderTest, TestVarArrayDecls) {
 }
 
 TEST(NodeBuilderTest, TestSimpleBinOps) {
+  // And also the relation operator
   Graph G;
 
   auto* LHSNum = NodeBuilder<IrOpcode::ConstantInt>(&G, 94).Build();
@@ -90,4 +91,46 @@ TEST(NodeBuilderTest, TestSimpleBinOps) {
   EXPECT_EQ(NodeAdd->getNumValueInput(), 2);
   EXPECT_EQ(NodeAdd->getNumControlInput(), 0);
   EXPECT_EQ(NodeAdd->getNumEffectInput(), 0);
+}
+
+TEST(NodeBuilderTest, TestSrcAssignStmt) {
+  {
+    // assign to scalar with no side effects
+    Graph G;
+    auto* VarDeclNode = NodeBuilder<IrOpcode::SrcVarDecl>(&G)
+                        .SetSymbolName("rem_my_wife")
+                        .Build();
+    auto* RHSValue = NodeBuilder<IrOpcode::ConstantInt>(&G, 94).Build();
+    auto* AssignNode = NodeBuilder<IrOpcode::SrcAssignStmt>(&G)
+                       .Dest(VarDeclNode).Src(RHSValue)
+                       .Build();
+    ASSERT_TRUE(AssignNode);
+    EXPECT_EQ(AssignNode->getOp(), IrOpcode::SrcAssignStmt);
+    EXPECT_EQ(AssignNode->getNumValueInput(), 2);
+    EXPECT_EQ(AssignNode->getNumControlInput(), 0);
+    EXPECT_EQ(AssignNode->getNumEffectInput(), 0);
+  }
+  {
+    // assign to scalar with side effects
+    Graph G;
+    auto* VarDeclNode = NodeBuilder<IrOpcode::SrcVarDecl>(&G)
+                        .SetSymbolName("rem_my_wife")
+                        .Build();
+
+    auto* RHSNum1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 94).Build();
+    auto* RHSNum2 = NodeBuilder<IrOpcode::ConstantInt>(&G, 87).Build();
+
+    auto* AssignNode = NodeBuilder<IrOpcode::SrcAssignStmt>(&G)
+                       .Dest(VarDeclNode).Src(RHSNum1)
+                       .Build();
+    auto* AssignNode2 = NodeBuilder<IrOpcode::SrcAssignStmt>(&G)
+                        .Dest(VarDeclNode, AssignNode).Src(RHSNum2)
+                        .Build();
+    ASSERT_TRUE(AssignNode2);
+    EXPECT_EQ(AssignNode2->getOp(), IrOpcode::SrcAssignStmt);
+    EXPECT_EQ(AssignNode2->getNumValueInput(), 2);
+    EXPECT_EQ(AssignNode2->getNumControlInput(), 0);
+    ASSERT_EQ(AssignNode2->getNumEffectInput(), 1);
+    EXPECT_EQ(AssignNode2->getEffectInput(0), AssignNode);
+  }
 }
