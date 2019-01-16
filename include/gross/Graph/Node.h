@@ -106,5 +106,27 @@ public:
 
   size_t size() const { return Value2Node.size(); }
 };
+
+/// A really lightweight representation of Node use edge
+struct Use {
+  Node* Source;
+  Node* Dest;
+
+  Use() :
+    Source(nullptr),
+    Dest(nullptr) {}
+
+  Use(Node* S, Node* D) :
+    Source(S),
+    Dest(D) {}
+
+  bool operator==(const Use& RHS) const {
+    return Source == RHS.Source &&
+           Dest == RHS.Dest;
+  }
+  bool operator!=(const Use& RHS) const {
+    return !(RHS == *this);
+  }
+};
 } // end namespace gross
 #endif
