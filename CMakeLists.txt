@@ -26,6 +26,9 @@ if(GROSS_ENABLE_UNIT_TESTS)
   add_definitions(-DGROSS_ENABLE_UNIT_TESTS)
 endif()
 
+# Boost
+include_directories(third_party/boost/1.68.0/include)
+
 add_subdirectory(src)
 
 if(GROSS_ENABLE_UNIT_TESTS)
