@@ -10,13 +10,26 @@ class Lexer {
 
   char LastChar;
 
-  // TODO: It would be better to use std::string_view here
+  // NOTE: It would be better to use std::string_view here
   // But unfortunetely we're not C++17
   std::string Buffer;
 
   char Advance() {
-    char ch;
+    char ch = '\0';
     Input.get(ch);
+    // aware of std::istream::get() and eof()'s behavior:
+    // eof() will only check eofbit in one of std::istream's field,
+    // instead of actively checking whether it's EOF.
+    // get() will try to fetch one char, then flip the aforementioned
+    // eofbit if EOF has reached.
+    //
+    // So we can't check eof() BEFORE Input.get(ch). Since although at
+    // that timepoint, the 'cursor' of the stream has already pointed to
+    // EOF or someplace off the bound, eof() will still returns false as
+    // not until the following Input.get(ch) will the eofbit been flipped!
+    // So if check eof() before Input.get(ch), we will alwasy fetch one char
+    // more.
+    if(Input.eof()) return EOF;
     return ch;
   }
 
