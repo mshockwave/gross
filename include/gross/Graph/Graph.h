@@ -24,6 +24,12 @@ class Graph {
   std::unordered_map<std::string, Node*> FuncMap;
 
 public:
+  using node_iterator = typename decltype(Nodes)::iterator;
+  node_iterator node_begin() { return Nodes.begin(); }
+  node_iterator node_end() { return Nodes.end(); }
+
+  size_t node_size() const { return Nodes.size(); }
+
   void InsertNode(Node* N);
 
   size_t getNumConstStr() const {
