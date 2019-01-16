@@ -56,6 +56,20 @@ NODE_PROPERTIES(ConstantInt) {
       return T();
   }
 };
+
+NODE_PROPERTIES(SrcAssignStmt) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(SrcAssignStmt, N) {}
+
+  Node* source() const {
+    assert(NodePtr->getNumValueInput() > 1);
+    return NodePtr->getValueInput(1);
+  }
+  Node* dest() const {
+    assert(NodePtr->getNumValueInput() > 0);
+    return NodePtr->getValueInput(0);
+  }
+};
 #undef NODE_PROP_BASE
 #undef NODE_PROPERTIES
 

@@ -271,3 +271,47 @@ TEST(ParserTest, TestRelation) {
     EXPECT_TRUE(NodeProperties<IrOpcode::BinDiv>(RHS));
   }
 }
+
+TEST(ParserTest, TestAssignment) {
+  std::stringstream SS;
+  {
+    // single assignment
+    SS << "var megumin;"
+       << "let megumin <- 2";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    P.NewSymScope();
+    ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
+
+    Node* Assign = P.ParseAssignment();
+    NodeProperties<IrOpcode::SrcAssignStmt> NPA(Assign);
+    ASSERT_TRUE(NPA);
+    EXPECT_EQ(NodeProperties<IrOpcode::ConstantInt>(NPA.source())
+              .as<int32_t>(G), 2);
+    EXPECT_TRUE(NodeProperties<IrOpcode::SrcVarDecl>(NPA.dest()));
+  }
+  SS.clear();
+  {
+    // multiple assignments
+    SS << "var megumin;"
+       << "let megumin <- 2\n"
+       << "let megumin <- 87";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    P.NewSymScope();
+    ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
+
+    Node* Assign1 = P.ParseAssignment();
+    NodeProperties<IrOpcode::SrcAssignStmt> NPA1(Assign1);
+    Node* Assign2 = P.ParseAssignment();
+    NodeProperties<IrOpcode::SrcAssignStmt> NPA2(Assign2);
+    ASSERT_TRUE(NPA2);
+    EXPECT_EQ(NodeProperties<IrOpcode::ConstantInt>(NPA2.source())
+              .as<int32_t>(G), 87);
+    EXPECT_EQ(NPA1.dest(), NPA2.dest());
+    ASSERT_EQ(Assign2->getNumEffectInput(), 1);
+    EXPECT_EQ(Assign2->getEffectInput(0), Assign1);
+  }
+}

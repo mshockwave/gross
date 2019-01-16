@@ -90,6 +90,10 @@ class Parser {
 
   class SymbolLookup;
 
+  // record last modify node on a certain decl
+  // {decl, modifier}
+  std::unordered_map<Node*, Node*> LastModified;
+
 public:
   Parser(std::istream& IS, Graph& graph)
     : G(graph),
@@ -109,10 +113,15 @@ public:
   template<IrOpcode::ID OC>
   bool ParseVarDecl();
 
+  Node* ParseDesignator();
+  Node* ParseArrayAccessDesignator(Node* Decl);
+
   Node* ParseTerm();
   Node* ParseFactor();
   Node* ParseExpr();
   Node* ParseRelation();
+
+  Node* ParseAssignment();
 
   bool ParseFuncDecl();
 };

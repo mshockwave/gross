@@ -217,6 +217,80 @@ Node* Parser::ParseRelation() {
 #undef REL_OP_BUILDER
 }
 
+Node* Parser::ParseDesignator() {
+  auto Tok = CurTok();
+  if(Tok != Lexer::TOK_IDENT) {
+    Log::E() << "Expecting identifier\n";
+    return nullptr;
+  }
+
+  auto IdentName = TokBuffer();
+  SymbolLookup Lookup(*this, IdentName);
+  Node* Decl = (*Lookup).first;
+  if(!Decl) {
+    Log::E() << "Symbol \'" << IdentName << "\' not declared\n";
+    return nullptr;
+  }
+
+  // array access
+  if(NextTok() == Lexer::TOK_L_BRACKET) {
+    return ParseArrayAccessDesignator(Decl);
+  }
+
+  // if this is just scalar access, just return the decl
+  // and let the user to handle side effects
+  return Decl;
+}
+
+Node* Parser::ParseArrayAccessDesignator(Node* DeclNode) {
+  // TODO
+  return nullptr;
+}
+
+Node* Parser::ParseAssignment() {
+  auto Tok = CurTok();
+  if(Tok != Lexer::TOK_LET) {
+    Log::E() << "Expecting 'let' keyword here\n";
+    return nullptr;
+  }
+  (void) NextTok();
+
+  auto* DesigNode = ParseDesignator();
+  if(!DesigNode) return nullptr;
+  Tok = CurTok();
+
+  if(Tok != Lexer::TOK_L_ARROW) {
+    Log::E() << "Expecting '<-' here\n";
+    return nullptr;
+  }
+  (void) NextTok();
+
+  auto* ExprNode = ParseExpr();
+  if(!ExprNode) return nullptr;
+
+  // if this is a scalar assignment,
+  // finds destination's side effect source
+  Node* EffectNode = nullptr;
+  if(NodeProperties<IrOpcode::SrcVarDecl>(DesigNode)) {
+    auto ItEffect = LastModified.find(DesigNode);
+    if(ItEffect != LastModified.end())
+      EffectNode = ItEffect->second;
+  }
+
+  auto* AssignNode = NodeBuilder<IrOpcode::SrcAssignStmt>(&G)
+                     .Dest(DesigNode, EffectNode).Src(ExprNode)
+                     .Build();
+  // update last modified map
+  if(NodeProperties<IrOpcode::SrcVarDecl>(DesigNode)) {
+    LastModified[DesigNode] = AssignNode;
+  } else {
+    // TODO: handle array access as designator
+    gross_unreachable("Unimplemented designator type");
+  }
+
+  return AssignNode;
+}
+
 bool Parser::ParseFuncDecl() {
   Lexer::Token Tok = NextTok();
   if(Tok != Lexer::TOK_IDENT) {
