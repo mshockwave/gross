@@ -1,5 +1,6 @@
 #include "gtest/gtest.h"
 #include "boost/concept/assert.hpp"
+#include "gross/Graph/Graph.h"
 #include "gross/Graph/BGL.h"
 #include "boost/graph/graph_concepts.hpp"
 
@@ -11,4 +12,10 @@ TEST(GraphBGLTest, TestVertexListGraphConcept) {
 }
 TEST(GraphBGLTest, TestEdgeListGraphConcept) {
   BOOST_CONCEPT_ASSERT(( boost::EdgeListGraphConcept<gross::Graph> ));
+}
+
+TEST(GraphBGLTest, TestVertexReadablePropertyMapConcept) {
+  BOOST_CONCEPT_ASSERT(( boost::ReadablePropertyMapConcept<
+                          gross::Graph::id_map<boost::vertex_index_t>,
+                          gross::Node* > ));
 }

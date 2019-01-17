@@ -3,6 +3,8 @@
 /// Defining required traits for boost graph library
 #include <utility>
 #include "boost/graph/graph_traits.hpp"
+#include "boost/graph/properties.hpp"
+#include "boost/property_map/property_map.hpp"
 #include "boost/iterator/transform_iterator.hpp"
 #include "gross/Graph/Graph.h"
 #include "gross/Graph/Node.h"
@@ -93,6 +95,47 @@ source(const gross::Use& e, const gross::Graph& g) {
 typename boost::graph_traits<gross::Graph>::vertex_descriptor
 target(const gross::Use& e, const gross::Graph& g) {
   return const_cast<gross::Node*>(e.Dest);
+}
+} // end namespace boost
+
+/// Property Map Concept
+namespace gross {
+template<>
+struct Graph::id_map<boost::vertex_index_t> {
+  using value_type = size_t;
+  using reference = size_t;
+  using key_type = Node*;
+  struct category : public boost::readable_property_map_tag {};
+
+  id_map(const Graph& g) : G(g) {}
+
+  reference operator[](const key_type& key) const {
+    // just use linear search for now
+    // TODO: improve time complexity
+    value_type Idx = 0;
+    for(auto I = G.node_cbegin(), E = G.node_cend();
+        I != E; ++I, ++Idx) {
+      if(I->get() == key) break;
+    }
+    return Idx;
+  }
+
+private:
+  const Graph &G;
+};
+} // end namespace gross
+
+namespace boost {
+// get() for vertex property map
+typename gross::Graph::id_map<boost::vertex_index_t>::reference
+get(const typename gross::Graph::id_map<boost::vertex_index_t> &pmap,
+    const typename gross::Graph::id_map<boost::vertex_index_t>::key_type &key) {
+  return pmap[key];
+}
+// get() for getting vertex property map from graph
+typename gross::Graph::id_map<boost::vertex_index_t>
+get(boost::vertex_index_t tag, const gross::Graph& g) {
+  return typename gross::Graph::id_map<boost::vertex_index_t>(g);
 }
 } // end namespace boost
 #endif

@@ -27,8 +27,11 @@ class Graph {
 
 public:
   using node_iterator = typename decltype(Nodes)::iterator;
+  using const_node_iterator = typename decltype(Nodes)::const_iterator;
   node_iterator node_begin() { return Nodes.begin(); }
+  const_node_iterator node_cbegin() const { return Nodes.cbegin(); }
   node_iterator node_end() { return Nodes.end(); }
+  const_node_iterator node_cend() const { return Nodes.cend(); }
   size_t node_size() const { return Nodes.size(); }
 
   using edge_iterator = typename decltype(Edges)::iterator;
@@ -44,6 +47,14 @@ public:
   size_t getNumConstNumber() const {
     return ConstNumberPool.size();
   }
+
+  // map from vertex or edge to an unique id
+  template<class PropertyTag>
+  struct id_map;
 };
+
+// default(empty) implementation
+template<class PropertyTag>
+struct Graph::id_map {};
 } // end namespace gross
 #endif

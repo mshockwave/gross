@@ -1,8 +1,11 @@
 #include "Parser.h"
 #include "gross/Graph/Graph.h"
 #include "gross/Graph/NodeUtils.h"
+#include "gross/Graph/BGL.h"
+#include "boost/graph/graphviz.hpp"
 #include "gtest/gtest.h"
 #include <sstream>
+#include <fstream>
 
 using namespace gross;
 
@@ -221,6 +224,10 @@ TEST(ParserTest, TestSimpleExpr) {
               .as<int32_t>(G), 43);
     EXPECT_EQ(NodeProperties<IrOpcode::ConstantInt>(RHS)
               .as<int32_t>(G), 7);
+
+    // FIXME: remove it later
+    std::ofstream OF("test_graphviz.dot");
+    boost::write_graphviz(OF, G);
   }
 }
 
