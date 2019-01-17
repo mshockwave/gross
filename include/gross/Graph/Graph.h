@@ -3,6 +3,7 @@
 #include "gross/Graph/Node.h"
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace gross {
@@ -14,6 +15,7 @@ class Graph {
   friend struct NodeProperties;
 
   std::vector<std::unique_ptr<Node>> Nodes;
+  std::unordered_set<Use> Edges;
 
   // Constant pools
   NodeBiMap<std::string> ConstStrPool;
@@ -27,8 +29,12 @@ public:
   using node_iterator = typename decltype(Nodes)::iterator;
   node_iterator node_begin() { return Nodes.begin(); }
   node_iterator node_end() { return Nodes.end(); }
-
   size_t node_size() const { return Nodes.size(); }
+
+  using edge_iterator = typename decltype(Edges)::iterator;
+  edge_iterator edge_begin() { return Edges.begin(); }
+  edge_iterator edge_end() { return Edges.end(); }
+  size_t edge_size() const { return Edges.size(); }
 
   void InsertNode(Node* N);
 

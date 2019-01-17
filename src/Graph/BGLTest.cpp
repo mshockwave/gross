@@ -9,3 +9,6 @@ TEST(GraphBGLTest, TestGraphConcept) {
 TEST(GraphBGLTest, TestVertexListGraphConcept) {
   BOOST_CONCEPT_ASSERT(( boost::VertexListGraphConcept<gross::Graph> ));
 }
+TEST(GraphBGLTest, TestEdgeListGraphConcept) {
+  BOOST_CONCEPT_ASSERT(( boost::EdgeListGraphConcept<gross::Graph> ));
+}

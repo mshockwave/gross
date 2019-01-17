@@ -2,8 +2,10 @@
 #define GROSS_GRAPH_NODE_H
 #include "gross/Graph/Opcodes.h"
 #include "gross/Support/Log.h"
+#include "boost/container_hash/hash.hpp"
 #include <unordered_map>
 #include <vector>
+#include <utility>
 
 namespace gross {
 // Forward declarations
@@ -109,24 +111,50 @@ public:
 
 /// A really lightweight representation of Node use edge
 struct Use {
+  enum Kind : uint8_t {
+    K_VALUE = 0,
+    K_CONTROL,
+    K_EFFECT
+  };
+
   Node* Source;
   Node* Dest;
+  // Category of dependency
+  Kind DepKind;
 
   Use() :
     Source(nullptr),
-    Dest(nullptr) {}
+    Dest(nullptr),
+    DepKind(K_VALUE) {}
 
-  Use(Node* S, Node* D) :
+  Use(Node* S, Node* D, Kind DK = K_VALUE) :
     Source(S),
-    Dest(D) {}
+    Dest(D),
+    DepKind(DK) {}
 
   bool operator==(const Use& RHS) const {
     return Source == RHS.Source &&
-           Dest == RHS.Dest;
+           Dest == RHS.Dest &&
+           DepKind == RHS.DepKind;
   }
   bool operator!=(const Use& RHS) const {
     return !(RHS == *this);
   }
 };
 } // end namespace gross
+
+namespace std {
+template<>
+struct hash<gross::Use> {
+  using argument_type = gross::Use;
+  using result_type = size_t;
+  result_type operator()(argument_type const& U) const noexcept {
+    result_type seed = 0;
+    boost::hash_combine(seed, U.Source);
+    boost::hash_combine(seed, U.Dest);
+    boost::hash_combine(seed, U.DepKind);
+    return seed;
+  }
+};
+} // end namespace std
 #endif
