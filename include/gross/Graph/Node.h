@@ -85,15 +85,15 @@ class NodeBiMap {
   std::unordered_map<ValueT, Node*> Value2Node;
 
 public:
-  ValueT* find_value(Node* N) {
+  ValueT* find_value(Node* N) const {
     return Node2Value.count(N)?
-            &Node2Value.at(N) :
+            const_cast<ValueT*>(&Node2Value.at(N)) :
             nullptr;
   }
 
-  Node* find_node(const ValueT& V) {
+  Node* find_node(const ValueT& V) const {
     return Value2Node.count(V)?
-            Value2Node.at(V) :
+            const_cast<Node*>(Value2Node.at(V)) :
             nullptr;
   }
 

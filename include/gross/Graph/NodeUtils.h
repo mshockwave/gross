@@ -48,7 +48,7 @@ NODE_PROPERTIES(ConstantInt) {
     : NODE_PROP_BASE(ConstantInt, N) {}
 
   template<typename T>
-  T as(Graph& G) const {
+  T as(const Graph& G) const {
     if(!*this) return T();
     if(auto* V = G.ConstNumberPool.find_value(NodePtr))
       return static_cast<T>(*V);

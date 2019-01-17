@@ -1,14 +1,16 @@
 #ifndef GROSS_GRAPH_BGL_H
 #define GROSS_GRAPH_BGL_H
 /// Defining required traits for boost graph library
-#include <utility>
 #include "boost/graph/graph_traits.hpp"
 #include "boost/graph/properties.hpp"
 #include "boost/property_map/property_map.hpp"
 #include "boost/iterator/transform_iterator.hpp"
 #include "gross/Graph/Graph.h"
 #include "gross/Graph/Node.h"
+#include "gross/Graph/NodeUtils.h"
 #include "gross/Support/STLExtras.h"
+#include <utility>
+#include <iostream>
 
 namespace boost {
 template<>
@@ -126,16 +128,81 @@ private:
 } // end namespace gross
 
 namespace boost {
-// get() for vertex property map
+// get() for vertex id property map
 typename gross::Graph::id_map<boost::vertex_index_t>::reference
 get(const typename gross::Graph::id_map<boost::vertex_index_t> &pmap,
     const typename gross::Graph::id_map<boost::vertex_index_t>::key_type &key) {
   return pmap[key];
 }
-// get() for getting vertex property map from graph
+// get() for getting vertex id property map from graph
 typename gross::Graph::id_map<boost::vertex_index_t>
 get(boost::vertex_index_t tag, const gross::Graph& g) {
   return typename gross::Graph::id_map<boost::vertex_index_t>(g);
 }
 } // end namespace boost
+
+/// PropertyWriter Concept
+namespace gross {
+struct graph_prop_writer {
+  void operator()(std::ostream& OS) const {
+    // print the graph 'upside down'
+    OS << "rankdir = BT;" << std::endl;
+  }
+};
+
+struct graph_vertex_prop_writer {
+  graph_vertex_prop_writer(const Graph& g) : G(g) {}
+
+  void operator()(std::ostream& OS, const Node* v) const {
+    Node* N = const_cast<Node*>(v);
+#define CASE_OPCODE_STR(OC)  \
+    case IrOpcode::OC:    \
+      OS << "[label=\""   \
+         << #OC           \
+         << "\"]";        \
+      break
+
+    switch(N->getOp()) {
+    case IrOpcode::ConstantInt: {
+      OS << "[label=\"ConstInt<"
+         << NodeProperties<IrOpcode::ConstantInt>(N).as<int32_t>(G)
+         << ">\"]";
+      break;
+    }
+    CASE_OPCODE_STR(BinAdd);
+    CASE_OPCODE_STR(BinSub);
+    CASE_OPCODE_STR(BinMul);
+    CASE_OPCODE_STR(BinDiv);
+    CASE_OPCODE_STR(BinGe);
+    CASE_OPCODE_STR(BinGt);
+    CASE_OPCODE_STR(BinLe);
+    CASE_OPCODE_STR(BinLt);
+    CASE_OPCODE_STR(BinNe);
+    CASE_OPCODE_STR(BinEq);
+    default: OS << "";
+    }
+
+#undef CASE_OPCODE_STR
+  }
+
+private:
+  const Graph& G;
+};
+
+struct graph_edge_prop_writer {
+  void operator()(std::ostream& OS, const Use& U) const {
+    switch(U.DepKind) {
+    case Use::K_VALUE:
+      OS << "[color=\"black\"]";
+      break;
+    case Use::K_CONTROL:
+      OS << "[color=\"blue\"]";
+      break;
+    case Use::K_EFFECT:
+      OS << "[color=\"red\", style=\"dashed\"]";
+      break;
+    }
+  }
+};
+} // end namespace gross
 #endif
