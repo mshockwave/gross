@@ -1,4 +1,6 @@
 #include "gross/Graph/Graph.h"
+#include "gross/Graph/BGL.h"
+#include "boost/graph/graphviz.hpp"
 
 using namespace gross;
 
@@ -18,4 +20,11 @@ void Graph::InsertNode(Node* N) {
     Node* Dest = N->getEffectInput(i);
     Edges.insert(Use(N, Dest, Use::K_EFFECT));
   }
+}
+
+void Graph::dumpGraphviz(std::ostream& OS) {
+  boost::write_graphviz(OS, *this,
+                        graph_vertex_prop_writer(*this),
+                        graph_edge_prop_writer{},
+                        graph_prop_writer{});
 }

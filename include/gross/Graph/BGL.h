@@ -42,7 +42,13 @@ struct graph_traits<gross::Graph> {
   using edge_iterator = typename gross::Graph::edge_iterator;
 };
 
+/// Note: We mark most of the BGL trait functions here as inline
+/// because they're trivial.
+/// FIXME: Will putting them into separated source file helps reducing
+/// compilation time?
+
 /// VertexListGraphConcept
+inline
 std::pair<typename boost::graph_traits<gross::Graph>::vertex_iterator,
           typename boost::graph_traits<gross::Graph>::vertex_iterator>
 vertices(gross::Graph& g) {
@@ -54,47 +60,50 @@ vertices(gross::Graph& g) {
     vertex_it_t(g.node_end(), functor)
   );
 }
+inline
 std::pair<typename boost::graph_traits<gross::Graph>::vertex_iterator,
           typename boost::graph_traits<gross::Graph>::vertex_iterator>
 vertices(const gross::Graph& g) {
   return vertices(const_cast<gross::Graph&>(g));
 }
 
-typename boost::graph_traits<gross::Graph>::vertices_size_type
+inline typename boost::graph_traits<gross::Graph>::vertices_size_type
 num_vertices(gross::Graph& g) {
   return const_cast<const gross::Graph&>(g).node_size();
 }
-typename boost::graph_traits<gross::Graph>::vertices_size_type
+inline typename boost::graph_traits<gross::Graph>::vertices_size_type
 num_vertices(const gross::Graph& g) {
   return g.node_size();
 }
 
 /// EdgeListGraphConcept
+inline
 std::pair<typename boost::graph_traits<gross::Graph>::edge_iterator,
           typename boost::graph_traits<gross::Graph>::edge_iterator>
 edges(gross::Graph& g) {
   return std::make_pair(g.edge_begin(), g.edge_end());
 }
+inline
 std::pair<typename boost::graph_traits<gross::Graph>::edge_iterator,
           typename boost::graph_traits<gross::Graph>::edge_iterator>
 edges(const gross::Graph& g) {
   return edges(const_cast<gross::Graph&>(g));
 }
 
-typename boost::graph_traits<gross::Graph>::edges_size_type
+inline typename boost::graph_traits<gross::Graph>::edges_size_type
 num_edges(gross::Graph& g) {
   return const_cast<const gross::Graph&>(g).edge_size();
 }
-typename boost::graph_traits<gross::Graph>::edges_size_type
+inline typename boost::graph_traits<gross::Graph>::edges_size_type
 num_edges(const gross::Graph& g) {
   return g.edge_size();
 }
 
-typename boost::graph_traits<gross::Graph>::vertex_descriptor
+inline typename boost::graph_traits<gross::Graph>::vertex_descriptor
 source(const gross::Use& e, const gross::Graph& g) {
   return const_cast<gross::Node*>(e.Source);
 }
-typename boost::graph_traits<gross::Graph>::vertex_descriptor
+inline typename boost::graph_traits<gross::Graph>::vertex_descriptor
 target(const gross::Use& e, const gross::Graph& g) {
   return const_cast<gross::Node*>(e.Dest);
 }
@@ -129,13 +138,13 @@ private:
 
 namespace boost {
 // get() for vertex id property map
-typename gross::Graph::id_map<boost::vertex_index_t>::reference
+inline typename gross::Graph::id_map<boost::vertex_index_t>::reference
 get(const typename gross::Graph::id_map<boost::vertex_index_t> &pmap,
     const typename gross::Graph::id_map<boost::vertex_index_t>::key_type &key) {
   return pmap[key];
 }
 // get() for getting vertex id property map from graph
-typename gross::Graph::id_map<boost::vertex_index_t>
+inline typename gross::Graph::id_map<boost::vertex_index_t>
 get(boost::vertex_index_t tag, const gross::Graph& g) {
   return typename gross::Graph::id_map<boost::vertex_index_t>(g);
 }

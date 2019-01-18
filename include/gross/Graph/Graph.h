@@ -4,6 +4,7 @@
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
+#include <iostream>
 #include <vector>
 
 namespace gross {
@@ -51,6 +52,9 @@ public:
   // map from vertex or edge to an unique id
   template<class PropertyTag>
   struct id_map;
+
+  // dump to GraphViz graph
+  void dumpGraphviz(std::ostream& OS);
 };
 
 // default(empty) implementation

@@ -11,6 +11,7 @@ if(GROSS_ENABLE_UNIT_TESTS)
   set(_TEST_SOURCE_FILES
       NodeUtilsTest.cpp
       BGLTest.cpp
+      GraphTest.cpp
       )
 
   add_executable(GrossGraphTest
