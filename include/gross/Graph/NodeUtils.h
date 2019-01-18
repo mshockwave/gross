@@ -56,6 +56,24 @@ NODE_PROPERTIES(ConstantInt) {
       return T();
   }
 };
+NODE_PROPERTIES(ConstantStr) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(ConstantStr, N) {}
+
+  const std::string& str(const Graph& G) const {
+    assert(*this && "Invalid Node");
+    const auto* V = G.ConstStrPool.find_value(NodePtr);
+    assert(V && "string not found");
+    return *V;
+  }
+  const std::string str_val(const Graph& G) const {
+    if(!*this) return "";
+    if(const auto* V = G.ConstStrPool.find_value(NodePtr))
+      return *V;
+    else
+      return "";
+  }
+};
 
 NODE_PROPERTIES(SrcAssignStmt) {
   NodeProperties(Node *N)

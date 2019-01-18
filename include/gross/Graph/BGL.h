@@ -178,6 +178,12 @@ struct graph_vertex_prop_writer {
          << ">\"]";
       break;
     }
+    case IrOpcode::ConstantStr: {
+      OS << "[label=\"ConstStr<"
+         << NodeProperties<IrOpcode::ConstantStr>(N).str(G)
+         << ">\"]";
+      break;
+    }
     CASE_OPCODE_STR(BinAdd);
     CASE_OPCODE_STR(BinSub);
     CASE_OPCODE_STR(BinMul);
@@ -188,7 +194,9 @@ struct graph_vertex_prop_writer {
     CASE_OPCODE_STR(BinLt);
     CASE_OPCODE_STR(BinNe);
     CASE_OPCODE_STR(BinEq);
-    default: OS << "";
+    CASE_OPCODE_STR(SrcVarDecl);
+    CASE_OPCODE_STR(SrcAssignStmt);
+    default: OS << "UNKNOWN";
     }
 
 #undef CASE_OPCODE_STR
