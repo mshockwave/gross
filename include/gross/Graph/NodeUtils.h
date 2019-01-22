@@ -75,6 +75,41 @@ NODE_PROPERTIES(ConstantStr) {
   }
 };
 
+NODE_PROPERTIES(VirtSrcDesigAccess) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(VirtSrcDesigAccess, N) {}
+
+  operator bool() const {
+    if(!NodePtr) return false;
+    auto Op = NodePtr->getOp();
+    return Op == IrOpcode::SrcVarAccess ||
+           Op == IrOpcode::SrcArrayAccess;
+  }
+
+  Node* decl() const {
+    assert(NodePtr->getNumValueInput() > 0);
+    return NodePtr->getValueInput(0);
+  }
+
+  Node* effect_dependency() const {
+    if(NodePtr->getNumEffectInput() > 0)
+      return NodePtr->getEffectInput(0);
+    else
+      return nullptr;
+  }
+};
+
+template<>
+struct NodeProperties<IrOpcode::SrcVarAccess>
+  : public NodeProperties<IrOpcode::VirtSrcDesigAccess> {
+  NodeProperties(Node *N)
+    : NodeProperties<IrOpcode::VirtSrcDesigAccess>(N) {}
+
+  operator bool() const {
+    return NodePtr && NodePtr->Op == IrOpcode::SrcVarAccess;
+  }
+};
+
 NODE_PROPERTIES(SrcAssignStmt) {
   NodeProperties(Node *N)
     : NODE_PROP_BASE(SrcAssignStmt, N) {}
@@ -88,6 +123,28 @@ NODE_PROPERTIES(SrcAssignStmt) {
     return NodePtr->getValueInput(0);
   }
 };
+
+NODE_PROPERTIES(SrcArrayDecl) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(SrcArrayDecl, N) {}
+
+  const std::string& ident_name(const Graph& G) const {
+    assert(NodePtr->getNumValueInput() > 0);
+    auto* SymStrNode = NodePtr->getValueInput(0);
+    return NodeProperties<IrOpcode::ConstantStr>(SymStrNode)
+           .str(G);
+  }
+
+  size_t dim_size() const {
+    assert(NodePtr->getNumValueInput() > 0);
+    return NodePtr->getNumValueInput() - 1U;
+  }
+  Node* dim(size_t idx) const {
+    assert(idx < dim_size() && "dim index out-of-bound");
+    return NodePtr->getValueInput(idx + 1);
+  }
+};
+
 #undef NODE_PROP_BASE
 #undef NODE_PROPERTIES
 
@@ -265,12 +322,107 @@ TRIVIAL_BIN_OP_BUILDER(BinNe);
 #undef TRIVIAL_BIN_OP_BUILDER
 
 template<>
+struct NodeBuilder<IrOpcode::SrcVarAccess> {
+  NodeBuilder(Graph* graph) :
+    G(graph),
+    VarDecl(nullptr), EffectDep(nullptr) {}
+
+  NodeBuilder& Decl(Node* N) {
+    VarDecl = N;
+    return *this;
+  }
+
+  NodeBuilder& Effect(Node* N) {
+    EffectDep = N;
+    return *this;
+  }
+
+  Node* Build(bool Verify = true) {
+    if(Verify) {
+      NodeProperties<IrOpcode::SrcVarDecl> NP(VarDecl);
+      assert(NP && "original decl should be SrcVarDecl");
+    }
+
+    std::vector<Node*> Effects;
+    if(EffectDep) Effects.push_back(EffectDep);
+    auto* N = new Node(IrOpcode::SrcVarAccess,
+                       {VarDecl},// value inputs
+                       {}/*control inputs*/,
+                       Effects/*effect inputs*/);
+    VarDecl->Users.push_back(N);
+    if(EffectDep) EffectDep->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+
+private:
+  Graph* G;
+  Node *VarDecl, *EffectDep;
+};
+
+template<>
+struct NodeBuilder<IrOpcode::SrcArrayAccess> {
+  NodeBuilder(Graph *graph) :
+    G(graph),
+    VarDecl(nullptr), EffectDep(nullptr) {}
+
+  NodeBuilder& Decl(Node* D) {
+    VarDecl = D;
+    return *this;
+  }
+  NodeBuilder& Effect(Node* N) {
+    EffectDep = N;
+    return *this;
+  }
+
+  NodeBuilder& AppendAccessDim(Node* DimExpr) {
+    Dims.push_back(DimExpr);
+    return *this;
+  }
+  NodeBuilder& ResetDims() {
+    Dims.clear();
+    return *this;
+  }
+
+  Node* Build(bool Verify=true) {
+    if(Verify) {
+      // Make sure the amount of dims
+      // matches that of original array decl
+      NodeProperties<IrOpcode::SrcArrayDecl> NP(VarDecl);
+      assert(NP && NP.dim_size() == Dims.size() &&
+             "illegal array decl");
+    }
+
+    // value dependency
+    // 0: array decl
+    // 1..N: dimension expression
+    std::vector<Node*> ValDeps{VarDecl};
+    ValDeps.insert(ValDeps.end(), Dims.begin(), Dims.end());
+    std::vector<Node*> EffectDeps;
+    if(EffectDep) EffectDeps.push_back(EffectDep);
+    Node* ArrAccessNode = new Node(IrOpcode::SrcArrayAccess,
+                                   ValDeps, // value dependencies
+                                   {}, // control dependencies
+                                   EffectDeps); // effect dependencies
+    for(auto* N : ValDeps)
+      N->Users.push_back(ArrAccessNode);
+    if(EffectDep) EffectDep->Users.push_back(ArrAccessNode);
+    G->InsertNode(ArrAccessNode);
+    return ArrAccessNode;
+  }
+
+private:
+  Graph *G;
+  Node *VarDecl, *EffectDep;
+  std::vector<Node*> Dims;
+};
+
+template<>
 struct NodeBuilder<IrOpcode::SrcAssignStmt> {
   NodeBuilder(Graph *graph) : G(graph) {}
 
-  NodeBuilder& Dest(Node* N, Node* EffectNode = nullptr) {
+  NodeBuilder& Dest(Node* N) {
     DestNode = N;
-    EffectDep = EffectNode;
     return *this;
   }
   NodeBuilder& Src(Node* N) {
@@ -279,31 +431,17 @@ struct NodeBuilder<IrOpcode::SrcAssignStmt> {
   }
 
   Node* Build() {
-    // assign to scalar
-    if(NodeProperties<IrOpcode::SrcVarDecl>(DestNode)) {
-      std::vector<Node*> Effects;
-      if(EffectDep) Effects.push_back(EffectDep);
-      auto* N = new Node(IrOpcode::SrcAssignStmt,
-                         {DestNode, SrcNode},// value inputs
-                         {}/*control inputs*/,
-                         Effects/*effect inputs*/);
-      DestNode->Users.push_back(N);
-      SrcNode->Users.push_back(N);
-      if(EffectDep) EffectDep->Users.push_back(N);
-      G->InsertNode(N);
-      return N;
-    } else {
-      // TODO: assign to array element
-      gross_unreachable("Unimplemented");
-    }
-    return nullptr;
+    auto* N = new Node(IrOpcode::SrcAssignStmt,
+                       {DestNode, SrcNode});
+    DestNode->Users.push_back(N);
+    SrcNode->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
   }
 
 private:
   Graph *G;
-  Node *DestNode, *EffectDep,
-       *SrcNode;
+  Node *DestNode, *SrcNode;
 };
-
 } // end namespace gross
 #endif

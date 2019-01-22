@@ -29,12 +29,17 @@ enum ID : unsigned {
   MemStore,
   // High-level primitives
   SrcVarDecl,
+  SrcVarAccess,
   SrcArrayDecl,
   SrcArrayAccess,
   SrcWhileStmt,
   SrcAssignStmt,
   // Low(machine)-level opcodes
-  DLXJmp
+  DLXJmp,
+  // Virtual opcodes: abtraction nodes for several
+  // opcodes with similar properties
+  VirtBinOps,         // Bin*
+  VirtSrcDesigAccess  // SrcVarAccess | SrcArrayAccess
 };
 } // end namespace IrOpcode
 } // end namespace gross

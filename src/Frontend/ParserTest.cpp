@@ -289,7 +289,7 @@ TEST(ParserTest, TestAssignment) {
     ASSERT_TRUE(NPA);
     EXPECT_EQ(NodeProperties<IrOpcode::ConstantInt>(NPA.source())
               .as<int32_t>(G), 2);
-    EXPECT_TRUE(NodeProperties<IrOpcode::SrcVarDecl>(NPA.dest()));
+    EXPECT_TRUE(NodeProperties<IrOpcode::SrcVarAccess>(NPA.dest()));
   }
   SS.clear();
   {
@@ -305,13 +305,15 @@ TEST(ParserTest, TestAssignment) {
 
     Node* Assign1 = P.ParseAssignment();
     NodeProperties<IrOpcode::SrcAssignStmt> NPA1(Assign1);
+    ASSERT_TRUE(NPA1);
     Node* Assign2 = P.ParseAssignment();
     NodeProperties<IrOpcode::SrcAssignStmt> NPA2(Assign2);
     ASSERT_TRUE(NPA2);
     EXPECT_EQ(NodeProperties<IrOpcode::ConstantInt>(NPA2.source())
               .as<int32_t>(G), 87);
-    EXPECT_EQ(NPA1.dest(), NPA2.dest());
-    ASSERT_EQ(Assign2->getNumEffectInput(), 1);
-    EXPECT_EQ(Assign2->getEffectInput(0), Assign1);
+    auto* Access2 = NPA2.dest();
+    NodeProperties<IrOpcode::SrcVarAccess> NPAC2(Access2);
+    ASSERT_EQ(Access2->getNumEffectInput(), 1);
+    EXPECT_EQ(Access2->getEffectInput(0), Assign1);
   }
 }

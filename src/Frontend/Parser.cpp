@@ -232,19 +232,55 @@ Node* Parser::ParseDesignator() {
     return nullptr;
   }
 
+  // finding side effects
+  Node* EffectNode = nullptr;
+  auto ILM = LastModified.find(Decl);
+  if(ILM != LastModified.end())
+    EffectNode = ILM->second;
+
   // array access
   if(NextTok() == Lexer::TOK_L_BRACKET) {
-    return ParseArrayAccessDesignator(Decl);
+    return ParseArrayAccessDesignator(Decl, EffectNode, IdentName);
   }
 
-  // if this is just scalar access, just return the decl
-  // and let the user to handle side effects
-  return Decl;
+  // scalar access
+  return NodeBuilder<IrOpcode::SrcVarAccess>(&G)
+         .Decl(Decl).Effect(EffectNode)
+         .Build();
 }
 
-Node* Parser::ParseArrayAccessDesignator(Node* DeclNode) {
-  // TODO
-  return nullptr;
+Node* Parser::ParseArrayAccessDesignator(Node* DeclNode, Node* Effect,
+                                         const std::string& IdentName) {
+  if(!NodeProperties<IrOpcode::SrcArrayDecl>(DeclNode)) {
+    Log::E() << "identifier \""
+             << IdentName << "\""
+             << " is not declared as array\n";
+    return nullptr;
+  }
+
+  NodeBuilder<IrOpcode::SrcArrayAccess> AAB(&G);
+  AAB.Decl(DeclNode)
+     .Effect(Effect);
+
+  while(true) {
+    auto Tok = CurTok();
+    if(Tok != Lexer::TOK_L_BRACKET) {
+      Log::E() << "Expecting left bracket\n";
+      return nullptr;
+    }
+    (void) NextTok();
+    auto* Expr = ParseExpr();
+    if(!Expr) return nullptr;
+    Tok = CurTok();
+    if(Tok != Lexer::TOK_R_BRACKET) {
+      Log::E() << "Expecting right bracket\n";
+      return nullptr;
+    }
+    AAB.AppendAccessDim(Expr);
+    if(NextTok() != Lexer::TOK_L_BRACKET) break;
+  }
+
+  return AAB.Build();
 }
 
 Node* Parser::ParseAssignment() {
@@ -256,7 +292,8 @@ Node* Parser::ParseAssignment() {
   (void) NextTok();
 
   auto* DesigNode = ParseDesignator();
-  if(!DesigNode) return nullptr;
+  NodeProperties<IrOpcode::VirtSrcDesigAccess> DNP(DesigNode);
+  if(!DNP) return nullptr;
   Tok = CurTok();
 
   if(Tok != Lexer::TOK_L_ARROW) {
@@ -268,26 +305,12 @@ Node* Parser::ParseAssignment() {
   auto* ExprNode = ParseExpr();
   if(!ExprNode) return nullptr;
 
-  // if this is a scalar assignment,
-  // finds destination's side effect source
-  Node* EffectNode = nullptr;
-  if(NodeProperties<IrOpcode::SrcVarDecl>(DesigNode)) {
-    auto ItEffect = LastModified.find(DesigNode);
-    if(ItEffect != LastModified.end())
-      EffectNode = ItEffect->second;
-  }
-
   auto* AssignNode = NodeBuilder<IrOpcode::SrcAssignStmt>(&G)
-                     .Dest(DesigNode, EffectNode).Src(ExprNode)
+                     .Dest(DesigNode).Src(ExprNode)
                      .Build();
+  assert(AssignNode && "fail to build SrcAssignStmt node");
   // update last modified map
-  if(NodeProperties<IrOpcode::SrcVarDecl>(DesigNode)) {
-    LastModified[DesigNode] = AssignNode;
-  } else {
-    // TODO: handle array access as designator
-    gross_unreachable("Unimplemented designator type");
-  }
-
+  LastModified[DNP.decl()] = AssignNode;
   return AssignNode;
 }
 

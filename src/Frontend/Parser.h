@@ -114,7 +114,8 @@ public:
   bool ParseVarDecl();
 
   Node* ParseDesignator();
-  Node* ParseArrayAccessDesignator(Node* Decl);
+  Node* ParseArrayAccessDesignator(Node* Decl, Node* Effect,
+                                   const std::string& IdentName = "");
 
   Node* ParseTerm();
   Node* ParseFactor();
