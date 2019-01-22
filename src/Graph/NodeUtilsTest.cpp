@@ -128,5 +128,53 @@ TEST(NodeBuilderTest, TestSrcDesigAccess) {
     ASSERT_EQ(AccessNode->getNumEffectInput(), 1);
     EXPECT_EQ(AccessNode->getEffectInput(0), Dummy);
   }
-  // TODO: array access
+  {
+    // access scalar with no side effects
+    Graph G;
+    auto* Dim0 = NodeBuilder<IrOpcode::ConstantInt>(&G, 94).Build();
+    auto* Dim1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 87).Build();
+
+    auto* ArrDeclNode = NodeBuilder<IrOpcode::SrcArrayDecl>(&G)
+                        .SetSymbolName("rem_my_wifes")
+                        .AddDim(Dim0).AddDim(Dim1)
+                        .Build();
+
+    auto* ADim0 = NodeBuilder<IrOpcode::ConstantInt>(&G, 0).Build();
+    auto* ADim1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 3).Build();
+    auto* AccessNode = NodeBuilder<IrOpcode::SrcArrayAccess>(&G)
+                       .Decl(ArrDeclNode)
+                       .AppendAccessDim(ADim0).AppendAccessDim(ADim1)
+                       .Build();
+    ASSERT_TRUE(AccessNode);
+    EXPECT_EQ(AccessNode->getOp(), IrOpcode::SrcArrayAccess);
+    EXPECT_EQ(AccessNode->getNumValueInput(), 3);
+    EXPECT_EQ(AccessNode->getNumControlInput(), 0);
+    EXPECT_EQ(AccessNode->getNumEffectInput(), 0);
+  }
+  {
+    // access scalar with side effects
+    Graph G;
+    auto* Dim0 = NodeBuilder<IrOpcode::ConstantInt>(&G, 94).Build();
+    auto* Dim1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 87).Build();
+
+    auto* ArrDeclNode = NodeBuilder<IrOpcode::SrcArrayDecl>(&G)
+                        .SetSymbolName("rem_my_wifes")
+                        .AddDim(Dim0).AddDim(Dim1)
+                        .Build();
+
+    auto* Dummy = NodeBuilder<IrOpcode::ConstantInt>(&G, 78).Build();
+
+    auto* ADim0 = NodeBuilder<IrOpcode::ConstantInt>(&G, 0).Build();
+    auto* ADim1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 3).Build();
+    auto* AccessNode = NodeBuilder<IrOpcode::SrcArrayAccess>(&G)
+                       .Decl(ArrDeclNode).Effect(Dummy)
+                       .AppendAccessDim(ADim0).AppendAccessDim(ADim1)
+                       .Build();
+    ASSERT_TRUE(AccessNode);
+    EXPECT_EQ(AccessNode->getOp(), IrOpcode::SrcArrayAccess);
+    EXPECT_EQ(AccessNode->getNumValueInput(), 3);
+    EXPECT_EQ(AccessNode->getNumControlInput(), 0);
+    EXPECT_EQ(AccessNode->getNumEffectInput(), 1);
+    EXPECT_EQ(AccessNode->getEffectInput(0), Dummy);
+  }
 }
