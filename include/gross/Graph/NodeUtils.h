@@ -110,6 +110,26 @@ struct NodeProperties<IrOpcode::SrcVarAccess>
   }
 };
 
+template<>
+struct NodeProperties<IrOpcode::SrcArrayAccess>
+  : public NodeProperties<IrOpcode::VirtSrcDesigAccess> {
+  NodeProperties(Node *N)
+    : NodeProperties<IrOpcode::VirtSrcDesigAccess>(N) {}
+
+  operator bool() const {
+    return NodePtr && NodePtr->Op == IrOpcode::SrcArrayAccess;
+  }
+
+  size_t dim_size() const {
+    assert(NodePtr->getNumValueInput() > 0);
+    return NodePtr->getNumValueInput() - 1U;
+  }
+  Node* dim(size_t idx) const {
+    assert(idx < dim_size() && "dim index out-of-bound");
+    return NodePtr->getValueInput(idx + 1);
+  }
+};
+
 NODE_PROPERTIES(SrcAssignStmt) {
   NodeProperties(Node *N)
     : NODE_PROP_BASE(SrcAssignStmt, N) {}

@@ -4,6 +4,7 @@
 #include <list>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 namespace gross {
 // Forward declarations
@@ -111,7 +112,7 @@ public:
   bool ParseTypeDecl(NodeBuilder<OC>& NB);
 
   template<IrOpcode::ID OC>
-  bool ParseVarDecl();
+  bool ParseVarDecl(std::vector<Node*>* Results = nullptr);
 
   Node* ParseDesignator();
   Node* ParseArrayAccessDesignator(Node* Decl, Node* Effect,

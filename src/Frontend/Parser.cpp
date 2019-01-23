@@ -64,7 +64,7 @@ bool Parser::ParseTypeDecl(NodeBuilder<IrOpcode::SrcArrayDecl>& NB) {
 }
 
 template<IrOpcode::ID OC>
-bool Parser::ParseVarDecl() {
+bool Parser::ParseVarDecl(std::vector<Node*>* Results) {
   NodeBuilder<OC> NB(&G);
   if(!ParseTypeDecl(NB)) return false;
 
@@ -84,6 +84,7 @@ bool Parser::ParseVarDecl() {
     auto* VarDeclNode = NB.SetSymbolName(SymName)
                           .Build();
     CurSymTable().insert({SymName, VarDeclNode});
+    if(Results) Results->push_back(VarDeclNode);
 
     Tok = NextTok();
     if(Tok == Lexer::TOK_SEMI_COLON)

@@ -196,6 +196,7 @@ struct graph_vertex_prop_writer {
     CASE_OPCODE_STR(BinEq);
     CASE_OPCODE_STR(SrcVarDecl);
     CASE_OPCODE_STR(SrcVarAccess);
+    CASE_OPCODE_STR(SrcArrayDecl);
     CASE_OPCODE_STR(SrcArrayAccess);
     CASE_OPCODE_STR(SrcAssignStmt);
     default: OS << "UNKNOWN";
