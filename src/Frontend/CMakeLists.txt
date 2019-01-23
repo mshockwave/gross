@@ -1,6 +1,9 @@
 
 set(_SOURCE_FILES
     Lexer.cpp
+    ParseExpr.cpp
+    ParseStmt.cpp
+    ParseDecl.cpp
     Parser.cpp
     )
 
@@ -10,6 +13,9 @@ add_library(GrossFrontend OBJECT
 if(GROSS_ENABLE_UNIT_TESTS)
   set(_TEST_SOURCE_FILES
       LexerTest.cpp
+      ParseExprTest.cpp
+      ParseStmtTest.cpp
+      ParseDeclTest.cpp
       ParserTest.cpp
       )
 

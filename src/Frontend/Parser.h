@@ -95,6 +95,10 @@ class Parser {
   // {decl, modifier}
   std::unordered_map<Node*, Node*> LastModified;
 
+  /// placeholder function to avoid link time error
+  /// for un-specialized decl template functions
+  void __SupportedParseVarDecls();
+
 public:
   Parser(std::istream& IS, Graph& graph)
     : G(graph),
