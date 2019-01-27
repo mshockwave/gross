@@ -463,5 +463,117 @@ private:
   Graph *G;
   Node *DestNode, *SrcNode;
 };
+
+template<>
+struct NodeBuilder<IrOpcode::VirtIfBranches> {
+  NodeBuilder(Graph* graph, bool IsTrueBr)
+    : G(graph),
+      IfNode(nullptr), BranchKind(IsTrueBr) {}
+
+  NodeBuilder& IfStmt(Node* N) {
+    IfNode = N;
+    return *this;
+  }
+
+  Node* Build() {
+    assert(IfNode && "If node cannot be null");
+    auto* N = new Node(BranchKind? IrOpcode::IfTrue : IrOpcode::IfFalse,
+                       {}, {IfNode});
+    IfNode->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+
+private:
+  Graph* G;
+  Node *IfNode;
+  bool BranchKind;
+};
+
+template<>
+struct NodeBuilder<IrOpcode::If> {
+  NodeBuilder(Graph* graph)
+    : G(graph),
+      Predicate(nullptr) {}
+
+  NodeBuilder& Condition(Node* N) {
+    Predicate = N;
+    return *this;
+  }
+
+  Node* Build() {
+    assert(Predicate && "condition can not be null");
+    auto* N = new Node(IrOpcode::If,
+                       {Predicate});
+    Predicate->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+private:
+  Graph* G;
+  Node *Predicate;
+};
+
+template<>
+struct NodeBuilder<IrOpcode::Merge> {
+  NodeBuilder(Graph* graph) : G(graph) {}
+
+  NodeBuilder& AddCtrlInput(Node* N) {
+    Ctrls.push_back(N);
+    return *this;
+  }
+
+  Node* Build() {
+    auto* N = new Node(IrOpcode::Merge,
+                       {}, Ctrls);
+    for(auto* Ctrl : Ctrls)
+      Ctrl->Users.push_back(Ctrl);
+    G->InsertNode(N);
+    return N;
+  }
+
+private:
+  Graph* G;
+  std::vector<Node*> Ctrls;
+};
+
+template<>
+struct NodeBuilder<IrOpcode::Phi> {
+  NodeBuilder(Graph* graph) : G(graph) {}
+
+  NodeBuilder& AddValueInput(Node* N) {
+    ValueDeps.push_back(N);
+    return *this;
+  }
+
+  NodeBuilder& AddEffectInput(Node* N) {
+    EffectDeps.push_back(N);
+    return *this;
+  }
+
+  NodeBuilder& SetCtrlMerge(Node* N) {
+    MergeNode = N;
+    return *this;
+  }
+
+  Node* Build() {
+    assert(MergeNode && "PHI require control merge point");
+    auto* N = new Node(IrOpcode::Phi,
+                       ValueDeps, {MergeNode},
+                       EffectDeps);
+    MergeNode->Users.push_back(N);
+    for(auto* VD : ValueDeps)
+      VD->Users.push_back(N);
+    for(auto* ED : EffectDeps)
+      ED->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+
+private:
+  Graph* G;
+  std::vector<Node*> ValueDeps, EffectDeps;
+  Node* MergeNode;
+};
 } // end namespace gross
 #endif

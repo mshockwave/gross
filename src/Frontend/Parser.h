@@ -223,8 +223,8 @@ class Parser {
 
   // record last modify node on a certain decl
   // {decl, modifier}
-  std::unordered_map<Node*, Node*> LastModified;
-  AffineRecordTable<Node*, Node*> LMTable;
+  //std::unordered_map<Node*, Node*> LastModified;
+  AffineRecordTable<Node*, Node*> LastModified;
 
   /// placeholder function to avoid link time error
   /// for un-specialized decl template functions
@@ -259,6 +259,8 @@ public:
   Node* ParseRelation();
 
   Node* ParseAssignment();
+  bool ParseStatements(std::vector<Node*>& Stmts);
+  Node* ParseIfStmt();
 
   bool ParseFuncDecl();
 };

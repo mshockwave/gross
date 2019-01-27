@@ -3,6 +3,7 @@
 #include "gross/Graph/NodeUtils.h"
 #include "gtest/gtest.h"
 #include <sstream>
+#include <fstream>
 
 using namespace gross;
 
@@ -106,5 +107,69 @@ TEST(ParserTest, TestAssignment) {
     NodeProperties<IrOpcode::SrcArrayAccess> NPAC2(Access2);
     ASSERT_TRUE(NPAC2);
     EXPECT_EQ(NPAC2.effect_dependency(), Assign1);
+  }
+}
+
+TEST(ParserTest, TestIfStmt) {
+  std::stringstream SS;
+  {
+    // simple without else block
+    SS << "var foo;\n"
+       << "if 1 < 2 then\n"
+       << "  let foo <- 3\n"
+       << "fi";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    P.NewSymScope();
+    ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
+
+    auto* MergeNode = P.ParseIfStmt();
+    ASSERT_TRUE(NodeProperties<IrOpcode::Merge>(MergeNode));
+  }
+  SS.clear();
+  {
+    // simple PHI node
+    SS << "var foo;\n"
+       << "if 1 < 2 then\n"
+       << "  let foo <- 3\n"
+       << "else\n"
+       << "  let foo <- 4\n"
+       << "fi";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    P.NewSymScope();
+
+    ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
+
+    auto* MergeNode = P.ParseIfStmt();
+    ASSERT_TRUE(NodeProperties<IrOpcode::Merge>(MergeNode));
+
+    std::ofstream OF("TestIfStmt1-2.dot");
+    G.dumpGraphviz(OF);
+  }
+  SS.clear();
+  {
+    // multiple expressions within branch region
+    SS << "var foo;\n"
+       << "if 1 < 2 then\n"
+       << "  let foo <- 3;\n"
+       << "  let foo <- 8\n"
+       << "else\n"
+       << "  let foo <- 4\n"
+       << "fi";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    P.NewSymScope();
+
+    ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
+
+    auto* MergeNode = P.ParseIfStmt();
+    ASSERT_TRUE(NodeProperties<IrOpcode::Merge>(MergeNode));
+
+    std::ofstream OF("TestIfStmt1-3.dot");
+    G.dumpGraphviz(OF);
   }
 }

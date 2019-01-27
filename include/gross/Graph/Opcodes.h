@@ -19,9 +19,12 @@ enum ID : unsigned {
   BinNe,
   // Control opcodes
   If,
+  IfTrue,
+  IfFalse,
   Region,
   Start,
   End,
+  Merge, // control flow merge
   Phi,
   Return,
   Call,
@@ -40,7 +43,8 @@ enum ID : unsigned {
   // Virtual opcodes: abtraction nodes for several
   // opcodes with similar properties
   VirtBinOps,         // Bin*
-  VirtSrcDesigAccess  // SrcVarAccess | SrcArrayAccess
+  VirtSrcDesigAccess, // SrcVarAccess | SrcArrayAccess
+  VirtIfBranches,     // IfTrue | IfFalse
 };
 } // end namespace IrOpcode
 } // end namespace gross

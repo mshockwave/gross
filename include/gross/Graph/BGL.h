@@ -199,6 +199,11 @@ struct graph_vertex_prop_writer {
     CASE_OPCODE_STR(SrcArrayDecl);
     CASE_OPCODE_STR(SrcArrayAccess);
     CASE_OPCODE_STR(SrcAssignStmt);
+    CASE_OPCODE_STR(If);
+    CASE_OPCODE_STR(IfTrue);
+    CASE_OPCODE_STR(IfFalse);
+    CASE_OPCODE_STR(Merge);
+    CASE_OPCODE_STR(Phi);
     default: OS << "UNKNOWN";
     }
 

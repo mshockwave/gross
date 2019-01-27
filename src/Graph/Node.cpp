@@ -1,4 +1,5 @@
 #include "gross/Graph/Node.h"
+#include <iterator>
 
 using namespace gross;
 
@@ -19,4 +20,47 @@ Node::Node(IrOpcode::ID OC,
   if(NumValueInput > 0)
     Inputs.insert(Inputs.begin(),
                   ValueInputs.begin(), ValueInputs.end());
+}
+
+void Node::appendNodeInput(unsigned& Size, unsigned Offset,
+                           Node* NewNode) {
+  auto It = Inputs.cbegin();
+  std::advance(It, Size + Offset);
+  Inputs.insert(It, NewNode);
+  Size += 1;
+  NewNode->Users.push_back(this);
+}
+
+void Node::setNodeInput(unsigned Index, unsigned Size, unsigned Offset,
+                        Node* NewNode) {
+  assert(Index < Size);
+  Index += Offset;
+  Size += Offset;
+  Node* OldNode = Inputs[Index];
+  auto It = std::find(OldNode->Users.cbegin(), OldNode->Users.cend(),
+                      this);
+  assert(It != OldNode->Users.cend());
+  OldNode->Users.erase(It);
+  Inputs[Index] = NewNode;
+  NewNode->Users.push_back(this);
+}
+
+void Node::setValueInput(unsigned Index, Node* NewNode) {
+  setNodeInput(Index, NumValueInput, 0, NewNode);
+}
+void Node::appendValueInput(Node* NewNode) {
+  appendNodeInput(NumValueInput, 0, NewNode);
+}
+void Node::setControlInput(unsigned Index, Node* NewNode) {
+  setNodeInput(Index, NumControlInput, NumValueInput, NewNode);
+}
+void Node::appendControlInput(Node* NewNode) {
+  appendNodeInput(NumControlInput, NumValueInput, NewNode);
+}
+void Node::setEffectInput(unsigned Index, Node* NewNode) {
+  setNodeInput(Index, NumEffectInput, NumValueInput + NumControlInput, NewNode);
+}
+void Node::appendEffectInput(Node* NewNode) {
+  appendNodeInput(NumEffectInput, NumValueInput + NumControlInput,
+                  NewNode);
 }

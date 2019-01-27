@@ -34,6 +34,11 @@ class Node {
 
   std::vector<Node*> Users;
 
+  void setNodeInput(unsigned Index, unsigned Size, unsigned Offset,
+                    Node* NewNode);
+  void appendNodeInput(unsigned& Size, unsigned Offset,
+                       Node* NewNode);
+
 public:
   IrOpcode::ID getOp() const { return Op; }
 
@@ -58,6 +63,14 @@ public:
     assert(Index < NumEffectInput);
     return Inputs.at(NumValueInput + NumControlInput + Index);
   }
+
+  // modifiers
+  void setValueInput(unsigned Index, Node* NewNode);
+  void appendValueInput(Node* NewNode);
+  void setControlInput(unsigned Index, Node* NewNode);
+  void appendControlInput(Node* NewNode);
+  void setEffectInput(unsigned Index, Node* NewNode);
+  void appendEffectInput(Node* NewNode);
 
   Node()
     : Op(IrOpcode::None),
