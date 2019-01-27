@@ -49,6 +49,8 @@ Lexer::Token Lexer::getNextToken() {
       CurToken = TOK_PROCEDURE;
     else if(Buffer == "if")
       CurToken = TOK_IF;
+    else if(Buffer == "then")
+      CurToken = TOK_THEN;
     else if(Buffer == "else")
       CurToken = TOK_ELSE;
     else if(Buffer == "fi")
