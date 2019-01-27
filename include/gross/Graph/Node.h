@@ -2,7 +2,9 @@
 #define GROSS_GRAPH_NODE_H
 #include "gross/Graph/Opcodes.h"
 #include "gross/Support/Log.h"
+#include "gross/Support/iterator_range.h"
 #include "boost/container_hash/hash.hpp"
+#include "boost/iterator/filter_iterator.hpp"
 #include <unordered_map>
 #include <vector>
 #include <utility>
@@ -71,6 +73,73 @@ public:
   void appendControlInput(Node* NewNode);
   void setEffectInput(unsigned Index, Node* NewNode);
   void appendEffectInput(Node* NewNode);
+
+  // iterators
+  llvm::iterator_range<typename decltype(Inputs)::iterator>
+  value_inputs() {
+    return llvm::make_range(Inputs.begin(),
+                            Inputs.begin() + NumValueInput);
+  }
+  llvm::iterator_range<typename decltype(Inputs)::iterator>
+  control_inputs() {
+    return llvm::make_range(Inputs.begin() + NumValueInput,
+                            Inputs.begin() + NumValueInput + NumControlInput);
+  }
+  llvm::iterator_range<typename decltype(Inputs)::iterator>
+  effect_inputs() {
+    auto IB = Inputs.begin();
+    return llvm::make_range(IB + NumValueInput + NumControlInput,
+                            IB + NumValueInput + NumControlInput
+                            + NumEffectInput);
+  }
+
+  struct is_value_use {
+    Node* SrcNode;
+    is_value_use(Node* Src) : SrcNode(Src) {}
+
+    bool operator()(Node* Sink) {
+      for(Node* Dep : Sink->value_inputs()) {
+        if(Dep == SrcNode) return true;
+      }
+      return false;
+    }
+  };
+  struct is_control_use {
+    Node* SrcNode;
+    is_control_use(Node* Src) : SrcNode(Src) {}
+
+    bool operator()(Node* Sink) {
+      for(Node* Dep : Sink->control_inputs()) {
+        if(Dep == SrcNode) return true;
+      }
+      return false;
+    }
+  };
+  struct is_effect_use {
+    Node* SrcNode;
+    is_effect_use(Node* Src) : SrcNode(Src) {}
+
+    bool operator()(Node* Sink) {
+      for(Node* Dep : Sink->effect_inputs()) {
+        if(Dep == SrcNode) return true;
+      }
+      return false;
+    }
+  };
+  using user_iterator = typename decltype(Users)::iterator;
+  using value_user_iterator
+    = boost::filter_iterator<is_value_use, user_iterator>;
+  using control_user_iterator
+    = boost::filter_iterator<is_control_use, user_iterator>;
+  using effect_user_iterator
+    = boost::filter_iterator<is_effect_use, user_iterator>;
+
+  llvm::iterator_range<value_user_iterator>
+  value_users();
+  llvm::iterator_range<control_user_iterator>
+  control_users();
+  llvm::iterator_range<effect_user_iterator>
+  effect_users();
 
   Node()
     : Op(IrOpcode::None),

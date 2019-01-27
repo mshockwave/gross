@@ -165,6 +165,42 @@ NODE_PROPERTIES(SrcArrayDecl) {
   }
 };
 
+NODE_PROPERTIES(Merge) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(Merge, N) {}
+
+  // fortunetly our language is simple enough
+  // to have only two branches at all time
+  Node* TrueBranch() const {
+    assert(NodePtr->getNumControlInput() > 0);
+    for(unsigned i = 0, CSize = NodePtr->getNumControlInput();
+        i < CSize; ++i) {
+      Node* N = NodePtr->getControlInput(i);
+      if(NodeProperties<IrOpcode::IfTrue>(N)) return N;
+    }
+    return nullptr;
+  }
+  Node* FalseBranch() const {
+    for(unsigned i = 0, CSize = NodePtr->getNumControlInput();
+        i < CSize; ++i) {
+      Node* N = NodePtr->getControlInput(i);
+      if(NodeProperties<IrOpcode::IfFalse>(N)) return N;
+    }
+    return nullptr;
+  }
+};
+
+NODE_PROPERTIES(VirtIfBranches) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(VirtIfBranches, N) {}
+
+  operator bool() const {
+    if(!NodePtr) return false;
+    auto Op = NodePtr->getOp();
+    return Op == IrOpcode::IfTrue ||
+           Op == IrOpcode::IfFalse;
+  }
+};
 #undef NODE_PROP_BASE
 #undef NODE_PROPERTIES
 

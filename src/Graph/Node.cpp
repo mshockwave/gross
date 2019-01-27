@@ -64,3 +64,25 @@ void Node::appendEffectInput(Node* NewNode) {
   appendNodeInput(NumEffectInput, NumValueInput + NumControlInput,
                   NewNode);
 }
+
+llvm::iterator_range<Node::value_user_iterator>
+Node::value_users() {
+  is_value_use Pred(this);
+  value_user_iterator it_begin(Pred, Users.begin(), Users.end()),
+                      it_end(Pred, Users.end(), Users.end());
+  return llvm::make_range(it_begin, it_end);
+}
+llvm::iterator_range<Node::control_user_iterator>
+Node::control_users() {
+  is_control_use Pred(this);
+  control_user_iterator it_begin(Pred, Users.begin(), Users.end()),
+                        it_end(Pred, Users.end(), Users.end());
+  return llvm::make_range(it_begin, it_end);
+}
+llvm::iterator_range<Node::effect_user_iterator>
+Node::effect_users() {
+  is_effect_use Pred(this);
+  effect_user_iterator it_begin(Pred, Users.begin(), Users.end()),
+                       it_end(Pred, Users.end(), Users.end());
+  return llvm::make_range(it_begin, it_end);
+}
