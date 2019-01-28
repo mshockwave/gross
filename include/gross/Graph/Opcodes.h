@@ -42,6 +42,7 @@ enum ID : unsigned {
   DLXJmp,
   // Virtual opcodes: abtraction nodes for several
   // opcodes with similar properties
+  VirtSrcDecl,        // SrcVarDecl | SrcArrayDecl
   VirtBinOps,         // Bin*
   VirtSrcDesigAccess, // SrcVarAccess | SrcArrayAccess
   VirtIfBranches,     // IfTrue | IfFalse

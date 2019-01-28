@@ -88,24 +88,28 @@ Node* Parser::ParseIfStmt() {
   }
   (void) NextTok();
 
+  NewSymScope();
   LastModified.NewAffineScope();
   std::vector<Node*> Stmts;
   if(!ParseStatements(Stmts)) return nullptr;
   auto* TrueBranch = NodeBuilder<IrOpcode::VirtIfBranches>(&G, true)
                      .IfStmt(IfNode)
                      .Build();
+  PopSymScope();
   BoundBranchControl(TrueBranch, Stmts);
 
   Tok = CurTok();
   Node* FalseBranch = nullptr;
   if(Tok == Lexer::TOK_ELSE) {
     (void) NextTok();
+    NewSymScope();
     LastModified.NewBranch();
     std::vector<Node*> ElseStmts;
     if(!ParseStatements(ElseStmts)) return nullptr;
     FalseBranch = NodeBuilder<IrOpcode::VirtIfBranches>(&G, false)
                   .IfStmt(IfNode)
                   .Build();
+    PopSymScope();
     BoundBranchControl(FalseBranch, ElseStmts);
     Tok = CurTok();
   }
@@ -122,8 +126,8 @@ Node* Parser::ParseIfStmt() {
   (void) NextTok();
 
   using table_type = typename decltype(LastModified)::TableTy;
-  auto PHINodeCallback = [&](table_type* JoinTable,
-                             const std::vector<table_type*>& BrTables) {
+  auto PHINodeCallback = [&,this](table_type* JoinTable,
+                                  const std::vector<table_type*>& BrTables) {
     std::unordered_map<Node*, std::vector<Node*>> Variants;
     for(auto& Pair : *JoinTable) {
       Variants[Pair.first].push_back(Pair.second);
@@ -135,6 +139,8 @@ Node* Parser::ParseIfStmt() {
     // create PHI nodes for those whose list has more than one element
     for(auto& VP : Variants) {
       auto& Variant = VP.second;
+      // Note: assume there won't be cases where a var is uninitialized
+      // before IfStmt but only assigned in one of the branches
       if(Variant.size() < 2) continue;
       NodeBuilder<IrOpcode::Phi> PB(&G);
       PB.SetCtrlMerge(MergeNode);

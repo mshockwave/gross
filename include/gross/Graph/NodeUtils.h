@@ -29,19 +29,14 @@ struct NodeProperties : public NodePropertiesBase<Op> {
 #define NODE_PROPERTIES(OP) \
   template<>  \
   struct NodeProperties<IrOpcode::OP> : public NodePropertiesBase<IrOpcode::OP>
+#define NODE_PROPERTIES_VIRT(OP, VIRTOP) \
+  template<>  \
+  struct NodeProperties<IrOpcode::OP> : public NodeProperties<IrOpcode::VIRTOP>
 
 #define NODE_PROP_BASE(OP, NODE) \
   NodePropertiesBase<IrOpcode::OP>(NODE)
-
-NODE_PROPERTIES(SrcVarDecl) {
-  NodeProperties(Node *N)
-    : NODE_PROP_BASE(SrcVarDecl, N) {}
-
-  Node* getSymbolName() const {
-    assert(NodePtr->getNumValueInput() > 0);
-    return NodePtr->getValueInput(0);
-  }
-};
+#define NODE_PROP_VIRT(VIRTOP, NODE)  \
+  NodeProperties<IrOpcode::VIRTOP>(NODE)
 
 NODE_PROPERTIES(ConstantInt) {
   NodeProperties(Node *N)
@@ -72,6 +67,57 @@ NODE_PROPERTIES(ConstantStr) {
       return *V;
     else
       return "";
+  }
+};
+
+NODE_PROPERTIES(VirtSrcDecl) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(VirtSrcDecl, N) {}
+
+  operator bool() const {
+    if(!NodePtr) return false;
+    auto Op = NodePtr->getOp();
+    return Op == IrOpcode::SrcVarDecl ||
+           Op == IrOpcode::SrcArrayDecl;
+  }
+
+  Node* getSymbolName() const {
+    assert(NodePtr->getNumValueInput() > 0);
+    return NodePtr->getValueInput(0);
+  }
+
+  const std::string& ident_name(const Graph& G) const {
+    auto* SymStrNode = getSymbolName();
+    return NodeProperties<IrOpcode::ConstantStr>(SymStrNode)
+           .str(G);
+  }
+
+};
+
+NODE_PROPERTIES_VIRT(SrcVarDecl, VirtSrcDecl) {
+  NodeProperties(Node *N)
+    : NODE_PROP_VIRT(VirtSrcDecl, N) {}
+
+  operator bool() const {
+    return NodePtr && NodePtr->getOp() == IrOpcode::SrcVarDecl;
+  }
+};
+
+NODE_PROPERTIES_VIRT(SrcArrayDecl, VirtSrcDecl) {
+  NodeProperties(Node *N)
+    : NODE_PROP_VIRT(VirtSrcDecl, N) {}
+
+  operator bool() const {
+    return NodePtr && NodePtr->getOp() == IrOpcode::SrcArrayDecl;
+  }
+
+  size_t dim_size() const {
+    assert(NodePtr->getNumValueInput() > 0);
+    return NodePtr->getNumValueInput() - 1U;
+  }
+  Node* dim(size_t idx) const {
+    assert(idx < dim_size() && "dim index out-of-bound");
+    return NodePtr->getValueInput(idx + 1);
   }
 };
 
@@ -141,27 +187,6 @@ NODE_PROPERTIES(SrcAssignStmt) {
   Node* dest() const {
     assert(NodePtr->getNumValueInput() > 0);
     return NodePtr->getValueInput(0);
-  }
-};
-
-NODE_PROPERTIES(SrcArrayDecl) {
-  NodeProperties(Node *N)
-    : NODE_PROP_BASE(SrcArrayDecl, N) {}
-
-  const std::string& ident_name(const Graph& G) const {
-    assert(NodePtr->getNumValueInput() > 0);
-    auto* SymStrNode = NodePtr->getValueInput(0);
-    return NodeProperties<IrOpcode::ConstantStr>(SymStrNode)
-           .str(G);
-  }
-
-  size_t dim_size() const {
-    assert(NodePtr->getNumValueInput() > 0);
-    return NodePtr->getNumValueInput() - 1U;
-  }
-  Node* dim(size_t idx) const {
-    assert(idx < dim_size() && "dim index out-of-bound");
-    return NodePtr->getValueInput(idx + 1);
   }
 };
 

@@ -39,8 +39,8 @@ public:
   }
 
   template<class... Args>
-  void new_scope(Args&&... args) {
-    Storage.emplace_back(std::forward<Args>(args)...);
+  void push_new(Args&&... args) {
+    Storage.emplace_front(std::forward<Args>(args)...);
   }
 
   void pop() { Storage.erase(Storage.cbegin()); }
@@ -238,7 +238,11 @@ public:
   Lexer& getLexer() { return Lex; }
 
   void NewSymScope() {
-    SymTable.new_scope();
+    SymTable.push_new();
+  }
+  void PopSymScope() {
+    if(!SymTable.empty())
+      SymTable.pop();
   }
 
   bool Parse();

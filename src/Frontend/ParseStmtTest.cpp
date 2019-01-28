@@ -2,6 +2,7 @@
 #include "gross/Graph/Graph.h"
 #include "gross/Graph/NodeUtils.h"
 #include "gtest/gtest.h"
+#include <algorithm>
 #include <sstream>
 #include <fstream>
 
@@ -125,7 +126,21 @@ TEST(ParserTest, TestIfStmt) {
     ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
 
     auto* MergeNode = P.ParseIfStmt();
-    ASSERT_TRUE(NodeProperties<IrOpcode::Merge>(MergeNode));
+    NodeProperties<IrOpcode::Merge> MNP(MergeNode);
+    ASSERT_TRUE(MNP);
+    EXPECT_FALSE(MNP.FalseBranch());
+    // check statements within true branch
+    auto* TrueBr = MNP.TrueBranch();
+    ASSERT_TRUE(TrueBr);
+    auto CtrlUsers = TrueBr->control_users();
+    auto ItCU = std::find_if(
+      CtrlUsers.begin(), CtrlUsers.end(),
+      [](Node* N)-> bool{ return NodeProperties<IrOpcode::SrcAssignStmt>(N); }
+    );
+    EXPECT_NE(ItCU, CtrlUsers.end());
+
+    std::ofstream OF("TestIfStmt1.dot");
+    G.dumpGraphviz(OF);
   }
   SS.clear();
   {
@@ -145,6 +160,16 @@ TEST(ParserTest, TestIfStmt) {
 
     auto* MergeNode = P.ParseIfStmt();
     ASSERT_TRUE(NodeProperties<IrOpcode::Merge>(MergeNode));
+    auto MergeCtrlUsers = MergeNode->control_users();
+    auto ItCU = std::find_if(
+      MergeCtrlUsers.begin(), MergeCtrlUsers.end(),
+      [](Node* N) -> bool { return NodeProperties<IrOpcode::Phi>(N); }
+    );
+    ASSERT_NE(ItCU, MergeCtrlUsers.end());
+    Node* PN = *ItCU;
+    EXPECT_EQ(PN->getNumEffectInput(), 2);
+    for(Node* N : PN->effect_inputs())
+      EXPECT_TRUE(NodeProperties<IrOpcode::SrcAssignStmt>(N));
 
     std::ofstream OF("TestIfStmt1-2.dot");
     G.dumpGraphviz(OF);
