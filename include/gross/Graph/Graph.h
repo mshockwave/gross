@@ -1,9 +1,9 @@
 #ifndef GROSS_GRAPH_GRAPH_H
 #define GROSS_GRAPH_GRAPH_H
+#include "boost/iterator/iterator_facade.hpp"
 #include "gross/Graph/Node.h"
 #include <memory>
 #include <unordered_map>
-#include <unordered_set>
 #include <iostream>
 #include <vector>
 
@@ -16,7 +16,6 @@ class Graph {
   friend struct NodeProperties;
 
   std::vector<std::unique_ptr<Node>> Nodes;
-  std::unordered_set<Use> Edges;
 
   // Constant pools
   NodeBiMap<std::string> ConstStrPool;
@@ -25,6 +24,8 @@ class Graph {
   // Function map
   // function name -> Start node of a function
   std::unordered_map<std::string, Node*> FuncMap;
+
+  class lazy_edge_iterator;
 
 public:
   using node_iterator = typename decltype(Nodes)::iterator;
@@ -35,20 +36,13 @@ public:
   const_node_iterator node_cend() const { return Nodes.cend(); }
   size_t node_size() const { return Nodes.size(); }
 
-  using edge_iterator = typename decltype(Edges)::iterator;
-  edge_iterator edge_begin() { return Edges.begin(); }
-  edge_iterator edge_end() { return Edges.end(); }
-  size_t edge_size() const { return Edges.size(); }
+  using edge_iterator = lazy_edge_iterator;
+  edge_iterator edge_begin();
+  edge_iterator edge_end();
+  size_t edge_size();
+  size_t edge_size() const { return const_cast<Graph*>(this)->edge_size(); }
 
   void InsertNode(Node* N);
-
-  enum NodeChangeKind {
-    NC_NEW_INPUT,
-    NC_UPDATE_INPUT,
-    NC_DELETE,
-  };
-  void OnNodeChange(Node* N, NodeChangeKind NCK,
-                    Use::Kind InputKind = Use::K_NONE);
 
   size_t getNumConstStr() const {
     return ConstStrPool.size();
@@ -63,6 +57,75 @@ public:
 
   // dump to GraphViz graph
   void dumpGraphviz(std::ostream& OS);
+};
+
+class Graph::lazy_edge_iterator
+  : public boost::iterator_facade<Graph::lazy_edge_iterator,
+                                  Use, // Value type
+                                  boost::forward_traversal_tag, // Traversal tag
+                                  Use // Reference type
+                                  > {
+  friend class boost::iterator_core_access;
+  Graph* G;
+  unsigned CurInput;
+  typename Graph::node_iterator CurNodeIt, EndNodeIt;
+
+  // no checks!
+  inline Node* CurNode() const {
+    return CurNodeIt->get();
+  }
+
+  inline bool isValid() const {
+    return G &&
+           CurNodeIt != EndNodeIt &&
+           CurInput < CurNode()->Inputs.size();
+  }
+
+  bool equal(const lazy_edge_iterator& Other) const {
+    return G == Other.G &&
+           CurNodeIt == Other.CurNodeIt &&
+           (CurInput == Other.CurInput ||
+            CurNodeIt == EndNodeIt);
+  }
+
+  void nextValidPos() {
+    while(CurNodeIt != EndNodeIt &&
+          CurInput >= CurNode()->Inputs.size()) {
+      // switch node
+      ++CurNodeIt;
+      CurInput = 0;
+    }
+  }
+
+  void increment() {
+    ++CurInput;
+    nextValidPos();
+  }
+
+  Use dereference() const {
+    //if(!isValid()) return Use();
+    assert(isValid() && "can not dereference invalid iterator");
+    auto DepK = CurNode()->inputUseKind(CurInput);
+    return Use(CurNode(), CurNode()->Inputs.at(CurInput), DepK);
+  }
+
+public:
+  lazy_edge_iterator()
+    : G(nullptr),
+      CurInput(0) {}
+  explicit lazy_edge_iterator(Graph* graph, bool isEnd = false)
+    : G(graph),
+      CurInput(0) {
+    if(G) {
+      EndNodeIt = G->node_end();
+      if(!isEnd) {
+        CurNodeIt = G->node_begin();
+        nextValidPos();
+      } else {
+        CurNodeIt = EndNodeIt;
+      }
+    }
+  }
 };
 
 // default(empty) implementation

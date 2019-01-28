@@ -11,12 +11,48 @@
 
 namespace gross {
 // Forward declarations
+class Node;
 namespace _details {
 template<IrOpcode::ID OC,class SubT>
 struct BinOpNodeBuilder;
 } // end namespace _details
 
+/// A really lightweight representation of Node use edge
+struct Use {
+  enum Kind : uint8_t {
+    K_NONE = 0,
+    K_VALUE,
+    K_CONTROL,
+    K_EFFECT
+  };
+
+  Node* Source;
+  Node* Dest;
+  // Category of dependency
+  Kind DepKind;
+
+  Use() :
+    Source(nullptr),
+    Dest(nullptr),
+    DepKind(K_NONE) {}
+
+  Use(Node* S, Node* D, Kind DK = K_VALUE) :
+    Source(S),
+    Dest(D),
+    DepKind(DK) {}
+
+  bool operator==(const Use& RHS) const {
+    return Source == RHS.Source &&
+           Dest == RHS.Dest &&
+           DepKind == RHS.DepKind;
+  }
+  bool operator!=(const Use& RHS) const {
+    return !(RHS == *this);
+  }
+};
+
 class Node {
+  friend class Graph;
   template<IrOpcode::ID>
   friend class NodePropertiesBase;
   template<IrOpcode::ID>
@@ -33,6 +69,15 @@ class Node {
   unsigned NumEffectInput;
 
   std::vector<Node*> Inputs;
+  inline Use::Kind inputUseKind(unsigned rawInputIdx) {
+    assert(rawInputIdx < Inputs.size());
+    if(rawInputIdx < NumValueInput) return Use::K_VALUE;
+    else if(rawInputIdx < NumValueInput + NumControlInput)
+      return Use::K_CONTROL;
+    else if(rawInputIdx < NumValueInput + NumControlInput + NumEffectInput)
+      return Use::K_EFFECT;
+    return Use::K_NONE;
+  }
 
   std::vector<Node*> Users;
 
@@ -191,39 +236,6 @@ public:
   size_t size() const { return Value2Node.size(); }
 };
 
-/// A really lightweight representation of Node use edge
-struct Use {
-  enum Kind : uint8_t {
-    K_NONE = 0,
-    K_VALUE,
-    K_CONTROL,
-    K_EFFECT
-  };
-
-  Node* Source;
-  Node* Dest;
-  // Category of dependency
-  Kind DepKind;
-
-  Use() :
-    Source(nullptr),
-    Dest(nullptr),
-    DepKind(K_VALUE) {}
-
-  Use(Node* S, Node* D, Kind DK = K_VALUE) :
-    Source(S),
-    Dest(D),
-    DepKind(DK) {}
-
-  bool operator==(const Use& RHS) const {
-    return Source == RHS.Source &&
-           Dest == RHS.Dest &&
-           DepKind == RHS.DepKind;
-  }
-  bool operator!=(const Use& RHS) const {
-    return !(RHS == *this);
-  }
-};
 } // end namespace gross
 
 namespace std {

@@ -1,51 +1,19 @@
 #include "gross/Graph/Graph.h"
 #include "gross/Graph/BGL.h"
 #include "boost/graph/graphviz.hpp"
+#include <iterator>
 
 using namespace gross;
 
+// put here since lazy_edge_iterator is declared
+// out-of-line
+Graph::edge_iterator Graph::edge_begin() { return edge_iterator(this); }
+Graph::edge_iterator Graph::edge_end() { return edge_iterator(this, true); }
+size_t Graph::edge_size() { return std::distance(edge_begin(),
+                                                 edge_end()); }
+
 void Graph::InsertNode(Node* N) {
   Nodes.emplace_back(N);
-
-  // insert edges
-  for(size_t i = 0, Num = N->getNumValueInput(); i < Num; ++i) {
-    Node* Dest = N->getValueInput(i);
-    Edges.insert(Use(N, Dest, Use::K_VALUE));
-  }
-  for(size_t i = 0, Num = N->getNumControlInput(); i < Num; ++i) {
-    Node* Dest = N->getControlInput(i);
-    Edges.insert(Use(N, Dest, Use::K_CONTROL));
-  }
-  for(size_t i = 0, Num = N->getNumEffectInput(); i < Num; ++i) {
-    Node* Dest = N->getEffectInput(i);
-    Edges.insert(Use(N, Dest, Use::K_EFFECT));
-  }
-}
-
-void Graph::OnNodeChange(Node* N, Graph::NodeChangeKind NCK,
-                         Use::Kind IK) {
-  switch(NCK) {
-  default:
-    gross_unreachable("Unimeplemented");
-  case Graph::NC_NEW_INPUT: {
-    for(size_t i = 0, Num = N->getNumValueInput();
-        i < Num && (IK == Use::K_VALUE || IK == Use::K_NONE); ++i) {
-      Node* Dest = N->getValueInput(i);
-      Edges.insert(Use(N, Dest, Use::K_VALUE));
-    }
-    for(size_t i = 0, Num = N->getNumControlInput();
-        i < Num && (IK == Use::K_CONTROL || IK == Use::K_NONE); ++i) {
-      Node* Dest = N->getControlInput(i);
-      Edges.insert(Use(N, Dest, Use::K_CONTROL));
-    }
-    for(size_t i = 0, Num = N->getNumEffectInput();
-        i < Num && (IK == Use::K_EFFECT || IK == Use::K_NONE); ++i) {
-      Node* Dest = N->getEffectInput(i);
-      Edges.insert(Use(N, Dest, Use::K_EFFECT));
-    }
-    break;
-  }
-  }
 }
 
 void Graph::dumpGraphviz(std::ostream& OS) {
