@@ -194,7 +194,8 @@ public:
 /// A really lightweight representation of Node use edge
 struct Use {
   enum Kind : uint8_t {
-    K_VALUE = 0,
+    K_NONE = 0,
+    K_VALUE,
     K_CONTROL,
     K_EFFECT
   };

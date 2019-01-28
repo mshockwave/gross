@@ -226,6 +226,8 @@ struct graph_edge_prop_writer {
     case Use::K_EFFECT:
       OS << "[color=\"red\", style=\"dashed\"]";
       break;
+    default:
+      gross_unreachable("Invalid edge kind");
     }
   }
 };

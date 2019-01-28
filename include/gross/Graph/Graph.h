@@ -42,6 +42,14 @@ public:
 
   void InsertNode(Node* N);
 
+  enum NodeChangeKind {
+    NC_NEW_INPUT,
+    NC_UPDATE_INPUT,
+    NC_DELETE,
+  };
+  void OnNodeChange(Node* N, NodeChangeKind NCK,
+                    Use::Kind InputKind = Use::K_NONE);
+
   size_t getNumConstStr() const {
     return ConstStrPool.size();
   }

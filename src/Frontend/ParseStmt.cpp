@@ -38,7 +38,7 @@ Node* Parser::ParseAssignment() {
 
 namespace {
 template<class T>
-void BoundBranchControl(Node* BrRegion, const T& Stmts) {
+void BoundBranchControl(Graph& G, Node* BrRegion, const T& Stmts) {
   std::unordered_set<Node*> StmtSet(Stmts.begin(), Stmts.end());
   for(Node* StmtNode : Stmts) {
     NodeProperties<IrOpcode::SrcAssignStmt> NP(StmtNode);
@@ -49,6 +49,7 @@ void BoundBranchControl(Node* BrRegion, const T& Stmts) {
       // 2. effect dependency source is beyond the branch
       if(!Access->getNumEffectInput()) {
         StmtNode->appendControlInput(BrRegion);
+        G.OnNodeChange(StmtNode, Graph::NC_NEW_INPUT, Use::K_CONTROL);
       } else {
         bool IntraDep = false;
         for(unsigned i = 0, ESize = Access->getNumEffectInput();
@@ -58,8 +59,10 @@ void BoundBranchControl(Node* BrRegion, const T& Stmts) {
             break;
           }
         }
-        if(!IntraDep)
+        if(!IntraDep) {
           StmtNode->appendControlInput(BrRegion);
+          G.OnNodeChange(StmtNode, Graph::NC_NEW_INPUT, Use::K_CONTROL);
+        }
       }
     }
     // TODO: also handle function call?
@@ -96,7 +99,7 @@ Node* Parser::ParseIfStmt() {
                      .IfStmt(IfNode)
                      .Build();
   PopSymScope();
-  BoundBranchControl(TrueBranch, Stmts);
+  BoundBranchControl(G, TrueBranch, Stmts);
 
   Tok = CurTok();
   Node* FalseBranch = nullptr;
@@ -110,7 +113,7 @@ Node* Parser::ParseIfStmt() {
                   .IfStmt(IfNode)
                   .Build();
     PopSymScope();
-    BoundBranchControl(FalseBranch, ElseStmts);
+    BoundBranchControl(G, FalseBranch, ElseStmts);
     Tok = CurTok();
   }
   // add merge node to merge control deps
