@@ -114,8 +114,9 @@ TEST(ParserTest, TestAssignment) {
 TEST(ParserTest, TestIfStmt) {
   std::stringstream SS;
   {
-    // simple without else block
+    // PHI node without else block
     SS << "var foo;\n"
+       << "let foo <- 0\n"
        << "if 1 < 2 then\n"
        << "  let foo <- 3\n"
        << "fi";
@@ -124,6 +125,8 @@ TEST(ParserTest, TestIfStmt) {
     (void) P.getLexer().getNextToken();
     P.NewSymScope();
     ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
+
+    EXPECT_TRUE(P.ParseAssignment());
 
     auto* MergeNode = P.ParseIfStmt();
     NodeProperties<IrOpcode::Merge> MNP(MergeNode);
@@ -144,7 +147,7 @@ TEST(ParserTest, TestIfStmt) {
   }
   SS.clear();
   {
-    // simple PHI node
+    // PHI node with two branches
     SS << "var foo;\n"
        << "if 1 < 2 then\n"
        << "  let foo <- 3\n"
