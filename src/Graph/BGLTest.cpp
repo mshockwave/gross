@@ -13,6 +13,9 @@ TEST(GraphBGLTest, TestVertexListGraphConcept) {
 TEST(GraphBGLTest, TestEdgeListGraphConcept) {
   BOOST_CONCEPT_ASSERT(( boost::EdgeListGraphConcept<gross::Graph> ));
 }
+TEST(GraphBGLTest, TestIncidenceGraphConcept) {
+  BOOST_CONCEPT_ASSERT(( boost::IncidenceGraphConcept<gross::Graph> ));
+}
 
 TEST(GraphBGLTest, TestVertexReadablePropertyMapConcept) {
   BOOST_CONCEPT_ASSERT(( boost::ReadablePropertyMapConcept<

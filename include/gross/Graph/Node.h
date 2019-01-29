@@ -49,6 +49,21 @@ struct Use {
   bool operator!=(const Use& RHS) const {
     return !(RHS == *this);
   }
+
+  struct BuilderFunctor {
+    Node* From;
+    Use::Kind DepKind;
+
+    BuilderFunctor() = delete;
+
+    explicit
+    BuilderFunctor(Node* F, Use::Kind K = K_NONE)
+      : From(F), DepKind(K) {}
+
+    Use operator()(Node* To) const {
+      return Use(From, To, DepKind);
+    }
+  };
 };
 
 class Node {
@@ -118,6 +133,11 @@ public:
   void appendControlInput(Node* NewNode);
   void setEffectInput(unsigned Index, Node* NewNode);
   void appendEffectInput(Node* NewNode);
+
+  using input_iterator = typename decltype(Inputs)::iterator;
+  llvm::iterator_range<input_iterator> inputs() {
+    return llvm::make_range(Inputs.begin(), Inputs.end());
+  }
 
   // iterators
   llvm::iterator_range<typename decltype(Inputs)::iterator>

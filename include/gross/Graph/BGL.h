@@ -20,9 +20,6 @@ struct graph_traits<gross::Graph> {
   using edge_descriptor = gross::Use;
   using directed_category = boost::directed_tag;
   using edge_parallel_category = boost::allow_parallel_edge_tag;
-  struct traversal_category :
-    public boost::vertex_list_graph_tag,
-    public boost::edge_list_graph_tag {};
 
   vertex_descriptor null_vertex() {
     return nullptr;
@@ -40,6 +37,20 @@ struct graph_traits<gross::Graph> {
   /// EdgeListGraphConcept
   using edges_size_type = size_t;
   using edge_iterator = typename gross::Graph::edge_iterator;
+
+  /// IncidenceGraphConcept
+  using out_edge_iterator
+    = boost::transform_iterator<typename gross::Use::BuilderFunctor,
+                                typename gross::Node::input_iterator,
+                                gross::Use, // Reference type
+                                gross::Use // Value type
+                                >;
+  using degree_size_type = size_t;
+
+  struct traversal_category :
+    public boost::vertex_list_graph_tag,
+    public boost::edge_list_graph_tag,
+    public boost::incidence_graph_tag {};
 };
 
 /// Note: We mark most of the BGL trait functions here as inline
@@ -106,6 +117,29 @@ source(const gross::Use& e, const gross::Graph& g) {
 inline typename boost::graph_traits<gross::Graph>::vertex_descriptor
 target(const gross::Use& e, const gross::Graph& g) {
   return const_cast<gross::Node*>(e.Dest);
+}
+
+/// IncidenceGraphConcept
+inline
+std::pair<typename boost::graph_traits<gross::Graph>::out_edge_iterator,
+          typename boost::graph_traits<gross::Graph>::out_edge_iterator>
+out_edges(gross::Node* u, const gross::Graph& g) {
+  // for now, we don't care about the kind of edge
+  using edge_it_t
+    = typename boost::graph_traits<gross::Graph>::out_edge_iterator;
+  gross::Use::BuilderFunctor functor(u);
+  return std::make_pair(
+    edge_it_t(u->inputs().begin(), functor),
+    edge_it_t(u->inputs().end(), functor)
+  );
+}
+
+inline
+typename boost::graph_traits<gross::Graph>::degree_size_type
+out_degree(gross::Node* u, const gross::Graph& g) {
+  return u->getNumValueInput()
+         + u->getNumControlInput()
+         + u->getNumEffectInput();
 }
 } // end namespace boost
 
