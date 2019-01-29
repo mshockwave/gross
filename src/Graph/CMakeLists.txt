@@ -2,6 +2,7 @@
 set(_SOURCE_FILES
     Graph.cpp
     Node.cpp
+    GraphReducer.cpp
     )
 
 add_library(GrossGraph OBJECT
