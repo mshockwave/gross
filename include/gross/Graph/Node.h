@@ -72,12 +72,18 @@ class Node {
   friend class NodePropertiesBase;
   template<IrOpcode::ID>
   friend class NodeProperties;
+  template<class T>
+  friend class NodeMarker;
   template<IrOpcode::ID>
   friend class NodeBuilder;
   template<IrOpcode::ID OC,class SubT>
   friend struct _details::BinOpNodeBuilder;
 
   IrOpcode::ID Op;
+
+  // used by NodeMarker
+  using MarkerTy = uint32_t;
+  uint32_t MarkerData;
 
   unsigned NumValueInput;
   unsigned NumControlInput;
@@ -222,6 +228,23 @@ public:
        const std::vector<Node*>& Values,
        const std::vector<Node*>& Controls = {},
        const std::vector<Node*>& Effects = {});
+};
+
+/// scratch data inside Node that is fast to access
+/// note that there should be only one kind of NodeMarker
+/// active at a given time
+template<class T>
+class NodeMarker {
+  static_assert(sizeof(T) <= sizeof(typename Node::MarkerTy),
+                "can't fit into marker scratch");
+
+  static T Get(Node* N) {
+    return static_cast<T>(N->MarkerData);
+  }
+  static void Set(Node* N, T val) {
+    N->MarkerData
+      = static_cast<typename Node::MarkerTy>(val);
+  }
 };
 
 template<typename ValueT>
