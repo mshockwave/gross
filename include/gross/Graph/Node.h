@@ -54,7 +54,10 @@ struct Use {
     Node* From;
     Use::Kind DepKind;
 
-    BuilderFunctor() = delete;
+    // will have problem if one just
+    // delcare edge iterator without initialize
+    // BuilderFunctor() = delete;
+    BuilderFunctor() = default;
 
     explicit
     BuilderFunctor(Node* F, Use::Kind K = K_NONE)

@@ -6,7 +6,14 @@
 
 namespace gross {
 struct GraphReduction {
-  // TODO
+  explicit GraphReduction(Node* N = nullptr)
+    : Replacement(N) {}
+
+  Node* ReplacementNode() const { return Replacement; }
+  bool Changed() const { return Replacement != nullptr; }
+
+private:
+  Node* Replacement;
 };
 
 // template<class T>

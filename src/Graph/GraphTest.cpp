@@ -18,7 +18,7 @@ TEST(GraphTest, TestBasicGraphReducer) {
   Graph G;
   struct DummyReducer {
     GraphReduction Reduce(Node* N) {
-      return GraphReduction{};
+      return GraphReduction();
     }
 
     static constexpr
