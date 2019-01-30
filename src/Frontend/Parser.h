@@ -219,6 +219,14 @@ class Parser {
   typename ScopedSymTableTy::iterator
   CurSymTableIt() { return SymTable.begin(); }
 
+  // hide the (prev/next)direction of symtable implementation
+  void MoveToPrevSymTable(typename ScopedSymTableTy::iterator& ItScope) {
+    ++ItScope;
+  }
+  void MoveToNextSymTable(typename ScopedSymTableTy::iterator& ItScope) {
+    --ItScope;
+  }
+
   class SymbolLookup;
 
   // record last modify node on a certain decl
@@ -249,9 +257,9 @@ public:
 
   template<IrOpcode::ID OC>
   bool ParseTypeDecl(NodeBuilder<OC>& NB);
-
   template<IrOpcode::ID OC>
   bool ParseVarDecl(std::vector<Node*>* Results = nullptr);
+  bool ParseVarDeclTop(std::vector<Node*>* Results = nullptr);
 
   Node* ParseDesignator();
   Node* ParseArrayAccessDesignator(Node* Decl, Node* Effect,

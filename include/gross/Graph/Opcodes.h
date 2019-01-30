@@ -22,13 +22,13 @@ enum ID : unsigned {
   IfTrue,
   IfFalse,
   Region,
-  Start,
-  End,
+  Start, // start of a function
+  End,   // end of a function
   Merge, // control flow merge
   Phi,
   Return,
   Call,
-  Arguments,
+  Argument,
   MemLoad,
   MemStore,
   // High-level primitives
@@ -46,6 +46,7 @@ enum ID : unsigned {
   VirtBinOps,         // Bin*
   VirtSrcDesigAccess, // SrcVarAccess | SrcArrayAccess
   VirtIfBranches,     // IfTrue | IfFalse
+  VirtFuncPrototype   // Start + Argument(s)
 };
 } // end namespace IrOpcode
 } // end namespace gross

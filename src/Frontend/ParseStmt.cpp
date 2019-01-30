@@ -177,7 +177,7 @@ bool Parser::ParseStatements(std::vector<Node*>& Stmts) {
       break;
     }
     default:
-      gross_unreachable("Stmt rules not implemented");
+      break;
     }
     Tok = CurTok();
     if(Tok != Lexer::TOK_SEMI_COLON) break;

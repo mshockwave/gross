@@ -70,3 +70,43 @@ TEST(ParserTest, TestVarDecl) {
   }
 }
 
+TEST(ParserTest, ParseBasicFuncDecl) {
+  std::stringstream SS;
+  {
+    // only function header
+    SS << "function func1;\n"
+       << "{};\n";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    P.NewSymScope();
+
+    ASSERT_TRUE(P.ParseFuncDecl());
+  }
+  SS.clear();
+  {
+    // function header with some arguments
+    SS << "function func2(arg1,arg2);\n"
+       << "{};\n";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    P.NewSymScope();
+
+    ASSERT_TRUE(P.ParseFuncDecl());
+  }
+  SS.clear();
+  {
+    // empty function with some decls
+    SS << "function func3(arg1,arg2);\n"
+       << "var hello;\n"
+       << "array[8][7] foo, bar;\n"
+       << "{};\n";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    P.NewSymScope();
+
+    ASSERT_TRUE(P.ParseFuncDecl());
+  }
+}

@@ -72,6 +72,22 @@ bool Parser::ParseVarDecl(std::vector<Node*>* Results) {
   return true;
 }
 
+bool Parser::ParseVarDeclTop(std::vector<Node*>* Results) {
+  while(true) {
+    auto Tok = CurTok();
+    if(Tok == Lexer::TOK_VAR) {
+      if(!ParseVarDecl<IrOpcode::SrcVarDecl>(Results))
+        return false;
+    } else if(Tok == Lexer::TOK_ARRAY) {
+      if(!ParseVarDecl<IrOpcode::SrcArrayDecl>(Results))
+        return false;
+    } else {
+      break;
+    }
+  }
+  return true;
+}
+
 /// placeholder function to avoid link time error
 /// for un-specialized decl template functions
 void Parser::__SupportedParseVarDecls() {
@@ -80,27 +96,103 @@ void Parser::__SupportedParseVarDecls() {
 }
 
 bool Parser::ParseFuncDecl() {
-  Lexer::Token Tok = NextTok();
+  auto Tok = CurTok();
+  if(Tok != Lexer::TOK_FUNCTION &&
+     Tok != Lexer::TOK_PROCEDURE) {
+    Log::E() << "Expecting 'function' or 'procedure' here\n";
+    return false;
+  }
+  Tok = NextTok();
+
   if(Tok != Lexer::TOK_IDENT) {
     Log::E() << "Expect identifier for function\n";
     return false;
   }
-  const auto& FuncName = TokBuffer();
-  // TODO: Create start node and register function
+  const auto& FName = TokBuffer();
+  NodeBuilder<IrOpcode::VirtFuncPrototype> FB(&G);
+  FB.FuncName(FName);
+
+  SymbolLookup FuncLookup(*this, FName);
+  // 'CurrentScope' is global scope
+  if(FuncLookup.InCurrentScope()) {
+    Log::E() << "function has already declared in this scope\n";
+    return false;
+  }
+  // start of function scope
+  NewSymScope();
+
   Tok = NextTok();
   if(Tok == Lexer::TOK_L_PARAN) {
-    // TODO: Argument list
+    // Argument list
     Tok = NextTok();
+    while(true) {
+      if(Tok != Lexer::TOK_IDENT) {
+        Log::E() << "Expecting identifier in an argument list\n";
+        return false;
+      }
+      const auto& ArgName = TokBuffer();
+      SymbolLookup ArgLookup(*this, ArgName);
+      if(ArgLookup.InCurrentScope()) {
+        Log::E() << "argument name has already been taken in this scope\n";
+        return false;
+      }
+      auto* ArgNode = NodeBuilder<IrOpcode::Argument>(&G, ArgName)
+                      .Build();
+      FB.AddParameter(ArgNode);
+      CurSymTable().insert({ArgName, ArgNode});
+
+      Tok = NextTok();
+      if(Tok == Lexer::TOK_R_PARAN) {
+        Tok = NextTok();
+        break;
+      } else if(Tok != Lexer::TOK_COMMA) {
+        Log::E() << "Expecting ',' here\n";
+        return false;
+      }
+      Tok = NextTok();
+    }
   }
+
   if(Tok != Lexer::TOK_SEMI_COLON) {
-    Log::E() << "Expect ';' at the end\n";
+    Log::E() << "Expect ';' at the end of function header\n";
     return false;
   }
-  // TODO: Function body
+  auto* FuncNode = FB.Build();
+  // wind back to previous(global) scope and insert
+  // function symbol
+  auto ItPrevScope = CurSymTableIt();
+  MoveToPrevSymTable(ItPrevScope);
+  ItPrevScope->insert({FName, FuncNode});
+
+  (void) NextTok();
+  if(!ParseVarDeclTop()) return false;
+  Tok = CurTok();
+  if(Tok != Lexer::TOK_L_CUR_BRACKET) {
+    Log::E() << "Expecting '{' here\n";
+    return false;
+  }
+  (void) NextTok();
+  std::vector<Node*> FuncBodyStmts;
+  if(!ParseStatements(FuncBodyStmts)) return false;
+  NodeBuilder<IrOpcode::End> EB(&G, FuncNode);
+  for(auto* N : FuncBodyStmts) {
+    // so far Return is the only terminator node
+    if(NodeProperties<IrOpcode::Return>(N))
+      EB.AddTerminator(N);
+  }
+  (void) EB.Build();
+
+  Tok = CurTok();
+  if(Tok != Lexer::TOK_R_CUR_BRACKET) {
+    Log::E() << "Expecting '}' here\n";
+    return false;
+  }
   Tok = NextTok();
   if(Tok != Lexer::TOK_SEMI_COLON) {
-    Log::E() << "Expect ';' at the end\n";
+    Log::E() << "Expect ';' at the end of function decl\n";
     return false;
   }
+  (void) NextTok();
+  PopSymScope();
   return true;
 }

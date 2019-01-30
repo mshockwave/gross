@@ -636,5 +636,102 @@ private:
   std::vector<Node*> ValueDeps, EffectDeps;
   Node* MergeNode;
 };
+
+template<>
+struct NodeBuilder<IrOpcode::Argument> {
+  NodeBuilder(Graph* graph, const std::string& Name)
+    : G(graph),
+      SrcArgName(Name) {}
+
+  Node* Build() {
+    auto* NameStrNode = NodeBuilder<IrOpcode::ConstantStr>(G, SrcArgName)
+                        .Build();
+    auto* N = new Node(IrOpcode::Argument, {NameStrNode});
+    NameStrNode->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+
+private:
+  Graph* G;
+  const std::string& SrcArgName;
+};
+
+template<>
+struct NodeBuilder<IrOpcode::VirtFuncPrototype> {
+  NodeBuilder(Graph* graph) : G(graph) {}
+
+  NodeBuilder& FuncName(const std::string& NameStr) {
+    NameStrNode = NodeBuilder<IrOpcode::ConstantStr>(G, NameStr)
+                  .Build();
+    return *this;
+  }
+
+  NodeBuilder& AddParameter(Node* N) {
+    Parameters.push_back(N);
+    return *this;
+  }
+
+  Node* Build(bool Verify = true) {
+    if(Verify) {
+      if(!NameStrNode) {
+        Log::E() << "Require a name for the function\n";
+        return nullptr;
+      }
+      for(auto* PN : Parameters)
+        if(!NodeProperties<IrOpcode::Argument>(PN)) {
+          Log::E() << "Expecting Argument kind Node\n";
+          return nullptr;
+        }
+    }
+
+    // Start node has effect dependency on arguments
+    auto* StartNode = new Node(IrOpcode::Start,
+                               {NameStrNode},
+                               {}, Parameters);
+    NameStrNode->Users.push_back(StartNode);
+    for(auto* PN : Parameters)
+      PN->Users.push_back(StartNode);
+    G->InsertNode(StartNode);
+    return StartNode;
+  }
+
+private:
+  Graph* G;
+  Node *NameStrNode;
+  std::vector<Node*> Parameters;
+};
+
+template<>
+struct NodeBuilder<IrOpcode::End> {
+  NodeBuilder(Graph* graph, Node* Start)
+    : G(graph), StartNode(Start) {}
+
+  NodeBuilder& AddTerminator(Node* N) {
+    TermNodes.push_back(N);
+    return *this;
+  }
+
+  Node* Build() {
+    // control dependent on terminator nodes,
+    // or start node if the former one is absent
+    std::vector<Node*> CtrlDeps;
+    if(TermNodes.empty())
+      CtrlDeps = {StartNode};
+    else
+      CtrlDeps = std::move(TermNodes);
+    auto* N = new Node(IrOpcode::End,
+                       {}, CtrlDeps);
+    for(auto* TN : CtrlDeps)
+      TN->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+
+private:
+  Graph* G;
+  Node* StartNode;
+  std::vector<Node*> TermNodes;
+};
 } // end namespace gross
 #endif
