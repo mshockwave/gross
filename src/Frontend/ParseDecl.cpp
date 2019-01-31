@@ -120,6 +120,8 @@ bool Parser::ParseFuncDecl() {
   }
   // start of function scope
   NewSymScope();
+  // start a new control point record
+  NewLastControlPoint();
 
   Tok = NextTok();
   if(Tok == Lexer::TOK_L_PARAN) {
@@ -163,6 +165,7 @@ bool Parser::ParseFuncDecl() {
   auto ItPrevScope = CurSymTableIt();
   MoveToPrevSymTable(ItPrevScope);
   ItPrevScope->insert({FName, FuncNode});
+  setLastCtrlPoint(FuncNode);
 
   (void) NextTok();
   if(!ParseVarDeclTop()) return false;

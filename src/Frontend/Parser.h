@@ -1,6 +1,7 @@
 #ifndef GROSS_FRONTEND_PARSER_H
 #define GROSS_FRONTEND_PARSER_H
 #include "Lexer.h"
+#include "gross/Support/AffineContainer.h"
 #include <array>
 #include <functional>
 #include <list>
@@ -62,132 +63,6 @@ public:
   const_iterator cend() const { return Storage.cend(); }
 };
 
-template<class K, class V,
-         size_t Affinity = 2>
-struct AffineRecordTable {
-  using TableTy = std::unordered_map<K,V>;
-  using table_iterator = typename TableTy::iterator;
-
-private:
-  // TODO: release table if no longer richable
-  std::set<std::unique_ptr<TableTy>> TableRepo;
-
-  struct Scope {
-    size_t ParentBranch, CurrentBranch;
-    std::array<TableTy*, Affinity> TableBranches;
-
-    Scope() : ParentBranch(0), CurrentBranch(0) {}
-    Scope(TableTy* InitTable, size_t ParentBr) :
-      ParentBranch(ParentBr), CurrentBranch(0) {
-      TableBranches[0] = InitTable;
-    }
-
-    size_t CurBranch() const {
-      return CurrentBranch;
-    }
-
-    void AddBranch(TableTy* Table) {
-      size_t NewBr = CurBranch() + 1;
-      assert(NewBr < Affinity && "new branch out-of-bound");
-      TableBranches[NewBr] = Table;
-      ++CurrentBranch;
-    }
-  };
-
-  // back is the stack top
-  std::list<Scope> ScopeStack;
-  using scope_iterator = typename decltype(ScopeStack)::iterator;
-  // we use std::list because we want consistent iterator
-  scope_iterator CurScope, PrevScope;
-
-  TableTy* PrevTable() {
-    if(PrevScope == ScopeStack.end() ||
-       CurScope == ScopeStack.end())
-      return nullptr;
-
-    auto ParentBr = CurScope->ParentBranch;
-    return PrevScope->TableBranches.at(ParentBr);
-  }
-
-  TableTy* CurTable() {
-    if(CurScope == ScopeStack.end()) return nullptr;
-    return CurScope->TableBranches.at(CurScope->CurBranch());
-  }
-
-public:
-  AffineRecordTable() {
-    // create default scope
-    std::unique_ptr<TableTy> TablePtr(new TableTy());
-    ScopeStack.push_back(Scope(TablePtr.get(), 0));
-    TableRepo.insert(std::move(TablePtr));
-
-    CurScope = ScopeStack.begin();
-    PrevScope = ScopeStack.end();
-  }
-
-  size_t num_scopes() const {
-    return ScopeStack.size();
-  }
-  // number of table branches in current scope
-  size_t num_tables() const {
-    return CurScope->CurBranch() + 1;
-  }
-
-  void NewAffineScope() {
-    size_t CurBr = CurScope->CurBranch();
-    auto* CurTable = CurScope->TableBranches.at(CurBr);
-    PrevScope = CurScope;
-    CurScope = ScopeStack.insert(ScopeStack.cend(),
-                                 Scope(CurTable, CurBr));
-  }
-  // create and switch to the new branch
-  void NewBranch() {
-    CurScope->AddBranch(PrevTable());
-  }
-
-  // end iterator of current table
-  table_iterator end() {
-    return CurTable()->end();
-  }
-  // find in current table
-  table_iterator find(const K& key) {
-    return CurTable()->find(key);
-  }
-  // insert new entry in current table:
-  // copy from parent then modify
-  V& operator[](const K& key) {
-    // copy from parent if needed
-    if(PrevTable() && CurTable() == PrevTable()) {
-      const auto& Orig = *PrevTable();
-      std::unique_ptr<TableTy> TablePtr(new TableTy(Orig));
-      CurScope->TableBranches[CurScope->CurBranch()] = TablePtr.get();
-      TableRepo.insert(std::move(TablePtr));
-    }
-    return (*CurTable())[key];
-  }
-
-  // where you should insert PHI node
-  // and update table
-  template<
-    class Func = std::function<void(TableTy*,const std::vector<TableTy*>&)>
-  >
-  void CloseAffineScope(Func Callback) {
-    assert(PrevScope != ScopeStack.end() &&
-           "cannot pop out the only scope");
-    auto& CurTables = CurScope->TableBranches;
-    std::vector<TableTy*> Tables(CurTables.begin(),
-                                 CurTables.begin() + (CurScope->CurBranch() + 1)
-                                );
-    Callback(PrevTable(), Tables);
-    CurScope = PrevScope;
-    if(PrevScope == ScopeStack.end())
-      PrevScope = ScopeStack.end();
-    else
-      --PrevScope;
-    ScopeStack.pop_back();
-  }
-};
-
 class Parser {
   Graph& G;
   Lexer Lex;
@@ -231,8 +106,17 @@ class Parser {
 
   // record last modify node on a certain decl
   // {decl, modifier}
-  //std::unordered_map<Node*, Node*> LastModified;
   AffineRecordTable<Node*, Node*> LastModified;
+  AffineContainer<std::array<Node*,1>> LastControlPoint;
+  inline Node* getLastCtrlPoint() {
+    return std::get<0>(*LastControlPoint.CurEntry());
+  }
+  inline void setLastCtrlPoint(Node* N) {
+    (*LastControlPoint.CurEntryMutable())[0] = N;
+  }
+  inline void NewLastControlPoint() {
+    LastControlPoint = std::move(decltype(LastControlPoint)());
+  }
 
   /// placeholder function to avoid link time error
   /// for un-specialized decl template functions

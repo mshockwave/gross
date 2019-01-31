@@ -46,7 +46,8 @@ enum ID : unsigned {
   VirtBinOps,         // Bin*
   VirtSrcDesigAccess, // SrcVarAccess | SrcArrayAccess
   VirtIfBranches,     // IfTrue | IfFalse
-  VirtFuncPrototype   // Start + Argument(s)
+  VirtFuncPrototype,  // Start + Argument(s)
+  VirtGlobalValues,   // ConstantInt + ConstantStr + Start
 };
 } // end namespace IrOpcode
 } // end namespace gross

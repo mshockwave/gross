@@ -226,6 +226,19 @@ NODE_PROPERTIES(VirtIfBranches) {
            Op == IrOpcode::IfFalse;
   }
 };
+
+NODE_PROPERTIES(VirtGlobalValues) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(VirtGlobalValues, N) {}
+
+  operator bool() const {
+    if(!NodePtr) return false;
+    auto Op = NodePtr->getOp();
+    return Op == IrOpcode::ConstantStr ||
+           Op == IrOpcode::ConstantInt ||
+           Op == IrOpcode::Start;
+  }
+};
 #undef NODE_PROP_BASE
 #undef NODE_PROPERTIES
 
