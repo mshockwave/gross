@@ -73,7 +73,7 @@ Node* Parser::ParseArrayAccessDesignator(Node* DeclNode, Node* Effect,
 }
 
 Node* Parser::ParseFactor() {
-  // TODO: designator and funcCall rule
+  // TODO: funcCall rule
 
   Node* FN = nullptr;
   switch(CurTok()) {
@@ -81,6 +81,7 @@ Node* Parser::ParseFactor() {
     auto val
       = static_cast<int32_t>(std::atoi(TokBuffer().c_str()));
     FN = NodeBuilder<IrOpcode::ConstantInt>(&G, val).Build();
+    (void) NextTok();
     break;
   }
   case Lexer::TOK_L_PARAN: {
@@ -90,6 +91,11 @@ Node* Parser::ParseFactor() {
       Log::E() << "expecting close paran\n";
       return nullptr;
     }
+    (void) NextTok();
+    break;
+  }
+  case Lexer::TOK_IDENT: {
+    FN = ParseDesignator();
     break;
   }
   default:
@@ -98,7 +104,6 @@ Node* Parser::ParseFactor() {
     return nullptr;
   }
 
-  (void) NextTok();
   return FN;
 }
 

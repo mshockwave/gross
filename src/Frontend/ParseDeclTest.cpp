@@ -116,7 +116,7 @@ TEST(ParserTest, ParseBasicFuncDecl) {
 TEST(ParserTest, ParseCompoundFuncDecl) {
   std::stringstream SS;
   {
-    SS << "function foo(a,b,c); {\n"
+    SS << "function foo; {\n"
        << "  return 1 + 2 * 3\n"
        << "};";
     Graph G;
@@ -127,6 +127,21 @@ TEST(ParserTest, ParseCompoundFuncDecl) {
     ASSERT_TRUE(P.ParseFuncDecl());
 
     std::ofstream OF("TestComplexFuncDecl1.dot");
+    G.dumpGraphviz(OF);
+  }
+  SS.clear();
+  {
+    SS << "function foo(a,b,c); {\n"
+       << "  return a + b * c\n"
+       << "};";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    SetMockContext(P,G);
+
+    ASSERT_TRUE(P.ParseFuncDecl());
+
+    std::ofstream OF("TestComplexFuncDecl1-2.dot");
     G.dumpGraphviz(OF);
   }
 }

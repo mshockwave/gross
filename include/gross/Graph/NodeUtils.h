@@ -454,8 +454,9 @@ struct NodeBuilder<IrOpcode::SrcVarAccess> {
 
   Node* Build(bool Verify = true) {
     if(Verify) {
-      NodeProperties<IrOpcode::SrcVarDecl> NP(VarDecl);
-      assert(NP && "original decl should be SrcVarDecl");
+      assert((NodeProperties<IrOpcode::SrcVarDecl>(VarDecl) ||
+              NodeProperties<IrOpcode::Argument>(VarDecl))
+             && "original decl should be SrcVarDecl");
     }
 
     std::vector<Node*> Effects;
