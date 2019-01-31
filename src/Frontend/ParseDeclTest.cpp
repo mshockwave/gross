@@ -4,6 +4,7 @@
 #include "gross/Graph/NodeUtils.h"
 #include "gtest/gtest.h"
 #include <sstream>
+#include <fstream>
 
 using namespace gross;
 
@@ -109,5 +110,23 @@ TEST(ParserTest, ParseBasicFuncDecl) {
     SetMockContext(P,G);
 
     ASSERT_TRUE(P.ParseFuncDecl());
+  }
+}
+
+TEST(ParserTest, ParseCompoundFuncDecl) {
+  std::stringstream SS;
+  {
+    SS << "function foo(a,b,c); {\n"
+       << "  return 1 + 2 * 3\n"
+       << "};";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    SetMockContext(P,G);
+
+    ASSERT_TRUE(P.ParseFuncDecl());
+
+    std::ofstream OF("TestComplexFuncDecl1.dot");
+    G.dumpGraphviz(OF);
   }
 }

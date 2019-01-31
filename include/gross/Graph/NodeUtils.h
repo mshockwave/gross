@@ -253,6 +253,7 @@ NODE_PROPERTIES(VirtCtrlPoints) {
     case IrOpcode::Merge:
     case IrOpcode::Start:
     case IrOpcode::End:
+    case IrOpcode::Return:
       return true;
     default:
       return false;
@@ -765,6 +766,29 @@ private:
   Graph* G;
   Node* StartNode;
   std::vector<Node*> TermNodes;
+};
+
+template<>
+struct NodeBuilder<IrOpcode::Return> {
+  explicit
+  NodeBuilder(Graph* graph, Node* RetExpr = nullptr)
+    : G(graph), ReturnExpr(RetExpr) {}
+
+  Node* Build() {
+    Node* N = nullptr;
+    if(ReturnExpr) {
+      N = new Node(IrOpcode::Return, {ReturnExpr});
+      ReturnExpr->Users.push_back(N);
+    } else {
+      N = new Node(IrOpcode::Return, {});
+    }
+    G->InsertNode(N);
+    return N;
+  }
+
+private:
+  Graph* G;
+  Node* ReturnExpr;
 };
 
 Node* FindNearestCtrlPoint(Node* N);

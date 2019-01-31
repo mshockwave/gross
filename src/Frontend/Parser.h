@@ -158,6 +158,7 @@ public:
   Node* ParseAssignment();
   bool ParseStatements(std::vector<Node*>& Stmts);
   Node* ParseIfStmt();
+  Node* ParseReturnStmt();
 
   bool ParseFuncDecl();
 };

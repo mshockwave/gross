@@ -49,6 +49,7 @@ enum ID : unsigned {
   VirtFuncPrototype,  // Start + Argument(s)
   VirtGlobalValues,   // ConstantInt + ConstantStr + Start
   VirtCtrlPoints      // If + IfTrue + IfFalse + Merge + Start + End
+                      // + Return
 };
 } // end namespace IrOpcode
 } // end namespace gross

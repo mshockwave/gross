@@ -158,6 +158,22 @@ Node* Parser::ParseIfStmt() {
   return MergeNode;
 }
 
+Node* Parser::ParseReturnStmt() {
+  auto Tok = CurTok();
+  if(Tok != Lexer::TOK_RETURN) {
+    Log::E() << "Expecting 'return' here\n";
+    return nullptr;
+  }
+  (void) NextTok();
+  auto* ExprNode = ParseExpr();
+  // ExprNode can be null
+  auto* RetNode = NodeBuilder<IrOpcode::Return>(&G, ExprNode)
+                  .Build();
+  RetNode->appendControlInput(getLastCtrlPoint());
+  setLastCtrlPoint(RetNode);
+  return RetNode;
+}
+
 bool Parser::ParseStatements(std::vector<Node*>& Stmts) {
   while(true) {
     auto Tok = CurTok();
@@ -171,6 +187,12 @@ bool Parser::ParseStatements(std::vector<Node*>& Stmts) {
     }
     case Lexer::TOK_LET: {
       auto* Stmt = ParseAssignment();
+      if(Stmt) Stmts.push_back(Stmt);
+      else return false;
+      break;
+    }
+    case Lexer::TOK_RETURN: {
+      auto* Stmt = ParseReturnStmt();
       if(Stmt) Stmts.push_back(Stmt);
       else return false;
       break;

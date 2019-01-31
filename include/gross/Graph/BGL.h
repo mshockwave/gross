@@ -285,6 +285,8 @@ struct graph_vertex_prop_writer {
     CASE_OPCODE_STR(Phi);
     CASE_OPCODE_STR(Start);
     CASE_OPCODE_STR(End);
+    CASE_OPCODE_STR(Argument);
+    CASE_OPCODE_STR(Return);
     default: OS << "UNKNOWN";
     }
 
