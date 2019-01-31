@@ -32,42 +32,16 @@ Node* Parser::ParseAssignment() {
                      .Dest(DesigNode).Src(ExprNode)
                      .Build();
   assert(AssignNode && "fail to build SrcAssignStmt node");
+  // no effect dependency, then depend on the last control point
+  // TODO: 1. consider effect dependecy beyond the last control point
+  // 2. function call
+  if(!DesigNode->getNumEffectInput())
+    AssignNode->appendControlInput(getLastCtrlPoint());
+
   // update last modified map
   LastModified[DNP.decl()] = AssignNode;
   return AssignNode;
 }
-
-namespace {
-template<class T>
-void BoundBranchControl(Node* BrRegion, const T& Stmts) {
-  std::unordered_set<Node*> StmtSet(Stmts.begin(), Stmts.end());
-  for(Node* StmtNode : Stmts) {
-    NodeProperties<IrOpcode::SrcAssignStmt> NP(StmtNode);
-    if(NP) {
-      auto* Access = NP.dest();
-      // add control dependency to SrcAssignStmt if
-      // 1. no effect dependency
-      // 2. effect dependency source is beyond the branch
-      if(!Access->getNumEffectInput()) {
-        StmtNode->appendControlInput(BrRegion);
-      } else {
-        bool IntraDep = false;
-        for(unsigned i = 0, ESize = Access->getNumEffectInput();
-            i < ESize; ++i) {
-          if(StmtSet.count(Access->getEffectInput(i))) {
-            IntraDep = true;
-            break;
-          }
-        }
-        if(!IntraDep) {
-          StmtNode->appendControlInput(BrRegion);
-        }
-      }
-    }
-    // TODO: also handle function call?
-  }
-}
-} // end anonymous namespace
 
 Node* Parser::ParseIfStmt() {
   auto Tok = CurTok();
@@ -82,6 +56,8 @@ Node* Parser::ParseIfStmt() {
   auto* IfNode = NodeBuilder<IrOpcode::If>(&G)
                  .Condition(RelExpr)
                  .Build();
+  IfNode->appendControlInput(getLastCtrlPoint());
+  setLastCtrlPoint(IfNode);
 
   Tok = CurTok();
   if(Tok != Lexer::TOK_THEN) {
@@ -92,13 +68,15 @@ Node* Parser::ParseIfStmt() {
 
   NewSymScope();
   LastModified.NewAffineScope();
-  std::vector<Node*> Stmts;
-  if(!ParseStatements(Stmts)) return nullptr;
+  LastControlPoint.NewAffineScope();
   auto* TrueBranch = NodeBuilder<IrOpcode::VirtIfBranches>(&G, true)
                      .IfStmt(IfNode)
                      .Build();
+  setLastCtrlPoint(TrueBranch);
+  std::vector<Node*> Stmts;
+  if(!ParseStatements(Stmts)) return nullptr;
   PopSymScope();
-  BoundBranchControl(TrueBranch, Stmts);
+  //BoundBranchControl(TrueBranch, Stmts);
 
   Tok = CurTok();
   Node* FalseBranch = nullptr;
@@ -106,20 +84,37 @@ Node* Parser::ParseIfStmt() {
     (void) NextTok();
     NewSymScope();
     LastModified.NewBranch();
-    std::vector<Node*> ElseStmts;
-    if(!ParseStatements(ElseStmts)) return nullptr;
+    LastControlPoint.NewBranch();
     FalseBranch = NodeBuilder<IrOpcode::VirtIfBranches>(&G, false)
                   .IfStmt(IfNode)
                   .Build();
+    setLastCtrlPoint(FalseBranch);
+    std::vector<Node*> ElseStmts;
+    if(!ParseStatements(ElseStmts)) return nullptr;
     PopSymScope();
-    BoundBranchControl(FalseBranch, ElseStmts);
+    //BoundBranchControl(FalseBranch, ElseStmts);
     Tok = CurTok();
   }
+
   // add merge node to merge control deps
-  auto* MergeNode = NodeBuilder<IrOpcode::Merge>(&G)
-                    .AddCtrlInput(TrueBranch)
-                    .AddCtrlInput(FalseBranch? FalseBranch : IfNode)
-                    .Build();
+  using ctrl_point_type = typename decltype(LastControlPoint)::value_type;
+  auto CtrlMergeCallback = [&](ctrl_point_type* MergePoint,
+                               const std::vector<ctrl_point_type*>& BrPoints) {
+    assert(BrPoints.size() <= 2 && BrPoints.size());
+    NodeBuilder<IrOpcode::Merge> MB(&G);
+    MB.AddCtrlInput(std::get<0>(*BrPoints.at(0)));
+    // check whether there is false branch
+    if(BrPoints.size() == 1)
+      // no false branch, merge from IfStmt
+      MB.AddCtrlInput(std::get<0>(*MergePoint));
+    else
+      MB.AddCtrlInput(std::get<0>(*BrPoints.at(1)));
+
+    (*MergePoint)[0] = MB.Build();
+  };
+  LastControlPoint.CloseAffineScope<>(CtrlMergeCallback);
+  auto* MergeNode = getLastCtrlPoint();
+  assert(NodeProperties<IrOpcode::Merge>(MergeNode));
 
   if(Tok != Lexer::TOK_END_IF) {
     Log::E() << "expecting 'fi' keyword here\n";

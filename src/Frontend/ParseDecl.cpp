@@ -178,11 +178,7 @@ bool Parser::ParseFuncDecl() {
   std::vector<Node*> FuncBodyStmts;
   if(!ParseStatements(FuncBodyStmts)) return false;
   NodeBuilder<IrOpcode::End> EB(&G, FuncNode);
-  for(auto* N : FuncBodyStmts) {
-    // so far Return is the only terminator node
-    if(NodeProperties<IrOpcode::Return>(N))
-      EB.AddTerminator(N);
-  }
+  EB.AddTerminator(getLastCtrlPoint());
   (void) EB.Build();
 
   Tok = CurTok();

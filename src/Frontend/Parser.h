@@ -108,12 +108,6 @@ class Parser {
   // {decl, modifier}
   AffineRecordTable<Node*, Node*> LastModified;
   AffineContainer<std::array<Node*,1>> LastControlPoint;
-  inline Node* getLastCtrlPoint() {
-    return std::get<0>(*LastControlPoint.CurEntry());
-  }
-  inline void setLastCtrlPoint(Node* N) {
-    (*LastControlPoint.CurEntryMutable())[0] = N;
-  }
   inline void NewLastControlPoint() {
     LastControlPoint = std::move(decltype(LastControlPoint)());
   }
@@ -135,6 +129,13 @@ public:
   void PopSymScope() {
     if(!SymTable.empty())
       SymTable.pop();
+  }
+
+  inline Node* getLastCtrlPoint() {
+    return std::get<0>(*LastControlPoint.CurEntry());
+  }
+  inline void setLastCtrlPoint(Node* N) {
+    (*LastControlPoint.CurEntryMutable())[0] = N;
   }
 
   bool Parse();

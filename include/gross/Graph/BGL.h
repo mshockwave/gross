@@ -283,6 +283,8 @@ struct graph_vertex_prop_writer {
     CASE_OPCODE_STR(IfFalse);
     CASE_OPCODE_STR(Merge);
     CASE_OPCODE_STR(Phi);
+    CASE_OPCODE_STR(Start);
+    CASE_OPCODE_STR(End);
     default: OS << "UNKNOWN";
     }
 

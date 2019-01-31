@@ -1,4 +1,5 @@
 #include "Parser.h"
+#include "ParserTest.h"
 #include "gross/Graph/Graph.h"
 #include "gross/Graph/NodeUtils.h"
 #include "gtest/gtest.h"
@@ -17,7 +18,7 @@ TEST(ParserTest, TestAssignment) {
     Graph G;
     Parser P(SS, G);
     (void) P.getLexer().getNextToken();
-    P.NewSymScope();
+    SetMockContext(P,G);
     ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
 
     Node* Assign = P.ParseAssignment();
@@ -36,7 +37,7 @@ TEST(ParserTest, TestAssignment) {
     Graph G;
     Parser P(SS, G);
     (void) P.getLexer().getNextToken();
-    P.NewSymScope();
+    SetMockContext(P,G);
     ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
 
     Node* Assign1 = P.ParseAssignment();
@@ -60,7 +61,7 @@ TEST(ParserTest, TestAssignment) {
     Graph G;
     Parser P(SS, G);
     (void) P.getLexer().getNextToken();
-    P.NewSymScope();
+    SetMockContext(P,G);
     ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcArrayDecl>());
 
     Node* Assign = P.ParseAssignment();
@@ -89,7 +90,7 @@ TEST(ParserTest, TestAssignment) {
     Graph G;
     Parser P(SS, G);
     (void) P.getLexer().getNextToken();
-    P.NewSymScope();
+    SetMockContext(P,G);
     ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcArrayDecl>());
 
     Node* Assign1 = P.ParseAssignment();
@@ -123,7 +124,7 @@ TEST(ParserTest, TestIfStmt) {
     Graph G;
     Parser P(SS, G);
     (void) P.getLexer().getNextToken();
-    P.NewSymScope();
+    SetMockContext(P,G);
     ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
 
     EXPECT_TRUE(P.ParseAssignment());
@@ -157,7 +158,7 @@ TEST(ParserTest, TestIfStmt) {
     Graph G;
     Parser P(SS, G);
     (void) P.getLexer().getNextToken();
-    P.NewSymScope();
+    SetMockContext(P,G);
 
     ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
 
@@ -190,7 +191,7 @@ TEST(ParserTest, TestIfStmt) {
     Graph G;
     Parser P(SS, G);
     (void) P.getLexer().getNextToken();
-    P.NewSymScope();
+    SetMockContext(P,G);
 
     ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
 
