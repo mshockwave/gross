@@ -147,6 +147,8 @@ public:
   llvm::iterator_range<input_iterator> inputs() {
     return llvm::make_range(Inputs.begin(), Inputs.end());
   }
+  typename decltype(Inputs)::iterator input_begin() { return Inputs.begin(); }
+  typename decltype(Inputs)::iterator input_end() { return Inputs.end(); }
 
   // iterators
   llvm::iterator_range<typename decltype(Inputs)::iterator>

@@ -33,10 +33,14 @@ Node* Parser::ParseAssignment() {
                      .Build();
   assert(AssignNode && "fail to build SrcAssignStmt node");
   // no effect dependency, then depend on the last control point
-  // TODO: 1. consider effect dependecy beyond the last control point
-  // 2. function call
-  if(!DesigNode->getNumEffectInput())
+  // TODO: function call
+  if(!DesigNode->getNumEffectInput()) {
     AssignNode->appendControlInput(getLastCtrlPoint());
+  } else {
+    // see if this node is control depending on LastControlPoint
+    if(FindNearestCtrlPoint(AssignNode) != getLastCtrlPoint())
+      AssignNode->appendControlInput(getLastCtrlPoint());
+  }
 
   // update last modified map
   LastModified[DNP.decl()] = AssignNode;

@@ -239,6 +239,26 @@ NODE_PROPERTIES(VirtGlobalValues) {
            Op == IrOpcode::Start;
   }
 };
+
+NODE_PROPERTIES(VirtCtrlPoints) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(VirtCtrlPoints, N) {}
+
+  operator bool() const {
+    if(!NodePtr) return false;
+    switch(NodePtr->getOp()) {
+    case IrOpcode::If:
+    case IrOpcode::IfTrue:
+    case IrOpcode::IfFalse:
+    case IrOpcode::Merge:
+    case IrOpcode::Start:
+    case IrOpcode::End:
+      return true;
+    default:
+      return false;
+    }
+  }
+};
 #undef NODE_PROP_BASE
 #undef NODE_PROPERTIES
 
@@ -746,5 +766,7 @@ private:
   Node* StartNode;
   std::vector<Node*> TermNodes;
 };
+
+Node* FindNearestCtrlPoint(Node* N);
 } // end namespace gross
 #endif

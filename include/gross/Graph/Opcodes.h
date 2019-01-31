@@ -48,6 +48,7 @@ enum ID : unsigned {
   VirtIfBranches,     // IfTrue | IfFalse
   VirtFuncPrototype,  // Start + Argument(s)
   VirtGlobalValues,   // ConstantInt + ConstantStr + Start
+  VirtCtrlPoints      // If + IfTrue + IfFalse + Merge + Start + End
 };
 } // end namespace IrOpcode
 } // end namespace gross
