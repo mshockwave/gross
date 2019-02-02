@@ -8,6 +8,14 @@
 #include <vector>
 
 namespace gross {
+// Forward declaration
+template<class GraphT>
+class lazy_edge_iterator;
+
+// map from vertex or edge to an unique id
+template<class GraphT, class PropertyTag>
+struct graph_id_map {};
+
 // Owner of nodes
 class Graph {
   template<IrOpcode::ID Op>
@@ -25,18 +33,22 @@ class Graph {
   // function name -> Start node of a function
   std::unordered_map<std::string, Node*> FuncMap;
 
-  class lazy_edge_iterator;
-
 public:
   using node_iterator = typename decltype(Nodes)::iterator;
   using const_node_iterator = typename decltype(Nodes)::const_iterator;
+  static Node* GetNodeFromIt(const node_iterator& NodeIt) {
+    return NodeIt->get();
+  }
+  static const Node* GetNodeFromIt(const const_node_iterator& NodeIt) {
+    return NodeIt->get();
+  }
   node_iterator node_begin() { return Nodes.begin(); }
   const_node_iterator node_cbegin() const { return Nodes.cbegin(); }
   node_iterator node_end() { return Nodes.end(); }
   const_node_iterator node_cend() const { return Nodes.cend(); }
   size_t node_size() const { return Nodes.size(); }
 
-  using edge_iterator = lazy_edge_iterator;
+  using edge_iterator = lazy_edge_iterator<Graph>;
   edge_iterator edge_begin();
   edge_iterator edge_end();
   size_t edge_size();
@@ -51,28 +63,61 @@ public:
     return ConstNumberPool.size();
   }
 
-  // map from vertex or edge to an unique id
-  template<class PropertyTag>
-  struct id_map;
-
   // dump to GraphViz graph
   void dumpGraphviz(std::ostream& OS);
 };
 
-class Graph::lazy_edge_iterator
-  : public boost::iterator_facade<Graph::lazy_edge_iterator,
+// lightweight nodes holder for part of the Graph
+class SubGraph {
+  std::vector<Node*> Nodes;
+
+public:
+  SubGraph() = default;
+
+  template<class InputIt>
+  SubGraph(InputIt begin, InputIt end)
+    : Nodes(begin, end) {}
+  template<class ContainerT>
+  explicit SubGraph(const ContainerT& InitNodes)
+    : Nodes(InitNodes.cbegin(), InitNodes.cend()) {}
+
+  explicit SubGraph(std::vector<Node*>&& OtherNodes)
+    : Nodes(OtherNodes) {}
+
+  using node_iterator = typename decltype(Nodes)::iterator;
+  using const_node_iterator = typename decltype(Nodes)::const_iterator;
+  static Node* GetNodeFromIt(const node_iterator& NodeIt) { return *NodeIt; }
+  static const Node* GetNodeFromIt(const const_node_iterator& NodeIt) {
+    return *NodeIt;
+  }
+  node_iterator node_begin() { return Nodes.begin(); }
+  node_iterator node_end() { return Nodes.end(); }
+  const_node_iterator node_cbegin() const { return Nodes.cbegin(); }
+  const_node_iterator node_cend() const { return Nodes.cend(); }
+  size_t node_size() const { return Nodes.size(); }
+
+  using edge_iterator = lazy_edge_iterator<SubGraph>;
+  edge_iterator edge_begin();
+  edge_iterator edge_end();
+  size_t edge_size();
+  size_t edge_size() const { return const_cast<SubGraph*>(this)->edge_size(); }
+};
+
+template<class GraphT>
+class lazy_edge_iterator
+  : public boost::iterator_facade<lazy_edge_iterator<GraphT>,
                                   Use, // Value type
                                   boost::forward_traversal_tag, // Traversal tag
                                   Use // Reference type
                                   > {
   friend class boost::iterator_core_access;
-  Graph* G;
+  GraphT* G;
   unsigned CurInput;
-  typename Graph::node_iterator CurNodeIt, EndNodeIt;
+  typename GraphT::node_iterator CurNodeIt, EndNodeIt;
 
   // no checks!
   inline Node* CurNode() const {
-    return CurNodeIt->get();
+    return GraphT::GetNodeFromIt(CurNodeIt);
   }
 
   inline bool isValid() const {
@@ -113,7 +158,7 @@ public:
   lazy_edge_iterator()
     : G(nullptr),
       CurInput(0) {}
-  explicit lazy_edge_iterator(Graph* graph, bool isEnd = false)
+  explicit lazy_edge_iterator(GraphT* graph, bool isEnd = false)
     : G(graph),
       CurInput(0) {
     if(G) {
@@ -127,9 +172,5 @@ public:
     }
   }
 };
-
-// default(empty) implementation
-template<class PropertyTag>
-struct Graph::id_map {};
 } // end namespace gross
 #endif

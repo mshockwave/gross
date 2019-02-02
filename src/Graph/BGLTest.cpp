@@ -19,6 +19,27 @@ TEST(GraphBGLTest, TestIncidenceGraphConcept) {
 
 TEST(GraphBGLTest, TestVertexReadablePropertyMapConcept) {
   BOOST_CONCEPT_ASSERT(( boost::ReadablePropertyMapConcept<
-                          gross::Graph::id_map<boost::vertex_index_t>,
+                          gross::graph_id_map<gross::Graph,
+                                              boost::vertex_index_t>,
+                          gross::Node* > ));
+}
+
+TEST(SubGraphBGLTest, TestGraphConcept) {
+  BOOST_CONCEPT_ASSERT(( boost::GraphConcept<gross::SubGraph> ));
+}
+TEST(SubGraphBGLTest, TestVertexListGraphConcept) {
+  BOOST_CONCEPT_ASSERT(( boost::VertexListGraphConcept<gross::SubGraph> ));
+}
+TEST(SubGraphBGLTest, TestEdgeListGraphConcept) {
+  BOOST_CONCEPT_ASSERT(( boost::EdgeListGraphConcept<gross::SubGraph> ));
+}
+TEST(SubGraphBGLTest, TestIncidenceGraphConcept) {
+  BOOST_CONCEPT_ASSERT(( boost::IncidenceGraphConcept<gross::SubGraph> ));
+}
+
+TEST(SubGraphBGLTest, TestVertexReadablePropertyMapConcept) {
+  BOOST_CONCEPT_ASSERT(( boost::ReadablePropertyMapConcept<
+                          gross::graph_id_map<gross::SubGraph,
+                                              boost::vertex_index_t>,
                           gross::Node* > ));
 }

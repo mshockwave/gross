@@ -71,6 +71,8 @@ struct Use {
 
 class Node {
   friend class Graph;
+  template<class T>
+  friend class lazy_edge_iterator;
   template<IrOpcode::ID>
   friend class NodePropertiesBase;
   template<IrOpcode::ID>

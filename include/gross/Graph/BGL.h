@@ -9,6 +9,7 @@
 #include "gross/Graph/Node.h"
 #include "gross/Graph/NodeUtils.h"
 #include "gross/Support/STLExtras.h"
+#include "gross/Support/type_traits.h"
 #include <utility>
 #include <iostream>
 
@@ -38,7 +39,7 @@ private:
   T& Storage;
 };
 
-// it is very strange that both StubColorMap and Graph::id_map<T>
+// it is very strange that both StubColorMap and graph_id_map<G,T>
 // are PropertyMapConcept, but the get() function for the former one
 // should be defined in namespace gross :\
 /// ColorMap PropertyMap
@@ -98,6 +99,41 @@ struct graph_traits<gross::Graph> {
     public boost::incidence_graph_tag {};
 };
 
+template<>
+struct graph_traits<gross::SubGraph> {
+  /// GraphConcept
+  using vertex_descriptor = gross::Node*;
+  using edge_descriptor = gross::Use;
+  using directed_category = boost::directed_tag;
+  using edge_parallel_category = boost::allow_parallel_edge_tag;
+
+  static vertex_descriptor null_vertex() {
+    return nullptr;
+  }
+
+  /// VertexListGraphConcept
+  using vertex_iterator = typename gross::SubGraph::node_iterator;
+  using vertices_size_type = size_t;
+
+  /// EdgeListGraphConcept
+  using edges_size_type = size_t;
+  using edge_iterator = typename gross::SubGraph::edge_iterator;
+
+  /// IncidenceGraphConcept
+  using out_edge_iterator
+    = boost::transform_iterator<typename gross::Use::BuilderFunctor,
+                                typename gross::Node::input_iterator,
+                                gross::Use, // Reference type
+                                gross::Use // Value type
+                                >;
+  using degree_size_type = size_t;
+
+  struct traversal_category :
+    public boost::vertex_list_graph_tag,
+    public boost::edge_list_graph_tag,
+    public boost::incidence_graph_tag {};
+};
+
 /// Note: We mark most of the BGL trait functions here as inline
 /// because they're trivial.
 /// FIXME: Will putting them into separated source file helps reducing
@@ -122,6 +158,19 @@ std::pair<typename boost::graph_traits<gross::Graph>::vertex_iterator,
 vertices(const gross::Graph& g) {
   return vertices(const_cast<gross::Graph&>(g));
 }
+// SubGraph
+inline
+std::pair<typename boost::graph_traits<gross::SubGraph>::vertex_iterator,
+          typename boost::graph_traits<gross::SubGraph>::vertex_iterator>
+vertices(gross::SubGraph& g) {
+  return std::make_pair(g.node_begin(), g.node_end());
+}
+inline
+std::pair<typename boost::graph_traits<gross::SubGraph>::vertex_iterator,
+          typename boost::graph_traits<gross::SubGraph>::vertex_iterator>
+vertices(const gross::SubGraph& g) {
+  return vertices(const_cast<gross::SubGraph&>(g));
+}
 
 inline typename boost::graph_traits<gross::Graph>::vertices_size_type
 num_vertices(gross::Graph& g) {
@@ -129,6 +178,15 @@ num_vertices(gross::Graph& g) {
 }
 inline typename boost::graph_traits<gross::Graph>::vertices_size_type
 num_vertices(const gross::Graph& g) {
+  return g.node_size();
+}
+// SubGraph
+inline typename boost::graph_traits<gross::SubGraph>::vertices_size_type
+num_vertices(gross::SubGraph& g) {
+  return const_cast<const gross::SubGraph&>(g).node_size();
+}
+inline typename boost::graph_traits<gross::SubGraph>::vertices_size_type
+num_vertices(const gross::SubGraph& g) {
   return g.node_size();
 }
 
@@ -145,6 +203,19 @@ std::pair<typename boost::graph_traits<gross::Graph>::edge_iterator,
 edges(const gross::Graph& g) {
   return edges(const_cast<gross::Graph&>(g));
 }
+// SubGraph
+inline
+std::pair<typename boost::graph_traits<gross::SubGraph>::edge_iterator,
+          typename boost::graph_traits<gross::SubGraph>::edge_iterator>
+edges(gross::SubGraph& g) {
+  return std::make_pair(g.edge_begin(), g.edge_end());
+}
+inline
+std::pair<typename boost::graph_traits<gross::SubGraph>::edge_iterator,
+          typename boost::graph_traits<gross::SubGraph>::edge_iterator>
+edges(const gross::SubGraph& g) {
+  return edges(const_cast<gross::SubGraph&>(g));
+}
 
 inline typename boost::graph_traits<gross::Graph>::edges_size_type
 num_edges(gross::Graph& g) {
@@ -154,24 +225,44 @@ inline typename boost::graph_traits<gross::Graph>::edges_size_type
 num_edges(const gross::Graph& g) {
   return g.edge_size();
 }
+// SubGraph
+inline typename boost::graph_traits<gross::SubGraph>::edges_size_type
+num_edges(gross::SubGraph& g) {
+  return const_cast<const gross::SubGraph&>(g).edge_size();
+}
+inline typename boost::graph_traits<gross::SubGraph>::edges_size_type
+num_edges(const gross::SubGraph& g) {
+  return g.edge_size();
+}
 
-inline typename boost::graph_traits<gross::Graph>::vertex_descriptor
-source(const gross::Use& e, const gross::Graph& g) {
+template<class GraphT>
+inline gross::enable_if_t<
+  std::is_same<GraphT,gross::Graph>::value ||
+  std::is_same<GraphT,gross::SubGraph>::value,
+  typename boost::graph_traits<GraphT>::vertex_descriptor>
+source(const gross::Use& e, const GraphT& g) {
   return const_cast<gross::Node*>(e.Source);
 }
-inline typename boost::graph_traits<gross::Graph>::vertex_descriptor
-target(const gross::Use& e, const gross::Graph& g) {
+template<class GraphT>
+inline gross::enable_if_t<
+  std::is_same<GraphT,gross::Graph>::value ||
+  std::is_same<GraphT,gross::SubGraph>::value,
+  typename boost::graph_traits<GraphT>::vertex_descriptor>
+target(const gross::Use& e, const GraphT& g) {
   return const_cast<gross::Node*>(e.Dest);
 }
 
 /// IncidenceGraphConcept
-inline
-std::pair<typename boost::graph_traits<gross::Graph>::out_edge_iterator,
-          typename boost::graph_traits<gross::Graph>::out_edge_iterator>
-out_edges(gross::Node* u, const gross::Graph& g) {
+template<class T>
+inline gross::enable_if_t<
+  std::is_same<T, gross::Graph>::value ||
+  std::is_same<T, gross::SubGraph>::value,
+  std::pair<typename boost::graph_traits<T>::out_edge_iterator,
+            typename boost::graph_traits<T>::out_edge_iterator>>
+out_edges(gross::Node* u, const T& g) {
   // for now, we don't care about the kind of edge
   using edge_it_t
-    = typename boost::graph_traits<gross::Graph>::out_edge_iterator;
+    = typename boost::graph_traits<T>::out_edge_iterator;
   gross::Use::BuilderFunctor functor(u);
   return std::make_pair(
     edge_it_t(u->inputs().begin(), functor),
@@ -179,9 +270,12 @@ out_edges(gross::Node* u, const gross::Graph& g) {
   );
 }
 
-inline
-typename boost::graph_traits<gross::Graph>::degree_size_type
-out_degree(gross::Node* u, const gross::Graph& g) {
+template<class T>
+inline gross::enable_if_t<
+  std::is_same<T, gross::Graph>::value ||
+  std::is_same<T, gross::SubGraph>::value,
+  typename boost::graph_traits<T>::degree_size_type>
+out_degree(gross::Node* u, const T& g) {
   return u->getNumValueInput()
          + u->getNumControlInput()
          + u->getNumEffectInput();
@@ -190,14 +284,14 @@ out_degree(gross::Node* u, const gross::Graph& g) {
 
 /// Property Map Concept
 namespace gross {
-template<>
-struct Graph::id_map<boost::vertex_index_t> {
+template<class GraphT>
+struct graph_id_map<GraphT, boost::vertex_index_t> {
   using value_type = size_t;
   using reference = size_t;
   using key_type = Node*;
   struct category : public boost::readable_property_map_tag {};
 
-  id_map(const Graph& g) : G(g) {}
+  graph_id_map(const GraphT& g) : G(g) {}
 
   reference operator[](const key_type& key) const {
     // just use linear search for now
@@ -205,27 +299,36 @@ struct Graph::id_map<boost::vertex_index_t> {
     value_type Idx = 0;
     for(auto I = G.node_cbegin(), E = G.node_cend();
         I != E; ++I, ++Idx) {
-      if(I->get() == key) break;
+      if(GraphT::GetNodeFromIt(I) == key) break;
     }
     return Idx;
   }
 
 private:
-  const Graph &G;
+  const GraphT &G;
 };
 } // end namespace gross
 
 namespace boost {
 // get() for vertex id property map
-inline typename gross::Graph::id_map<boost::vertex_index_t>::reference
-get(const typename gross::Graph::id_map<boost::vertex_index_t> &pmap,
-    const typename gross::Graph::id_map<boost::vertex_index_t>::key_type &key) {
+template<class GraphT>
+inline gross::enable_if_t<
+  std::is_same<GraphT,gross::Graph>::value ||
+  std::is_same<GraphT,gross::SubGraph>::value,
+  typename gross::graph_id_map<GraphT,boost::vertex_index_t>::reference>
+get(const typename gross::graph_id_map<GraphT,boost::vertex_index_t> &pmap,
+    const typename gross::graph_id_map<GraphT,boost::vertex_index_t>::key_type
+    &key) {
   return pmap[key];
 }
 // get() for getting vertex id property map from graph
-inline typename gross::Graph::id_map<boost::vertex_index_t>
-get(boost::vertex_index_t tag, const gross::Graph& g) {
-  return typename gross::Graph::id_map<boost::vertex_index_t>(g);
+template<class GraphT>
+inline gross::enable_if_t<
+  std::is_same<GraphT,gross::Graph>::value ||
+  std::is_same<GraphT,gross::SubGraph>::value,
+  typename gross::graph_id_map<GraphT,boost::vertex_index_t>>
+get(boost::vertex_index_t tag, const GraphT& g) {
+  return gross::graph_id_map<GraphT,boost::vertex_index_t>(g);
 }
 } // end namespace boost
 

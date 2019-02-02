@@ -12,6 +12,13 @@ Graph::edge_iterator Graph::edge_end() { return edge_iterator(this, true); }
 size_t Graph::edge_size() { return std::distance(edge_begin(),
                                                  edge_end()); }
 
+SubGraph::edge_iterator SubGraph::edge_begin() { return edge_iterator(this); }
+SubGraph::edge_iterator SubGraph::edge_end() {
+  return edge_iterator(this, true);
+}
+size_t SubGraph::edge_size() { return std::distance(edge_begin(),
+                                                    edge_end()); }
+
 void Graph::InsertNode(Node* N) {
   Nodes.emplace_back(N);
 }
