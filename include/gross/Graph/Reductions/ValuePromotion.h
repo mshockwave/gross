@@ -5,7 +5,10 @@
 namespace gross {
 class ValuePromotion {
 public:
-  const char* name() const { return "value-promotion"; }
+  ValuePromotion() = default;
+
+  static constexpr
+  const char* name() { return "value-promotion"; }
 
   GraphReduction Reduce(Node* N);
 };

@@ -25,3 +25,5 @@ if(GROSS_ENABLE_UNIT_TESTS)
   gtest_add_tests(TARGET GrossGraphTest)
   add_dependencies(unittests GrossGraphTest)
 endif()
+
+add_subdirectory(Reductions)
