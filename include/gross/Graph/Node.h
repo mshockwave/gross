@@ -241,7 +241,7 @@ public:
 /// note that there should be only one kind of NodeMarker
 /// active at a given time
 template<class T>
-class NodeMarker {
+struct NodeMarker {
   static_assert(sizeof(T) <= sizeof(typename Node::MarkerTy),
                 "can't fit into marker scratch");
 

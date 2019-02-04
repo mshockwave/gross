@@ -1,6 +1,7 @@
 #ifndef GROSS_GRAPH_GRAPH_H
 #define GROSS_GRAPH_GRAPH_H
 #include "boost/iterator/iterator_facade.hpp"
+#include "gross/Support/iterator_range.h"
 #include "gross/Graph/Node.h"
 #include <memory>
 #include <iostream>
@@ -53,6 +54,11 @@ public:
   edge_iterator edge_end();
   size_t edge_size();
   size_t edge_size() const { return const_cast<Graph*>(this)->edge_size(); }
+
+  using subregion_iterator = typename decltype(SubRegions)::iterator;
+  llvm::iterator_range<subregion_iterator> subregions() {
+    return llvm::make_range(SubRegions.begin(), SubRegions.end());
+  }
 
   void InsertNode(Node* N);
 

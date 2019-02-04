@@ -16,6 +16,12 @@ private:
   Node* Replacement;
 };
 
+enum class ReductionState : uint8_t {
+  OnStack,   // Observed and on stack
+  Revisit,   // Revisit later since some inputs are not visited
+  Visited    // Finished
+};
+
 // template<class T>
 // concept ReducerConcept = requires(T& R, Node* N) {
 //  { R::name() } -> const char*;
