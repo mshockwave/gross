@@ -4,8 +4,13 @@
 
 namespace gross {
 class ValuePromotion {
+  GraphReduction ReduceAssignment(Node* N);
+  GraphReduction ReduceVarAccess(Node* N);
+
+  Graph& G;
+
 public:
-  ValuePromotion() = default;
+  ValuePromotion(Graph& graph) : G(graph) {}
 
   static constexpr
   const char* name() { return "value-promotion"; }

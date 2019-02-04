@@ -237,7 +237,8 @@ NODE_PROPERTIES(VirtGlobalValues) {
     return Op == IrOpcode::ConstantStr ||
            Op == IrOpcode::ConstantInt ||
            Op == IrOpcode::Start ||
-           Op == IrOpcode::End;
+           Op == IrOpcode::End ||
+           Op == IrOpcode::Dead;
   }
 };
 
@@ -270,6 +271,22 @@ struct NodeBuilder {
     gross_unreachable("Unimplemented");
     return nullptr;
   }
+};
+
+template<>
+struct NodeBuilder<IrOpcode::Dead> {
+  NodeBuilder(Graph* graph) : G(graph) {}
+
+  Node* Build() {
+    if(!G->DeadNode) {
+      G->DeadNode = new Node(IrOpcode::Dead, {});
+      G->InsertNode(G->DeadNode);
+    }
+    return G->DeadNode;
+  }
+
+private:
+  Graph* G;
 };
 
 template<>

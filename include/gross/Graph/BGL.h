@@ -390,6 +390,7 @@ struct graph_vertex_prop_writer {
     CASE_OPCODE_STR(End);
     CASE_OPCODE_STR(Argument);
     CASE_OPCODE_STR(Return);
+    CASE_OPCODE_STR(Dead);
     default: OS << "UNKNOWN";
     }
 

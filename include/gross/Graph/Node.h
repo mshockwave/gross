@@ -235,6 +235,10 @@ public:
        const std::vector<Node*>& Values,
        const std::vector<Node*>& Controls = {},
        const std::vector<Node*>& Effects = {});
+
+  bool ReplaceUseOfWith(Node* From, Node* To, Use::Kind UseKind);
+  // replace this node with Replacement in all its users
+  void ReplaceWith(Node* Replacement, Use::Kind UseKind);
 };
 
 /// scratch data inside Node that is fast to access

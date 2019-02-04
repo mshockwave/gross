@@ -5,8 +5,6 @@ set(_SOURCE_FILES
 
 add_library(GrossGraphReductions OBJECT
     ${_SOURCE_FILES})
-target_link_libraries(GrossGraphReductions
-    $<TARGET_OBJECTS:GrossGraph>)
 
 if(GROSS_ENABLE_UNIT_TESTS)
   set(_TEST_SOURCE_FILES
@@ -17,6 +15,7 @@ if(GROSS_ENABLE_UNIT_TESTS)
     ${_TEST_SOURCE_FILES})
   target_link_libraries(GrossGraphReductionsTest
     $<TARGET_OBJECTS:GrossGraphReductions>
+    $<TARGET_OBJECTS:GrossGraph>
     gtest_main)
   gtest_add_tests(TARGET GrossGraphReductionsTest)
   add_dependencies(unittests GrossGraphReductionsTest)

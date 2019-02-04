@@ -29,11 +29,14 @@ class Graph {
   // Constant pools
   NodeBiMap<std::string> ConstStrPool;
   NodeBiMap<int32_t> ConstNumberPool;
+  Node* DeadNode;
 
   // Basically functions
   std::vector<SubGraph> SubRegions;
 
 public:
+  Graph() : DeadNode(nullptr) {}
+
   using node_iterator = typename decltype(Nodes)::iterator;
   using const_node_iterator = typename decltype(Nodes)::const_iterator;
   static Node* GetNodeFromIt(const node_iterator& NodeIt) {
@@ -110,6 +113,9 @@ public:
   edge_iterator edge_end();
   size_t edge_size();
   size_t edge_size() const { return const_cast<SubGraph*>(this)->edge_size(); }
+
+  inline void AddNode(Node* N) { Nodes.push_back(N); }
+  bool RemoveNode(Node* N);
 };
 
 template<class GraphT>

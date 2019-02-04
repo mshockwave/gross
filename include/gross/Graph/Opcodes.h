@@ -4,6 +4,7 @@ namespace gross {
 namespace IrOpcode {
 enum ID : unsigned {
   None = 0,
+  Dead,
   // Common opcodes
   ConstantInt,
   ConstantStr,
@@ -47,7 +48,7 @@ enum ID : unsigned {
   VirtSrcDesigAccess, // SrcVarAccess | SrcArrayAccess
   VirtIfBranches,     // IfTrue | IfFalse
   VirtFuncPrototype,  // Start + Argument(s)
-  VirtGlobalValues,   // ConstantInt + ConstantStr + Start + End
+  VirtGlobalValues,   // Dead + ConstantInt + ConstantStr + Start + End
   VirtCtrlPoints      // If + IfTrue + IfFalse + Merge + Start + End
                       // + Return
 };

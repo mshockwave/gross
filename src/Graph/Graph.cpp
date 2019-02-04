@@ -1,6 +1,7 @@
 #include "gross/Graph/Graph.h"
 #include "gross/Graph/BGL.h"
 #include "boost/graph/graphviz.hpp"
+#include <algorithm>
 #include <iterator>
 
 using namespace gross;
@@ -35,4 +36,11 @@ void Graph::dumpGraphviz(std::ostream& OS) {
                         graph_vertex_prop_writer(*this),
                         graph_edge_prop_writer{},
                         graph_prop_writer{});
+}
+
+bool SubGraph::RemoveNode(Node* N) {
+  auto It = std::find(Nodes.cbegin(), Nodes.cend(), N);
+  if(It == Nodes.cend()) return false;
+  Nodes.erase(It);
+  return true;
 }

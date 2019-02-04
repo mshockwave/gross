@@ -15,6 +15,16 @@ struct GraphReduction {
 private:
   Node* Replacement;
 };
+// some utilities
+namespace graph_reduction {
+inline GraphReduction NoChange() { return GraphReduction(nullptr); }
+inline GraphReduction Replace(Node* RN) {
+  return GraphReduction(RN);
+}
+inline GraphReduction Revisit(Node* N) {
+  return GraphReduction(N);
+}
+} // end namespace graph_reduction
 
 enum class ReductionState : uint8_t {
   OnStack,   // Observed and on stack
