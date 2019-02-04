@@ -236,7 +236,8 @@ NODE_PROPERTIES(VirtGlobalValues) {
     auto Op = NodePtr->getOp();
     return Op == IrOpcode::ConstantStr ||
            Op == IrOpcode::ConstantInt ||
-           Op == IrOpcode::Start;
+           Op == IrOpcode::Start ||
+           Op == IrOpcode::End;
   }
 };
 

@@ -3,7 +3,6 @@
 #include "boost/iterator/iterator_facade.hpp"
 #include "gross/Graph/Node.h"
 #include <memory>
-#include <unordered_map>
 #include <iostream>
 #include <vector>
 
@@ -11,6 +10,7 @@ namespace gross {
 // Forward declaration
 template<class GraphT>
 class lazy_edge_iterator;
+class SubGraph;
 
 // map from vertex or edge to an unique id
 template<class GraphT, class PropertyTag>
@@ -29,9 +29,8 @@ class Graph {
   NodeBiMap<std::string> ConstStrPool;
   NodeBiMap<int32_t> ConstNumberPool;
 
-  // Function map
-  // function name -> Start node of a function
-  std::unordered_map<std::string, Node*> FuncMap;
+  // Basically functions
+  std::vector<SubGraph> SubRegions;
 
 public:
   using node_iterator = typename decltype(Nodes)::iterator;
@@ -46,6 +45,7 @@ public:
   const_node_iterator node_cbegin() const { return Nodes.cbegin(); }
   node_iterator node_end() { return Nodes.end(); }
   const_node_iterator node_cend() const { return Nodes.cend(); }
+  Node* getNode(size_t idx) const { return Nodes.at(idx).get(); }
   size_t node_size() const { return Nodes.size(); }
 
   using edge_iterator = lazy_edge_iterator<Graph>;
@@ -55,6 +55,9 @@ public:
   size_t edge_size() const { return const_cast<Graph*>(this)->edge_size(); }
 
   void InsertNode(Node* N);
+
+  void AddSubRegion(const SubGraph& SubG);
+  void AddSubRegion(SubGraph&& SubG);
 
   size_t getNumConstStr() const {
     return ConstStrPool.size();

@@ -47,7 +47,7 @@ enum ID : unsigned {
   VirtSrcDesigAccess, // SrcVarAccess | SrcArrayAccess
   VirtIfBranches,     // IfTrue | IfFalse
   VirtFuncPrototype,  // Start + Argument(s)
-  VirtGlobalValues,   // ConstantInt + ConstantStr + Start
+  VirtGlobalValues,   // ConstantInt + ConstantStr + Start + End
   VirtCtrlPoints      // If + IfTrue + IfFalse + Merge + Start + End
                       // + Return
 };

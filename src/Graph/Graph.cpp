@@ -23,6 +23,13 @@ void Graph::InsertNode(Node* N) {
   Nodes.emplace_back(N);
 }
 
+void Graph::AddSubRegion(const SubGraph& SG) {
+  SubRegions.push_back(SG);
+}
+void Graph::AddSubRegion(SubGraph&& SG) {
+  SubRegions.push_back(SG);
+}
+
 void Graph::dumpGraphviz(std::ostream& OS) {
   boost::write_graphviz(OS, *this,
                         graph_vertex_prop_writer(*this),
