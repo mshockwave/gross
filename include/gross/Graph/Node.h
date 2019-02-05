@@ -111,6 +111,7 @@ class Node {
                     Node* NewNode);
   void appendNodeInput(unsigned& Size, unsigned Offset,
                        Node* NewNode);
+  void removeNodeInput(unsigned Index, unsigned& Size, unsigned Offset);
 
 public:
   IrOpcode::ID getOp() const { return Op; }
@@ -140,36 +141,49 @@ public:
   // modifiers
   void setValueInput(unsigned Index, Node* NewNode);
   void appendValueInput(Node* NewNode);
+  void removeValueInput(unsigned Index);
+
   void setControlInput(unsigned Index, Node* NewNode);
   void appendControlInput(Node* NewNode);
+  void removeControlInput(unsigned Index);
+
   void setEffectInput(unsigned Index, Node* NewNode);
   void appendEffectInput(Node* NewNode);
+  void removeEffectInput(unsigned Index);
 
   using input_iterator = typename decltype(Inputs)::iterator;
   llvm::iterator_range<input_iterator> inputs() {
     return llvm::make_range(Inputs.begin(), Inputs.end());
   }
-  typename decltype(Inputs)::iterator input_begin() { return Inputs.begin(); }
-  typename decltype(Inputs)::iterator input_end() { return Inputs.end(); }
+  input_iterator input_begin() { return Inputs.begin(); }
+  input_iterator input_end() { return Inputs.end(); }
 
   // iterators
-  llvm::iterator_range<typename decltype(Inputs)::iterator>
+  llvm::iterator_range<input_iterator>
   value_inputs() {
     return llvm::make_range(Inputs.begin(),
                             Inputs.begin() + NumValueInput);
   }
-  llvm::iterator_range<typename decltype(Inputs)::iterator>
+  input_iterator value_input_begin() { return value_inputs().begin(); }
+  input_iterator value_input_end() { return value_inputs().end(); }
+
+  llvm::iterator_range<input_iterator>
   control_inputs() {
     return llvm::make_range(Inputs.begin() + NumValueInput,
                             Inputs.begin() + NumValueInput + NumControlInput);
   }
-  llvm::iterator_range<typename decltype(Inputs)::iterator>
+  input_iterator control_input_begin() { return control_inputs().begin(); }
+  input_iterator control_input_end() { return control_inputs().end(); }
+
+  llvm::iterator_range<input_iterator>
   effect_inputs() {
     auto IB = Inputs.begin();
     return llvm::make_range(IB + NumValueInput + NumControlInput,
                             IB + NumValueInput + NumControlInput
                             + NumEffectInput);
   }
+  input_iterator effect_input_begin() { return effect_inputs().begin(); }
+  input_iterator effect_input_end() { return effect_inputs().end(); }
 
   struct is_value_use {
     Node* SrcNode;

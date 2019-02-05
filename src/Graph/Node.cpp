@@ -34,9 +34,9 @@ void Node::appendNodeInput(unsigned& Size, unsigned Offset,
 
 void Node::setNodeInput(unsigned Index, unsigned Size, unsigned Offset,
                         Node* NewNode) {
-  assert(Index < Size);
   Index += Offset;
   Size += Offset;
+  assert(Index < Size);
   Node* OldNode = Inputs[Index];
   auto It = std::find(OldNode->Users.cbegin(), OldNode->Users.cend(),
                       this);
@@ -46,24 +46,49 @@ void Node::setNodeInput(unsigned Index, unsigned Size, unsigned Offset,
   NewNode->Users.push_back(this);
 }
 
+void Node::removeNodeInput(unsigned Index, unsigned& Size, unsigned Offset) {
+  unsigned S = Size;
+  Index += Offset;
+  S += Offset;
+  assert(Index < S);
+  Node* OldNode = Inputs[Index];
+  auto It = std::find(OldNode->Users.cbegin(), OldNode->Users.cend(),
+                      this);
+  assert(It != OldNode->Users.cend());
+  OldNode->Users.erase(It);
+  Size -= 1;
+  Inputs.erase(Inputs.cbegin() + Index);
+}
+
 void Node::setValueInput(unsigned Index, Node* NewNode) {
   setNodeInput(Index, NumValueInput, 0, NewNode);
 }
 void Node::appendValueInput(Node* NewNode) {
   appendNodeInput(NumValueInput, 0, NewNode);
 }
+void Node::removeValueInput(unsigned Index) {
+  removeNodeInput(Index, NumValueInput, 0);
+}
+
 void Node::setControlInput(unsigned Index, Node* NewNode) {
   setNodeInput(Index, NumControlInput, NumValueInput, NewNode);
 }
 void Node::appendControlInput(Node* NewNode) {
   appendNodeInput(NumControlInput, NumValueInput, NewNode);
 }
+void Node::removeControlInput(unsigned Index) {
+  removeNodeInput(Index, NumControlInput, NumValueInput);
+}
+
 void Node::setEffectInput(unsigned Index, Node* NewNode) {
   setNodeInput(Index, NumEffectInput, NumValueInput + NumControlInput, NewNode);
 }
 void Node::appendEffectInput(Node* NewNode) {
   appendNodeInput(NumEffectInput, NumValueInput + NumControlInput,
                   NewNode);
+}
+void Node::removeEffectInput(unsigned Index) {
+  removeNodeInput(Index, NumEffectInput, NumValueInput + NumControlInput);
 }
 
 llvm::iterator_range<Node::value_user_iterator>
