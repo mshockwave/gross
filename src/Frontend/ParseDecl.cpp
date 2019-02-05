@@ -104,10 +104,6 @@ bool Parser::ParseFuncDecl() {
   }
   Tok = NextTok();
 
-  // we can't preserve node iterator since we use
-  // std::vector underlying to store nodes
-  size_t StartNodeIdx = G.node_size();
-
   if(Tok != Lexer::TOK_IDENT) {
     Log::E() << "Expect identifier for function\n";
     return false;
@@ -199,17 +195,7 @@ bool Parser::ParseFuncDecl() {
   PopSymScope();
 
   // Add function sub-graph
-  size_t EndNodeIdx = G.node_size();
-  std::vector<Node*> FuncNodes = {FuncNode, EndNode};
-  for(auto i = StartNodeIdx; i < EndNodeIdx; ++i) {
-    auto* N = G.getNode(i);
-    if(NodeProperties<IrOpcode::VirtGlobalValues>(N))
-      continue;
-    else
-      FuncNodes.push_back(N);
-  }
-  SubGraph SG(std::move(FuncNodes));
-  G.AddSubRegion(std::move(SG));
+  G.AddSubRegion(SubGraph(EndNode));
 
   return true;
 }
