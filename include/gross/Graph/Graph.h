@@ -96,6 +96,8 @@ public:
   explicit SubGraph(std::vector<Node*>&& OtherNodes)
     : Nodes(OtherNodes) {}
 
+  explicit SubGraph(Node* EndNode);
+
   using node_iterator = typename decltype(Nodes)::iterator;
   using const_node_iterator = typename decltype(Nodes)::const_iterator;
   static Node* GetNodeFromIt(const node_iterator& NodeIt) { return *NodeIt; }
