@@ -62,6 +62,9 @@ public:
   }
 
   void InsertNode(Node* N);
+  const_node_iterator RemoveNode(const_node_iterator It) {
+    return Nodes.erase(It);
+  }
 
   void AddSubRegion(const SubGraph& SubG);
   void AddSubRegion(SubGraph&& SubG);

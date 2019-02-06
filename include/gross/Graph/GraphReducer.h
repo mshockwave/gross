@@ -37,6 +37,12 @@ enum class ReductionState : uint8_t {
 //  { R::name() } -> const char*;
 //  { R.Reduce(N) } -> GraphReduction;
 // };
+//
+// template<class T>
+// concept GlobalReducerConcept = requires(T& R, Graph& G) {
+//  { R::name() } -> const char*;
+//  { R.Reduce(G) } -> void;
+// };
 
 namespace _detail {
 // abstract base class used to dispatch
@@ -45,6 +51,11 @@ struct ReducerConcept {
   virtual const char* name() const = 0;
 
   virtual GraphReduction Reduce(Node* N) = 0;
+};
+struct GlobalReducerConcept {
+  virtual const char* name() const = 0;
+
+  virtual void Reduce(Graph& G) = 0;
 };
 
 // a template wrapper used to implement the polymorphic API
@@ -62,8 +73,19 @@ struct ReducerModel : public ReducerConcept {
 private:
   ReducerT Reducer;
 };
+template<class ReducerT, class... CtorArgs>
+struct GlobalReducerModel : public GlobalReducerConcept {
+  GlobalReducerModel(CtorArgs &&... args)
+    : Reducer(std::forward<CtorArgs>(args)...) {}
 
-// Take Reducer's ownership
+  void Reduce(Graph& G) override { Reducer.Reduce(G); }
+
+  const char* name() const override { return ReducerT::name(); }
+
+private:
+  ReducerT Reducer;
+};
+
 void runReducerImpl(Graph& G, ReducerConcept* Reducer);
 } // end namespace _detail
 
@@ -73,6 +95,14 @@ void RunReducer(Graph& G, Args &&... CtorArgs) {
     std::forward<Args>(CtorArgs)...
   );
   _detail::runReducerImpl(G, &RM);
+}
+
+template<class ReducerT, class... Args>
+void RunGlobalReducer(Graph& G, Args &&... CtorArgs) {
+  _detail::GlobalReducerModel<ReducerT, Args...> RM(
+    std::forward<Args>(CtorArgs)...
+  );
+  RM.Reduce(G);
 }
 } // end namespace gross
 #endif

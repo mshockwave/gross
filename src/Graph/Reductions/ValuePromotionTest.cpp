@@ -1,5 +1,4 @@
 #include "gross/Graph/Reductions/ValuePromotion.h"
-#include "gross/Graph/Reductions/DeadCodeElimination.h"
 #include "gross/Graph/NodeUtils.h"
 #include "gross/Graph/Graph.h"
 #include "gtest/gtest.h"
@@ -45,9 +44,9 @@ TEST(GRValuePromotionTest, SimpleValuePromotionTest) {
     G.dumpGraphviz(OF);
   }
 
-  RunReducer<DCEReducer>(G, G);
-  {
-    std::ofstream OF("TestMem2regSimple.dce.dot");
-    G.dumpGraphviz(OF);
-  }
+  //RunGlobalReducer<DCEReducer>(G);
+  //{
+    //std::ofstream OF("TestMem2regSimple.dce.dot");
+    //G.dumpGraphviz(OF);
+  //}
 }

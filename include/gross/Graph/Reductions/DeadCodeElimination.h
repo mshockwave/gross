@@ -4,16 +4,13 @@
 
 namespace gross {
 struct DCEReducer {
-  DCEReducer(Graph& graph) : G(graph) {}
-
   static constexpr
   const char* name() { return "dce"; }
 
-  GraphReduction Reduce(Node* N);
+  void Reduce(Graph& G);
 
 private:
-  Graph& G;
-  GraphReduction EliminateDead(Node* N);
+  void EliminateUnreachable(Graph& G);
 };
 } // end namespace gross
 #endif
