@@ -1,6 +1,8 @@
 #include "gross/Graph/Reductions/ValuePromotion.h"
+//#include "gross/Graph/Reductions/DeadCodeElimination.h"
 #include "gross/Graph/NodeUtils.h"
 #include "gross/Graph/Graph.h"
+#include "gross/Support/STLExtras.h"
 #include "gtest/gtest.h"
 #include <fstream>
 
@@ -14,7 +16,12 @@ TEST(GRValuePromotionTest, SimpleValuePromotionTest) {
   auto* VarDecl = NodeBuilder<IrOpcode::SrcVarDecl>(&G)
                   .SetSymbolName("foo")
                   .Build();
-  auto* RHSVal = NodeBuilder<IrOpcode::ConstantInt>(&G, 87)
+  auto* Const1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 87)
+                 .Build();
+  auto* Const2 = NodeBuilder<IrOpcode::ConstantInt>(&G, 94)
+                 .Build();
+  auto* RHSVal = NodeBuilder<IrOpcode::BinAdd>(&G)
+                 .LHS(Const1).RHS(Const2)
                  .Build();
   auto* VarAccessDest = NodeBuilder<IrOpcode::SrcVarAccess>(&G)
                         .Decl(VarDecl)
@@ -32,21 +39,97 @@ TEST(GRValuePromotionTest, SimpleValuePromotionTest) {
   auto* End = NodeBuilder<IrOpcode::End>(&G, Func)
               .AddTerminator(Return)
               .Build();
-  G.AddSubRegion(SubGraph(End));
+  SubGraph FuncSG(End);
+  G.AddSubRegion(FuncSG);
   {
-    std::ofstream OF("TestMem2regSimple.dot");
+    std::ofstream OF("TestMem2RegSimple.dot");
     G.dumpGraphviz(OF);
   }
 
   RunReducer<ValuePromotion>(G, G);
+  // return, end, start, function name string, bin add
+  EXPECT_EQ(FuncSG.node_size(), 7);
+  EXPECT_EQ(End->getNumControlInput(), 2);
+  EXPECT_NE(gross::find(End->control_inputs(), Return),
+            End->control_inputs().end());
+  ASSERT_EQ(Return->getNumValueInput(), 1);
+  EXPECT_EQ(Return->getValueInput(0), RHSVal);
   {
-    std::ofstream OF("TestMem2regSimple.after.dot");
+    std::ofstream OF("TestMem2RegSimple.after.dot");
     G.dumpGraphviz(OF);
   }
 
   //RunGlobalReducer<DCEReducer>(G);
   //{
     //std::ofstream OF("TestMem2regSimple.dce.dot");
+    //G.dumpGraphviz(OF);
+  //}
+}
+
+TEST(GRValuePromotionTest, MultipleAssignTest) {
+  Graph G;
+  auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
+               .FuncName("func_mem2reg2")
+               .Build();
+  auto* VarDecl = NodeBuilder<IrOpcode::SrcVarDecl>(&G)
+                  .SetSymbolName("foo")
+                  .Build();
+  auto* Const1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 87)
+                 .Build();
+  auto* Const2 = NodeBuilder<IrOpcode::ConstantInt>(&G, 94)
+                 .Build();
+  auto* VarAccessDest1 = NodeBuilder<IrOpcode::SrcVarAccess>(&G)
+                         .Decl(VarDecl)
+                         .Build();
+  auto* Assign1 = NodeBuilder<IrOpcode::SrcAssignStmt>(&G)
+                  .Dest(VarAccessDest1).Src(Const1)
+                  .Build();
+  Assign1->appendControlInput(Func);
+
+  auto* RHSVal = NodeBuilder<IrOpcode::BinAdd>(&G)
+                 .LHS(Const1).RHS(Const2)
+                 .Build();
+  auto* VarAccess2 = NodeBuilder<IrOpcode::SrcVarAccess>(&G)
+                     .Decl(VarDecl)
+                     .Effect(Assign1)
+                     .Build();
+  auto* Assign2 = NodeBuilder<IrOpcode::SrcAssignStmt>(&G)
+                  .Dest(VarAccess2).Src(RHSVal)
+                  .Build();
+
+  auto* VarAccess3 = NodeBuilder<IrOpcode::SrcVarAccess>(&G)
+                     .Decl(VarDecl)
+                     .Effect(Assign2)
+                     .Build();
+  auto* Return = NodeBuilder<IrOpcode::Return>(&G, VarAccess3)
+                 .Build();
+  auto* End = NodeBuilder<IrOpcode::End>(&G, Func)
+              .AddTerminator(Return)
+              .Build();
+  SubGraph FuncSG(End);
+  G.AddSubRegion(FuncSG);
+  {
+    std::ofstream OF("TestMem2RegMultiAssign.dot");
+    G.dumpGraphviz(OF);
+  }
+
+  RunReducer<ValuePromotion>(G, G);
+  // same assertion as previous testcase
+  // return, end, start, function name string, bin add
+  EXPECT_EQ(FuncSG.node_size(), 7);
+  EXPECT_EQ(End->getNumControlInput(), 2);
+  EXPECT_NE(gross::find(End->control_inputs(), Return),
+            End->control_inputs().end());
+  ASSERT_EQ(Return->getNumValueInput(), 1);
+  EXPECT_EQ(Return->getValueInput(0), RHSVal);
+  {
+    std::ofstream OF("TestMem2RegMultiAssign.after.dot");
+    G.dumpGraphviz(OF);
+  }
+
+  //RunGlobalReducer<DCEReducer>(G);
+  //{
+    //std::ofstream OF("TestMem2RegMultiAssign.dce.dot");
     //G.dumpGraphviz(OF);
   //}
 }
