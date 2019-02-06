@@ -237,6 +237,8 @@ public:
   llvm::iterator_range<effect_user_iterator>
   effect_users();
 
+  size_t user_size() const { return Users.size(); }
+
   Node()
     : Op(IrOpcode::None),
       NumValueInput(0),

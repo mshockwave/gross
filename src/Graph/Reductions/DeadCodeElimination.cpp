@@ -44,5 +44,24 @@ GraphReduction DCEReducer::EliminateDead(Node* N) {
 }
 
 GraphReduction DCEReducer::Reduce(Node* N) {
-  return EliminateDead(N);
+  if(NodeProperties<IrOpcode::VirtGlobalValues>(N))
+    // skip global values
+    return NoChange();
+  if(N->user_size()) {
+    switch(NodeMarker<ReductionState>::Get(N)) {
+    case ReductionState::OnStack:
+      // first visit, need second iteration
+      return Revisit(N);
+    case ReductionState::Revisit:
+      // the node is good
+      return NoChange();
+    default:
+      gross_unreachable("Invalid reduction state");
+    }
+  } else {
+    // no user, remove
+    auto* Dead = NodeBuilder<IrOpcode::Dead>(&G).Build();
+    N->Kill(Dead);
+    return NoChange();
+  }
 }

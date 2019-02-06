@@ -28,7 +28,7 @@ TEST(GRDCETest, DeadEliminationTest) {
     G.dumpGraphviz(OF);
   }
 
-  RunReducer<DCEReducer>(G);
+  RunReducer<DCEReducer>(G, G);
   {
     std::ofstream OF("DCEDeadTest1.after.dot");
     G.dumpGraphviz(OF);
