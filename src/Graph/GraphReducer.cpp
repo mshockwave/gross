@@ -47,14 +47,10 @@ void runOnFunctionGraph(SubGraph& SG,
         RevisitStack.insert(RevisitStack.cbegin(), N);
       } else {
         RSMarker::Set(N, ReductionState::Visited);
-        SG.RemoveNode(N);
 
         Node* NewNode = RP.ReplacementNode();
         ReductionStack.insert(ReductionStack.cbegin(), NewNode);
         RSMarker::Set(NewNode, ReductionState::OnStack);
-        if(!NodeProperties<IrOpcode::VirtGlobalValues>(NewNode)) {
-          SG.AddNode(NewNode);
-        }
       }
     }
 
@@ -69,13 +65,9 @@ void runOnFunctionGraph(SubGraph& SG,
         auto* NewNode = RP.ReplacementNode();
         assert(NewNode != N && "Recursive revisit occur");
         RSMarker::Set(N, ReductionState::Visited);
-        SG.RemoveNode(N);
 
         ReductionStack.insert(ReductionStack.cbegin(), NewNode);
         RSMarker::Set(NewNode, ReductionState::OnStack);
-        if(!NodeProperties<IrOpcode::VirtGlobalValues>(NewNode)) {
-          SG.AddNode(NewNode);
-        }
       }
     }
   }

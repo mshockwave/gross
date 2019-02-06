@@ -38,27 +38,6 @@ void Graph::dumpGraphviz(std::ostream& OS) {
                         graph_prop_writer{});
 }
 
-// Add nodes recursively
-SubGraph::SubGraph(Node* EndNode) {
-  assert(EndNode);
-  std::vector<Node*> BFSQueue;
-  BFSQueue.push_back(EndNode);
-  while(!BFSQueue.empty()) {
-    Node* N = BFSQueue.front();
-    assert(N);
-    BFSQueue.erase(BFSQueue.cbegin());
-
-    // TODO: here we don't consider call, which
-    // will have a value dep to the callee func
-    Nodes.push_back(N);
-    for(auto* IN : N->inputs())
-      BFSQueue.push_back(IN);
-  }
-}
-
-bool SubGraph::RemoveNode(Node* N) {
-  auto It = std::find(Nodes.cbegin(), Nodes.cend(), N);
-  if(It == Nodes.cend()) return false;
-  Nodes.erase(It);
-  return true;
+size_t SubGraph::node_size() const {
+  return std::distance(node_cbegin(), node_cend());
 }

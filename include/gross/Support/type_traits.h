@@ -16,5 +16,7 @@ struct enable_if_v<true, VT, V> {
   static constexpr VT value = V;
 };
 
+template< bool B, class T, class F>
+using conditional_t = typename std::conditional<B,T,F>::type;
 } // end namespace gross
 #endif

@@ -156,8 +156,12 @@ public:
   void Kill(Node* DeadNode);
 
   using input_iterator = typename decltype(Inputs)::iterator;
+  using const_input_iterator = typename decltype(Inputs)::const_iterator;
   llvm::iterator_range<input_iterator> inputs() {
     return llvm::make_range(Inputs.begin(), Inputs.end());
+  }
+  llvm::iterator_range<const_input_iterator> inputs() const {
+    return llvm::make_range(Inputs.cbegin(), Inputs.cend());
   }
   input_iterator input_begin() { return Inputs.begin(); }
   input_iterator input_end() { return Inputs.end(); }
