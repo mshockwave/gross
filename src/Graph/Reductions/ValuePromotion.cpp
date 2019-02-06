@@ -17,7 +17,7 @@ GraphReduction ValuePromotion::ReduceAssignment(Node* Assign) {
   for(Node* Usr : Assign->effect_users()) {
     Usr->appendValueInput(SrcVal);
   }
-  Assign->ReplaceWith(DeadNode, Use::K_EFFECT);
+  Assign->Kill(DeadNode);
 
   return Replace(SrcVal);
 }

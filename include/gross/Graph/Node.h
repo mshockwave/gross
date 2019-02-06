@@ -151,6 +151,10 @@ public:
   void appendEffectInput(Node* NewNode);
   void removeEffectInput(unsigned Index);
 
+  // remove all the inputs, and replace all
+  // (remaining) users with Dead Node
+  void Kill(Node* DeadNode);
+
   using input_iterator = typename decltype(Inputs)::iterator;
   llvm::iterator_range<input_iterator> inputs() {
     return llvm::make_range(Inputs.begin(), Inputs.end());

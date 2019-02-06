@@ -69,7 +69,9 @@ void runReducerImpl(Graph& G, ReducerConcept* Reducer);
 
 template<class ReducerT, class... Args>
 void RunReducer(Graph& G, Args &&... CtorArgs) {
-  _detail::ReducerModel<ReducerT> RM(CtorArgs...);
+  _detail::ReducerModel<ReducerT, Args...> RM(
+    std::forward<Args>(CtorArgs)...
+  );
   _detail::runReducerImpl(G, &RM);
 }
 } // end namespace gross

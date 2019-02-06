@@ -91,6 +91,21 @@ void Node::removeEffectInput(unsigned Index) {
   removeNodeInput(Index, NumEffectInput, NumValueInput + NumControlInput);
 }
 
+void Node::Kill(Node* DeadNode) {
+  // remove inputs
+  for(auto i = 0U, N = NumValueInput; i < N; ++i)
+    setValueInput(i, DeadNode);
+  for(auto i = 0U, N = NumControlInput; i < N; ++i)
+    setControlInput(i, DeadNode);
+  for(auto i = 0U, N = NumEffectInput; i < N; ++i)
+    setEffectInput(i, DeadNode);
+
+  // replace all uses with Dead node
+  ReplaceWith(DeadNode, Use::K_VALUE);
+  ReplaceWith(DeadNode, Use::K_CONTROL);
+  ReplaceWith(DeadNode, Use::K_EFFECT);
+}
+
 llvm::iterator_range<Node::value_user_iterator>
 Node::value_users() {
   is_value_use Pred(this);

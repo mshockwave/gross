@@ -769,10 +769,9 @@ struct NodeBuilder<IrOpcode::End> {
     // control dependent on terminator nodes,
     // or start node if the former one is absent
     std::vector<Node*> CtrlDeps;
-    if(TermNodes.empty())
-      CtrlDeps = {StartNode};
-    else
+    if(!TermNodes.empty())
       CtrlDeps = std::move(TermNodes);
+    CtrlDeps.insert(CtrlDeps.cbegin(), StartNode);
     auto* N = new Node(IrOpcode::End,
                        {}, CtrlDeps);
     for(auto* TN : CtrlDeps)
