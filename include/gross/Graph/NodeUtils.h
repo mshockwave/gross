@@ -190,6 +190,26 @@ NODE_PROPERTIES(SrcAssignStmt) {
   }
 };
 
+NODE_PROPERTIES(If) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(If, N) {}
+
+  Node* TrueBranch() {
+    for(auto* CU : NodePtr->control_users()) {
+      if(CU->getOp() == IrOpcode::IfTrue)
+        return CU;
+    }
+    return nullptr;
+  }
+  Node* FalseBranch() {
+    for(auto* CU : NodePtr->control_users()) {
+      if(CU->getOp() == IrOpcode::IfFalse)
+        return CU;
+    }
+    return nullptr;
+  }
+};
+
 NODE_PROPERTIES(Merge) {
   NodeProperties(Node *N)
     : NODE_PROP_BASE(Merge, N) {}
@@ -224,6 +244,18 @@ NODE_PROPERTIES(VirtIfBranches) {
     auto Op = NodePtr->getOp();
     return Op == IrOpcode::IfTrue ||
            Op == IrOpcode::IfFalse;
+  }
+};
+
+NODE_PROPERTIES(Loop) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(Loop, N) {}
+
+  Node* Branch() {
+    for(auto* CU : NodePtr->control_users()) {
+      if(CU->getOp() == IrOpcode::If) return CU;
+    }
+    return nullptr;
   }
 };
 
@@ -807,6 +839,42 @@ struct NodeBuilder<IrOpcode::Return> {
 private:
   Graph* G;
   Node* ReturnExpr;
+};
+
+template<>
+struct NodeBuilder<IrOpcode::Loop> {
+  NodeBuilder(Graph* graph, Node* CtrlPoint)
+    : G(graph),
+      LastCtrlPoint(CtrlPoint) {}
+
+  NodeBuilder& Condition(Node* C) {
+    Predicate = C;
+    return *this;
+  }
+
+  Node* Build() {
+    auto* IfNode = NodeBuilder<IrOpcode::If>(G)
+                   .Condition(Predicate)
+                   .Build();
+    auto* IfTrue = NodeBuilder<IrOpcode::VirtIfBranches>(G, true)
+                   .IfStmt(IfNode)
+                   .Build();
+    auto* IfFalse = NodeBuilder<IrOpcode::VirtIfBranches>(G, false)
+                    .IfStmt(IfNode)
+                    .Build();
+    auto* LoopNode = new Node(IrOpcode::Loop, {},
+                              {LastCtrlPoint, IfTrue});
+    IfNode->appendControlInput(LoopNode);
+    LastCtrlPoint->Users.push_back(LoopNode);
+    IfTrue->Users.push_back(LoopNode);
+    G->InsertNode(LoopNode);
+    return LoopNode;
+  }
+
+private:
+  Graph* G;
+  Node* LastCtrlPoint;
+  Node* Predicate;
 };
 
 Node* FindNearestCtrlPoint(Node* N);

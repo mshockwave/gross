@@ -27,6 +27,7 @@ enum ID : unsigned {
   End,   // end of a function
   Merge, // control flow merge
   Phi,
+  Loop,
   Return,
   Call,
   Argument,

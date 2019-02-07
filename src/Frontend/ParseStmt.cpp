@@ -3,6 +3,7 @@
 #include "gross/Graph/NodeUtils.h"
 #include "Parser.h"
 #include <unordered_set>
+#include <unordered_map>
 
 using namespace gross;
 
@@ -156,6 +157,87 @@ Node* Parser::ParseIfStmt() {
   };
   LastModified.CloseAffineScope<>(PHINodeCallback);
   return MergeNode;
+}
+
+Node* Parser::ParseWhileStmt() {
+  auto Tok = CurTok();
+  if(Tok != Lexer::TOK_WHILE) {
+    Log::E() << "Expecting 'while' here\n";
+    return nullptr;
+  }
+  (void) NextTok();
+  auto* RelNode = ParseRelation();
+  if(!RelNode) return nullptr;
+
+  NodeBuilder<IrOpcode::Loop> LB(&G, getLastCtrlPoint());
+  LB.Condition(RelNode);
+  auto* LoopNode = LB.Build();
+
+  Tok = CurTok();
+  if(Tok != Lexer::TOK_DO) {
+    Log::E() << "Expecting 'do' here\n";
+    return nullptr;
+  }
+  (void) NextTok();
+
+  NewSymScope();
+  LastModified.NewAffineScope();
+  setLastCtrlPoint(LoopNode);
+  std::vector<Node*> BodyStmts;
+  if(!ParseStatements(BodyStmts)) return nullptr;
+  PopSymScope();
+
+  Tok = CurTok();
+  if(Tok != Lexer::TOK_END_DO) {
+    Log::E() << "Expecting 'od' here\n";
+    return nullptr;
+  }
+  (void) NextTok();
+
+  // {Original Value, PhiNode}
+  std::unordered_map<Node*,Node*> FixupMap;
+  using table_type = typename decltype(LastModified)::TableTy;
+  auto PHINodeCallback = [&,this](table_type* JoinTable,
+                                  const std::vector<table_type*>& BrTables) {
+    assert(BrTables.size() == 1);
+    auto& LoopBack = *BrTables.front(); // loopback values
+    auto& InitVals = *JoinTable;
+    for(auto& P : LoopBack) {
+      auto& Decl = P.first;
+      if(!InitVals.count(Decl)) continue;
+      auto* PHI = NodeBuilder<IrOpcode::Phi>(&G)
+                  .SetCtrlMerge(LoopNode)
+                  // put original value on the first
+                  // in order to retreive it more easily
+                  // later!
+                  .AddEffectInput(InitVals[Decl])
+                  .AddEffectInput(P.second)
+                  .Build();
+      FixupMap.insert({InitVals[Decl], PHI});
+      (*JoinTable)[Decl] = PHI;
+    }
+  };
+  LastModified.CloseAffineScope<>(PHINodeCallback);
+
+  // fixup statements in the body
+  std::vector<Node*> Worklist;
+  for(auto& P : FixupMap) {
+    auto* OrigVal = P.first;
+    auto* PHI = P.second;
+    Worklist.clear();
+    for(auto* EU : OrigVal->effect_users()) {
+      if(EU == PHI) continue;
+      Worklist.push_back(EU);
+    }
+    for(auto* N : Worklist)
+      N->ReplaceUseOfWith(OrigVal, PHI, Use::K_EFFECT);
+  }
+
+  auto* LoopBr = NodeProperties<IrOpcode::Loop>(LoopNode).Branch();
+  assert(LoopBr);
+  setLastCtrlPoint(NodeProperties<IrOpcode::If>(LoopBr).FalseBranch());
+
+  return LoopNode;
 }
 
 Node* Parser::ParseReturnStmt() {

@@ -202,3 +202,26 @@ TEST(ParserTest, TestIfStmt) {
     G.dumpGraphviz(OF);
   }
 }
+
+TEST(ParserTest, TestWhileStmt) {
+  std::stringstream SS;
+  {
+    SS << "var foo;\n"
+       << "let foo <- 4\n"
+       << "while 1 < 2 do\n"
+       << "  let foo <- 8\n"
+       << "od";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    SetMockContext(P,G);
+    ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
+
+    EXPECT_TRUE(P.ParseAssignment());
+
+    ASSERT_TRUE(P.ParseWhileStmt());
+
+    std::ofstream OF("TestWhileStmt1.dot");
+    G.dumpGraphviz(OF);
+  }
+}
