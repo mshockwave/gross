@@ -203,6 +203,33 @@ TEST(ParserTest, TestIfStmt) {
   }
 }
 
+TEST(ParserTest, TestNestedIfStmt) {
+  std::stringstream SS;
+  {
+    SS << "var foo;\n"
+       << "let foo <- 0"
+       << "if 1 < 2 then\n"
+       << "  if 1 < 2 then\n"
+       << "    let foo <- 5\n"
+       << "  fi;\n"
+       << "  let foo <- 3\n"
+       << "fi";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    SetMockContext(P,G);
+    ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
+
+    EXPECT_TRUE(P.ParseAssignment());
+
+    auto* MergeNode = P.ParseIfStmt();
+    ASSERT_TRUE(NodeProperties<IrOpcode::Merge>(MergeNode));
+
+    std::ofstream OF("TestNestedIfStmt1.dot");
+    G.dumpGraphviz(OF);
+  }
+}
+
 TEST(ParserTest, TestWhileStmt) {
   std::stringstream SS;
   {

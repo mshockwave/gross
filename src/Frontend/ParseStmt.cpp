@@ -259,7 +259,7 @@ Node* Parser::ParseReturnStmt() {
 bool Parser::ParseStatements(std::vector<Node*>& Stmts) {
   while(true) {
     auto Tok = CurTok();
-    // TODO: funcCall, while, return
+    // TODO: funcCall
     switch(Tok) {
     case Lexer::TOK_IF: {
       auto* Stmt = ParseIfStmt();
@@ -275,6 +275,12 @@ bool Parser::ParseStatements(std::vector<Node*>& Stmts) {
     }
     case Lexer::TOK_RETURN: {
       auto* Stmt = ParseReturnStmt();
+      if(Stmt) Stmts.push_back(Stmt);
+      else return false;
+      break;
+    }
+    case Lexer::TOK_WHILE: {
+      auto* Stmt = ParseWhileStmt();
       if(Stmt) Stmts.push_back(Stmt);
       else return false;
       break;
