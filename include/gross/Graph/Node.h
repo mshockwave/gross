@@ -262,7 +262,15 @@ public:
 
   bool ReplaceUseOfWith(Node* From, Node* To, Use::Kind UseKind);
   // replace this node with Replacement in all its users
-  void ReplaceWith(Node* Replacement, Use::Kind UseKind);
+  void ReplaceWith(Node* Replacement, Use::Kind UseKind = Use::K_NONE);
+};
+
+/// For hashing scenario where we also need to
+/// encode input/uses information
+struct NodeHandle {
+  Node* NodePtr;
+
+  bool operator==(const NodeHandle& RHS) const;
 };
 
 /// scratch data inside Node that is fast to access
@@ -317,6 +325,23 @@ public:
 } // end namespace gross
 
 namespace std {
+template<>
+struct hash<gross::NodeHandle> {
+  using argument_type = gross::NodeHandle;
+  using result_type = size_t;
+  result_type operator()(argument_type const& NH) const noexcept {
+    auto* N = NH.NodePtr;
+    result_type seed = 0U;
+    // Opcode
+    boost::hash_combine(seed, static_cast<unsigned>(N->getOp()));
+    // inputs
+    // TODO: communative operators' operands
+    for(auto* I : N->inputs())
+      boost::hash_combine(seed, I);
+    return seed;
+  }
+};
+
 template<>
 struct hash<gross::Use> {
   using argument_type = gross::Use;

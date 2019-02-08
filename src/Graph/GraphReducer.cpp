@@ -56,19 +56,10 @@ void runOnFunctionGraph(SubGraph& SG,
 
     while(!RevisitStack.empty()) {
       Node* N = RevisitStack.front();
-      auto RP = Reducer->Reduce(N);
-
       RevisitStack.erase(RevisitStack.cbegin());
-      if(!RP.Changed()) {
-        RSMarker::Set(N, ReductionState::Visited);
-      } else {
-        auto* NewNode = RP.ReplacementNode();
-        assert(NewNode != N && "Recursive revisit occur");
-        RSMarker::Set(N, ReductionState::Visited);
 
-        ReductionStack.insert(ReductionStack.cbegin(), NewNode);
-        RSMarker::Set(NewNode, ReductionState::OnStack);
-      }
+      ReductionStack.insert(ReductionStack.cbegin(), N);
+      RSMarker::Set(N, ReductionState::OnStack);
     }
   }
 }

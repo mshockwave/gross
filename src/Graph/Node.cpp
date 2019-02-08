@@ -1,6 +1,7 @@
 #include "gross/Graph/Node.h"
 #include "gross/Support/STLExtras.h"
 #include <iterator>
+#include <utility>
 
 using namespace gross;
 
@@ -161,7 +162,10 @@ bool Node::ReplaceUseOfWith(Node* From, Node* To, Use::Kind UseKind) {
 void Node::ReplaceWith(Node* Replacement, Use::Kind UseKind) {
   switch(UseKind) {
   case Use::K_NONE:
-    gross_unreachable("Invalid Use Kind");
+    // replace every category of uses
+    ReplaceWith(Replacement, Use::K_VALUE);
+    ReplaceWith(Replacement, Use::K_CONTROL);
+    ReplaceWith(Replacement, Use::K_EFFECT);
     break;
   case Use::K_VALUE: {
     for(Node* Usr : value_users())
@@ -179,4 +183,9 @@ void Node::ReplaceWith(Node* Replacement, Use::Kind UseKind) {
     break;
   }
   }
+}
+
+bool NodeHandle::operator==(const NodeHandle& RHS) const {
+  std::hash<NodeHandle> Hasher;
+  return Hasher(*this) == Hasher(RHS);
 }
