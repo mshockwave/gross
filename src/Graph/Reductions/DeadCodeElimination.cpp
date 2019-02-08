@@ -2,14 +2,16 @@
 #include "gross/Graph/Node.h"
 #include "gross/Graph/NodeUtils.h"
 
-using namespace gross;
-
+namespace gross {
 namespace _internal {
 enum VisitState : uint8_t {
   K_REACHABLE,
   K_UNREACHABLE
 };
 } // end namespace _internal
+} // end namespace gross
+
+using namespace gross;
 
 void DCEReducer::EliminateUnreachable(Graph& G) {
   // remove (non-global) nodes that are not included

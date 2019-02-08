@@ -3,6 +3,7 @@
 #include "gross/Graph/Node.h"
 #include "gross/Graph/Graph.h"
 #include "gross/Support/type_traits.h"
+#include "gross/Support/iterator_range.h"
 #include <string>
 
 namespace gross {
@@ -119,6 +120,14 @@ NODE_PROPERTIES_VIRT(SrcArrayDecl, VirtSrcDecl) {
     assert(idx < dim_size() && "dim index out-of-bound");
     return NodePtr->getValueInput(idx + 1);
   }
+  llvm::iterator_range<typename Node::input_iterator>
+  dims() const {
+    assert(NodePtr->getNumValueInput() > 0);
+    return llvm::make_range(
+      NodePtr->value_input_begin() + 1,
+      NodePtr->value_input_end()
+    );
+  }
 };
 
 NODE_PROPERTIES(VirtSrcDesigAccess) {
@@ -173,6 +182,14 @@ struct NodeProperties<IrOpcode::SrcArrayAccess>
   Node* dim(size_t idx) const {
     assert(idx < dim_size() && "dim index out-of-bound");
     return NodePtr->getValueInput(idx + 1);
+  }
+  llvm::iterator_range<typename Node::input_iterator>
+  dims() const {
+    assert(NodePtr->getNumValueInput() > 0);
+    return llvm::make_range(
+      NodePtr->value_input_begin() + 1,
+      NodePtr->value_input_end()
+    );
   }
 };
 
@@ -292,6 +309,55 @@ NODE_PROPERTIES(VirtCtrlPoints) {
     default:
       return false;
     }
+  }
+};
+
+NODE_PROPERTIES(VirtMemOps) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(VirtMemOps, N) {}
+
+  operator bool() const {
+    if(!NodePtr) return false;
+    auto OC = NodePtr->getOp();
+    return OC == IrOpcode::MemLoad ||
+           OC == IrOpcode::MemStore;
+  }
+
+  Node* BaseAddr() {
+    if(NodePtr->getNumValueInput() > 0) {
+      return NodePtr->getValueInput(0);
+    }
+    return nullptr;
+  }
+  Node* Offset() {
+    if(NodePtr->getNumValueInput() > 1) {
+      return NodePtr->getValueInput(1);
+    }
+    return nullptr;
+  }
+};
+
+NODE_PROPERTIES_VIRT(MemLoad, VirtMemOps) {
+  NodeProperties(Node *N)
+    : NODE_PROP_VIRT(VirtMemOps, N) {}
+
+  operator bool() const {
+    return NodePtr && NodePtr->getOp() == IrOpcode::MemLoad;
+  }
+};
+NODE_PROPERTIES_VIRT(MemStore, VirtMemOps) {
+  NodeProperties(Node *N)
+    : NODE_PROP_VIRT(VirtMemOps, N) {}
+
+  operator bool() const {
+    return NodePtr && NodePtr->getOp() == IrOpcode::MemStore;
+  }
+
+  Node* SrcVal() {
+    if(NodePtr->getNumValueInput() > 2) {
+      return NodePtr->getValueInput(2);
+    }
+    return nullptr;
   }
 };
 #undef NODE_PROP_BASE
@@ -875,6 +941,72 @@ private:
   Graph* G;
   Node* LastCtrlPoint;
   Node* Predicate;
+};
+
+namespace _internal {
+template<IrOpcode::ID OC,
+         class DerivedT = NodeBuilder<OC>>
+class MemNodeBuilder {
+  inline
+  DerivedT& derived() { return *static_cast<DerivedT*>(this); }
+
+public:
+  MemNodeBuilder(Graph* graph)
+    : G(graph) {}
+
+  DerivedT& BaseAddr(Node* N) {
+    BaseAddrNode = N;
+    return derived();
+  }
+  DerivedT& Offset(Node* N) {
+    OffsetNode = N;
+    return derived();
+  }
+
+protected:
+  Graph* G;
+  Node *BaseAddrNode, *OffsetNode;
+};
+} // end namespace _internal
+template<>
+struct NodeBuilder<IrOpcode::MemLoad>
+  : public _internal::MemNodeBuilder<IrOpcode::MemLoad> {
+  NodeBuilder(Graph* graph)
+    : _internal::MemNodeBuilder<IrOpcode::MemLoad>(graph) {}
+
+  Node* Build() {
+    auto* N = new Node(IrOpcode::MemLoad,
+                       {BaseAddrNode, OffsetNode});
+    BaseAddrNode->Users.push_back(N);
+    OffsetNode->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+};
+template<>
+struct NodeBuilder<IrOpcode::MemStore>
+  : public _internal::MemNodeBuilder<IrOpcode::MemStore> {
+  NodeBuilder(Graph* graph)
+    : _internal::MemNodeBuilder<IrOpcode::MemStore>(graph) {}
+
+  NodeBuilder& Src(Node* N) {
+    SrcNode = N;
+    return *this;
+  }
+
+  Node* Build() {
+    auto* N = new Node(IrOpcode::MemStore,
+                       {BaseAddrNode, OffsetNode,
+                        SrcNode});
+    BaseAddrNode->Users.push_back(N);
+    OffsetNode->Users.push_back(N);
+    SrcNode->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+
+private:
+  Node* SrcNode;
 };
 
 Node* FindNearestCtrlPoint(Node* N);

@@ -49,9 +49,10 @@ enum ID : unsigned {
   VirtSrcDesigAccess, // SrcVarAccess | SrcArrayAccess
   VirtIfBranches,     // IfTrue | IfFalse
   VirtFuncPrototype,  // Start + Argument(s)
-  VirtGlobalValues,   // Dead + ConstantInt + ConstantStr + Start + End
-  VirtCtrlPoints      // If + IfTrue + IfFalse + Merge + Start + End
-                      // + Return
+  VirtGlobalValues,   // Dead | ConstantInt | ConstantStr | Start | End
+  VirtCtrlPoints,     // If | IfTrue | IfFalse | Merge | Start | End
+                      // | Return
+  VirtMemOps          // MemLoad | MemStore
 };
 } // end namespace IrOpcode
 } // end namespace gross

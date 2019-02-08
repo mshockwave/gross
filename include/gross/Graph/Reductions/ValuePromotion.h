@@ -5,7 +5,9 @@
 namespace gross {
 class ValuePromotion {
   GraphReduction ReduceAssignment(Node* N);
+  GraphReduction ReduceMemAssignment(Node* N);
   GraphReduction ReduceVarAccess(Node* N);
+  GraphReduction ReduceMemAccess(Node* N);
 
   Graph& G;
 

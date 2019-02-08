@@ -1,5 +1,5 @@
 #include "gross/Graph/Reductions/ValuePromotion.h"
-//#include "gross/Graph/Reductions/DeadCodeElimination.h"
+#include "gross/Graph/Reductions/DeadCodeElimination.h"
 #include "gross/Graph/NodeUtils.h"
 #include "gross/Graph/Graph.h"
 #include "gross/Support/STLExtras.h"
@@ -132,4 +132,47 @@ TEST(GRValuePromotionTest, MultipleAssignTest) {
     //std::ofstream OF("TestMem2RegMultiAssign.dce.dot");
     //G.dumpGraphviz(OF);
   //}
+}
+
+TEST(GRValuePromotionTest, ArrayReadTest) {
+  {
+    Graph G;
+    // only read array element
+    auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
+                 .FuncName("func_mem2reg3")
+                 .Build();
+    auto* ArrayDecl = NodeBuilder<IrOpcode::SrcArrayDecl>(&G)
+                      .SetSymbolName("barArray")
+                      .AddConstDim(94)
+                      .AddConstDim(87)
+                      .Build();
+    auto* Dim1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 5).Build();
+    auto* Dim2 = NodeBuilder<IrOpcode::ConstantInt>(&G, 7).Build();
+    auto* ArrayAccess = NodeBuilder<IrOpcode::SrcArrayAccess>(&G)
+                        .Decl(ArrayDecl)
+                        .AppendAccessDim(Dim1)
+                        .AppendAccessDim(Dim2)
+                        .Build();
+    auto* Return = NodeBuilder<IrOpcode::Return>(&G, ArrayAccess).Build();
+    auto* End = NodeBuilder<IrOpcode::End>(&G, Func)
+                .AddTerminator(Return)
+                .Build();
+    SubGraph FuncSG(End);
+    G.AddSubRegion(FuncSG);
+    {
+      std::ofstream OF("TestMem2RegArrayRead1.dot");
+      G.dumpGraphviz(OF);
+    }
+
+    RunReducer<ValuePromotion>(G, G);
+    {
+      std::ofstream OF("TestMem2RegArrayRead1.after.dot");
+      G.dumpGraphviz(OF);
+    }
+    RunGlobalReducer<DCEReducer>(G);
+    {
+      std::ofstream OF("TestMem2RegArrayRead1.dce.dot");
+      G.dumpGraphviz(OF);
+    }
+  }
 }

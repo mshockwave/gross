@@ -392,6 +392,8 @@ struct graph_vertex_prop_writer {
     CASE_OPCODE_STR(Argument);
     CASE_OPCODE_STR(Return);
     CASE_OPCODE_STR(Dead);
+    CASE_OPCODE_STR(MemLoad);
+    CASE_OPCODE_STR(MemStore);
     default: OS << "UNKNOWN";
     }
 

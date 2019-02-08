@@ -22,6 +22,10 @@ GraphReduction ValuePromotion::ReduceAssignment(Node* Assign) {
   return Replace(SrcVal);
 }
 
+GraphReduction ValuePromotion::ReduceMemAssignment(Node* N) {
+  return NoChange();
+}
+
 // Replace value dep on SrcVarAccess(SrcArrayAccess) with
 // value dep on the source value.
 GraphReduction ValuePromotion::ReduceVarAccess(Node* VarAccess) {
@@ -43,12 +47,60 @@ GraphReduction ValuePromotion::ReduceVarAccess(Node* VarAccess) {
   }
 }
 
+// Reduce to MemLoad first, then transform to MemStore if needed
+GraphReduction ValuePromotion::ReduceMemAccess(Node* MemAccess) {
+  NodeProperties<IrOpcode::SrcArrayAccess> NP(MemAccess);
+  assert(NP);
+
+  // wait until all inputs are visited
+  for(auto* N : MemAccess->value_inputs()) {
+    if(NodeMarker<ReductionState>::Get(N) != ReductionState::Visited)
+      return Revisit(MemAccess);
+  }
+
+  Node* ArrayDecl = NP.decl();
+  NodeProperties<IrOpcode::SrcArrayDecl> DNP(ArrayDecl);
+  assert(DNP);
+  auto DimSize = NP.dim_size(),
+       DeclDimSize = DNP.dim_size();
+  assert(DimSize == DeclDimSize && DimSize > 0);
+  std::vector<Node*> Accums;
+  for(auto I = 0U, DI = 0U; I < DimSize - 1 && DI < DeclDimSize - 1;
+      ++I, ++DI) {
+    auto* M = NodeBuilder<IrOpcode::BinMul>(&G)
+              .LHS(NP.dim(I)).RHS(DNP.dim(DI))
+              .Build();
+    Accums.push_back(M);
+  }
+  Accums.push_back(NP.dim(DimSize - 1));
+
+  auto IA = Accums.begin();
+  auto* OffsetNode = *IA;
+  ++IA;
+  for(auto EA = Accums.end(); IA != EA; ++IA) {
+    OffsetNode = NodeBuilder<IrOpcode::BinAdd>(&G)
+                 .LHS(OffsetNode).RHS(*IA)
+                 .Build();
+  }
+  auto* MemLoadNode = NodeBuilder<IrOpcode::MemLoad>(&G)
+                      .BaseAddr(ArrayDecl).Offset(OffsetNode)
+                      .Build();
+
+  // propagate the side effects
+  for(auto* E : MemAccess->effect_inputs())
+    MemLoadNode->appendEffectInput(E);
+  MemAccess->ReplaceWith(MemLoadNode, Use::K_VALUE);
+  return Replace(MemLoadNode);
+}
+
 GraphReduction ValuePromotion::Reduce(Node* N) {
   switch(N->getOp()) {
   case IrOpcode::SrcAssignStmt:
     return ReduceAssignment(N);
   case IrOpcode::SrcVarAccess:
     return ReduceVarAccess(N);
+  case IrOpcode::SrcArrayAccess:
+    return ReduceMemAccess(N);
   default:
     return NoChange();
   }
