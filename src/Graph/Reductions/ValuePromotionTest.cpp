@@ -176,3 +176,52 @@ TEST(GRValuePromotionTest, ArrayReadTest) {
     }
   }
 }
+
+TEST(GRValuePromotionTest, ArrayWriteTest) {
+  {
+    Graph G;
+    // single array element write
+    auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
+                 .FuncName("func_mem2reg4")
+                 .Build();
+    auto* ArrayDecl = NodeBuilder<IrOpcode::SrcArrayDecl>(&G)
+                      .SetSymbolName("barArray")
+                      .AddConstDim(94)
+                      .AddConstDim(87)
+                      .Build();
+    auto* Dim1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 5).Build();
+    auto* Dim2 = NodeBuilder<IrOpcode::ConstantInt>(&G, 7).Build();
+    auto* ArrayAccess = NodeBuilder<IrOpcode::SrcArrayAccess>(&G)
+                        .Decl(ArrayDecl)
+                        .AppendAccessDim(Dim1)
+                        .AppendAccessDim(Dim2)
+                        .Build();
+    auto* RHSVal = NodeBuilder<IrOpcode::ConstantInt>(&G, 2).Build();
+    auto* Assign = NodeBuilder<IrOpcode::SrcAssignStmt>(&G)
+                   .Dest(ArrayAccess).Src(RHSVal)
+                   .Build();
+    Assign->appendControlInput(Func);
+    auto* End = NodeBuilder<IrOpcode::End>(&G, Func)
+                .Build();
+    // FIXME: should End node depend on any memory operations
+    // in general?
+    End->appendEffectInput(Assign);
+    SubGraph FuncSG(End);
+    G.AddSubRegion(FuncSG);
+    {
+      std::ofstream OF("TestMem2RegArrayWrite1.dot");
+      G.dumpGraphviz(OF);
+    }
+
+    RunReducer<ValuePromotion>(G, G);
+    {
+      std::ofstream OF("TestMem2RegArrayWrite1.after.dot");
+      G.dumpGraphviz(OF);
+    }
+    RunGlobalReducer<DCEReducer>(G);
+    {
+      std::ofstream OF("TestMem2RegArrayWrite1.dce.dot");
+      G.dumpGraphviz(OF);
+    }
+  }
+}
