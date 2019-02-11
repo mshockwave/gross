@@ -51,7 +51,7 @@ enum ID : unsigned {
   VirtFuncPrototype,  // Start + Argument(s)
   VirtGlobalValues,   // Dead | ConstantInt | ConstantStr | Start | End
   VirtCtrlPoints,     // If | IfTrue | IfFalse | Merge | Start | End
-                      // | Return
+                      // | Return | Loop
   VirtMemOps          // MemLoad | MemStore
 };
 } // end namespace IrOpcode

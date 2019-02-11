@@ -305,6 +305,7 @@ NODE_PROPERTIES(VirtCtrlPoints) {
     case IrOpcode::Start:
     case IrOpcode::End:
     case IrOpcode::Return:
+    case IrOpcode::Loop:
       return true;
     default:
       return false;
