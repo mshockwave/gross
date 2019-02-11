@@ -105,7 +105,8 @@ public:
   }
 
   template<
-    class Func = std::function<void(ContainerTy*,
+    class T = AffineContainer<ContainerTy,Affinity>,
+    class Func = std::function<void(T&,
                                     const std::vector<ContainerTy*>&)>
   >
   void CloseAffineScope(Func Callback) {
@@ -116,12 +117,14 @@ public:
       CurEntries.begin(),
       CurEntries.begin() + (CurScope->CurBranch() + 1)
     );
-    Callback(PrevEntry(), Entries);
+    // switch to previous scope without poping the current scope
     CurScope = PrevScope;
     if(PrevScope == ScopeStack.end())
       PrevScope = ScopeStack.end();
     else
       --PrevScope;
+    Callback(*static_cast<T*>(this), Entries);
+
     ScopeStack.pop_back();
   }
 };
@@ -155,6 +158,14 @@ public:
   // copy from parent then modify
   V& operator[](const K& key) {
     return (*BaseTy::CurEntryMutable())[key];
+  }
+
+  template<
+    class Func = std::function<void(AffineRecordTable<K,V,Affinity>&,
+                                    const std::vector<TableTy*>&)>>
+  void CloseAffineScope(Func Callback) {
+    BaseTy::template CloseAffineScope<AffineRecordTable<K,V,Affinity>,
+                                      Func>(Callback);
   }
 };
 } // end namespace gross

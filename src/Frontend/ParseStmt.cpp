@@ -102,10 +102,12 @@ Node* Parser::ParseIfStmt() {
   }
 
   // add merge node to merge control deps
-  using ctrl_point_type = typename decltype(LastControlPoint)::value_type;
-  auto CtrlMergeCallback = [&](ctrl_point_type* MergePoint,
+  using affine_ctrl_points = decltype(LastControlPoint);
+  using ctrl_point_type = typename affine_ctrl_points::value_type;
+  auto CtrlMergeCallback = [&](affine_ctrl_points& ACP,
                                const std::vector<ctrl_point_type*>& BrPoints) {
     assert(BrPoints.size() <= 2 && BrPoints.size());
+    auto* MergePoint = ACP.CurEntryMutable();
     NodeBuilder<IrOpcode::Merge> MB(&G);
     MB.AddCtrlInput(std::get<0>(*BrPoints.at(0)));
     // check whether there is false branch
@@ -127,11 +129,12 @@ Node* Parser::ParseIfStmt() {
   }
   (void) NextTok();
 
-  using table_type = typename decltype(LastModified)::TableTy;
-  auto PHINodeCallback = [&,this](table_type* JoinTable,
+  using affine_table_type = decltype(LastModified);
+  using table_type = typename affine_table_type::TableTy;
+  auto PHINodeCallback = [&,this](affine_table_type& JoinTable,
                                   const std::vector<table_type*>& BrTables) {
     std::unordered_map<Node*, std::vector<Node*>> Variants;
-    for(auto& Pair : *JoinTable) {
+    for(auto& Pair : JoinTable) {
       Variants[Pair.first].push_back(Pair.second);
     }
     for(auto* BrTable : BrTables)
@@ -152,7 +155,7 @@ Node* Parser::ParseIfStmt() {
       PB.AddEffectInput(Variant.at(VSize - 1));
       auto* PHI = PB.Build();
       // update previous table
-      (*JoinTable)[VP.first] = PHI;
+      JoinTable[VP.first] = PHI;
     }
   };
   LastModified.CloseAffineScope<>(PHINodeCallback);
@@ -196,12 +199,13 @@ Node* Parser::ParseWhileStmt() {
 
   // {Original Value, PhiNode}
   std::unordered_map<Node*,Node*> FixupMap;
-  using table_type = typename decltype(LastModified)::TableTy;
-  auto PHINodeCallback = [&,this](table_type* JoinTable,
+  using affine_table_type = decltype(LastModified);
+  using table_type = typename affine_table_type::TableTy;
+  auto PHINodeCallback = [&,this](affine_table_type& JoinTable,
                                   const std::vector<table_type*>& BrTables) {
     assert(BrTables.size() == 1);
     auto& LoopBack = *BrTables.front(); // loopback values
-    auto& InitVals = *JoinTable;
+    auto& InitVals = *(JoinTable.CurEntry());
     for(auto& P : LoopBack) {
       auto& Decl = P.first;
       if(!InitVals.count(Decl)) continue;
@@ -214,7 +218,7 @@ Node* Parser::ParseWhileStmt() {
                   .AddEffectInput(P.second)
                   .Build();
       FixupMap.insert({InitVals[Decl], PHI});
-      (*JoinTable)[Decl] = PHI;
+      JoinTable[Decl] = PHI;
     }
   };
   LastModified.CloseAffineScope<>(PHINodeCallback);

@@ -252,3 +252,83 @@ TEST(ParserUnitTest, TestWhileStmt) {
     G.dumpGraphviz(OF);
   }
 }
+
+TEST(ParserUnitTest, TestComplexWhileStmt) {
+  std::stringstream SS;
+  {
+    // if branch nested in loop
+    SS << "var foo;\n"
+       << "let foo <- 4\n"
+       << "while 1 < 2 do\n"
+       << "  if 1 < 3 then\n"
+       << "    let foo <- 5\n"
+       << "  else\n"
+       << "    let foo <- 7\n"
+       << "  fi\n"
+       << "od";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    SetMockContext(P,G);
+    ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
+
+    EXPECT_TRUE(P.ParseAssignment());
+
+    ASSERT_TRUE(P.ParseWhileStmt());
+
+    std::ofstream OF("TestComplexWhileStmt1.dot");
+    G.dumpGraphviz(OF);
+  }
+  SS.clear();
+  {
+    // loop nested in loop
+    SS << "var foo;\n"
+       << "let foo <- 4\n"
+       << "while 1 < 2 do\n"
+       << "  while 1 < 3 do\n"
+       << "    let foo <- 5;\n"
+       << "    let foo <- 6\n"
+       << "  od\n"
+       << "od";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    SetMockContext(P,G);
+    ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
+
+    EXPECT_TRUE(P.ParseAssignment());
+
+    ASSERT_TRUE(P.ParseWhileStmt());
+
+    std::ofstream OF("TestComplexWhileStmt2.dot");
+    G.dumpGraphviz(OF);
+  }
+  SS.clear();
+  {
+    // loop and branch nested in loop
+    SS << "var foo;\n"
+       << "let foo <- 4\n"
+       << "while 1 < 2 do\n"
+       << "  while 1 < 3 do\n"
+       << "    let foo <- 5\n"
+       << "  od;\n"
+       << "  if 1 < 2 then\n"
+       << "    let foo <- 6\n"
+       << "  else\n"
+       << "    let foo <- 7\n"
+       << "  fi\n"
+       << "od";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    SetMockContext(P,G);
+    ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
+
+    EXPECT_TRUE(P.ParseAssignment());
+
+    ASSERT_TRUE(P.ParseWhileStmt());
+
+    std::ofstream OF("TestComplexWhileStmt3.dot");
+    G.dumpGraphviz(OF);
+  }
+}

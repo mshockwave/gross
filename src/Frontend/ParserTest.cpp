@@ -6,7 +6,8 @@ using namespace gross;
 
 TEST(ParserUtilsUnitTest, TestAffineRecordTable) {
   AffineRecordTable<std::string,int> ART;
-  using table_type = typename decltype(ART)::TableTy;
+  using affine_table_type = decltype(ART);
+  using table_type = typename affine_table_type::TableTy;
   // should create a default scope and table
   EXPECT_EQ(ART.num_scopes(), 1);
   EXPECT_EQ(ART.num_tables(), 1);
@@ -40,9 +41,9 @@ TEST(ParserUtilsUnitTest, TestAffineRecordTable) {
   ASSERT_NE(it_query, ART.end());
   EXPECT_EQ(it_query->second, 12);
   ART.CloseAffineScope<>(
-    [&](table_type* OutTable, const std::vector<table_type*>& Tables) {
+    [&](affine_table_type& OutTable, const std::vector<table_type*>& Tables) {
       EXPECT_EQ(Tables.size(), 1);
-      (*OutTable)["world"] = 100;
+      OutTable["world"] = 100;
     }
   );
   // should switch back to old table
