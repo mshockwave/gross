@@ -4,40 +4,40 @@
 #include "gross/Graph/BGL.h"
 #include "boost/graph/graph_concepts.hpp"
 
-TEST(GraphBGLTest, TestGraphConcept) {
+TEST(GraphBGLUnitTest, TestGraphConcept) {
   BOOST_CONCEPT_ASSERT(( boost::GraphConcept<gross::Graph> ));
 }
-TEST(GraphBGLTest, TestVertexListGraphConcept) {
+TEST(GraphBGLUnitTest, TestVertexListGraphConcept) {
   BOOST_CONCEPT_ASSERT(( boost::VertexListGraphConcept<gross::Graph> ));
 }
-TEST(GraphBGLTest, TestEdgeListGraphConcept) {
+TEST(GraphBGLUnitTest, TestEdgeListGraphConcept) {
   BOOST_CONCEPT_ASSERT(( boost::EdgeListGraphConcept<gross::Graph> ));
 }
-TEST(GraphBGLTest, TestIncidenceGraphConcept) {
+TEST(GraphBGLUnitTest, TestIncidenceGraphConcept) {
   BOOST_CONCEPT_ASSERT(( boost::IncidenceGraphConcept<gross::Graph> ));
 }
 
-TEST(GraphBGLTest, TestVertexReadablePropertyMapConcept) {
+TEST(GraphBGLUnitTest, TestVertexReadablePropertyMapConcept) {
   BOOST_CONCEPT_ASSERT(( boost::ReadablePropertyMapConcept<
                           gross::graph_id_map<gross::Graph,
                                               boost::vertex_index_t>,
                           gross::Node* > ));
 }
 
-TEST(SubGraphBGLTest, TestGraphConcept) {
+TEST(SubGraphBGLUnitTest, TestGraphConcept) {
   BOOST_CONCEPT_ASSERT(( boost::GraphConcept<gross::SubGraph> ));
 }
-TEST(SubGraphBGLTest, TestVertexListGraphConcept) {
+TEST(SubGraphBGLUnitTest, TestVertexListGraphConcept) {
   BOOST_CONCEPT_ASSERT(( boost::VertexListGraphConcept<gross::SubGraph> ));
 }
-TEST(SubGraphBGLTest, TestEdgeListGraphConcept) {
+TEST(SubGraphBGLUnitTest, TestEdgeListGraphConcept) {
   BOOST_CONCEPT_ASSERT(( boost::EdgeListGraphConcept<gross::SubGraph> ));
 }
-TEST(SubGraphBGLTest, TestIncidenceGraphConcept) {
+TEST(SubGraphBGLUnitTest, TestIncidenceGraphConcept) {
   BOOST_CONCEPT_ASSERT(( boost::IncidenceGraphConcept<gross::SubGraph> ));
 }
 
-TEST(SubGraphBGLTest, TestVertexReadablePropertyMapConcept) {
+TEST(SubGraphBGLUnitTest, TestVertexReadablePropertyMapConcept) {
   BOOST_CONCEPT_ASSERT(( boost::ReadablePropertyMapConcept<
                           gross::graph_id_map<gross::SubGraph,
                                               boost::vertex_index_t>,

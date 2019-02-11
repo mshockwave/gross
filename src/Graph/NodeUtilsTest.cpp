@@ -4,7 +4,7 @@
 
 using namespace gross;
 
-TEST(NodeBuilderTest, TestConstantNode) {
+TEST(NodeBuilderUnitTest, TestConstantNode) {
   Graph G;
 
   Node* NumNode = NodeBuilder<IrOpcode::ConstantInt>(&G, 87)
@@ -26,7 +26,7 @@ TEST(NodeBuilderTest, TestConstantNode) {
   EXPECT_EQ(G.getNumConstStr(), 1);
 }
 
-TEST(NodeBuilderTest, TestVarArrayDecls) {
+TEST(NodeBuilderUnitTest, TestVarArrayDecls) {
   Graph G;
 
   Node* VarDeclNode = NodeBuilder<IrOpcode::SrcVarDecl>(&G)
@@ -74,7 +74,7 @@ TEST(NodeBuilderTest, TestVarArrayDecls) {
   }
 }
 
-TEST(NodeBuilderTest, TestSimpleBinOps) {
+TEST(NodeBuilderUnitTest, TestSimpleBinOps) {
   // And also the relation operator
   Graph G;
 
@@ -93,7 +93,7 @@ TEST(NodeBuilderTest, TestSimpleBinOps) {
   EXPECT_EQ(NodeAdd->getNumEffectInput(), 0);
 }
 
-TEST(NodeBuilderTest, TestSrcDesigAccess) {
+TEST(NodeBuilderUnitTest, TestSrcDesigAccess) {
   {
     // access scalar with no side effects
     Graph G;

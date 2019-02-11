@@ -5,7 +5,7 @@
 
 using namespace gross;
 
-TEST(GraphTest, TestGraphvizConcept) {
+TEST(GraphUnitTest, TestGraphvizConcept) {
   // this test is more like a 'compile test'
   // since boost::write_graphviz use lots of
   // meta programming stuff to verify correctness
@@ -14,7 +14,7 @@ TEST(GraphTest, TestGraphvizConcept) {
   G.dumpGraphviz(SS);
 }
 
-TEST(GraphTest, TestBasicGraphReducer) {
+TEST(GraphUnitTest, TestBasicGraphReducer) {
   Graph G;
   struct DummyReducer {
     GraphReduction Reduce(Node* N) {

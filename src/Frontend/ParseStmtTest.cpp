@@ -9,7 +9,7 @@
 
 using namespace gross;
 
-TEST(ParserTest, TestAssignment) {
+TEST(ParserUnitTest, TestAssignment) {
   std::stringstream SS;
   {
     // single assignment
@@ -112,7 +112,7 @@ TEST(ParserTest, TestAssignment) {
   }
 }
 
-TEST(ParserTest, TestIfStmt) {
+TEST(ParserUnitTest, TestIfStmt) {
   std::stringstream SS;
   {
     // PHI node without else block
@@ -203,7 +203,7 @@ TEST(ParserTest, TestIfStmt) {
   }
 }
 
-TEST(ParserTest, TestNestedIfStmt) {
+TEST(ParserUnitTest, TestNestedIfStmt) {
   std::stringstream SS;
   {
     SS << "var foo;\n"
@@ -230,7 +230,7 @@ TEST(ParserTest, TestNestedIfStmt) {
   }
 }
 
-TEST(ParserTest, TestWhileStmt) {
+TEST(ParserUnitTest, TestWhileStmt) {
   std::stringstream SS;
   {
     SS << "var foo;\n"

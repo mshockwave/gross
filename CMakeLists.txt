@@ -33,6 +33,18 @@ add_subdirectory(src)
 
 if(GROSS_ENABLE_UNIT_TESTS)
   add_custom_target(check-units
-    COMMAND ${CMAKE_CTEST_COMMAND})
+    COMMAND ${CMAKE_CTEST_COMMAND} -R ".*UnitTest\..*")
   add_dependencies(check-units unittests)
+
+  add_custom_target(check-integrations
+    COMMAND ${CMAKE_CTEST_COMMAND} -R ".*IntegrateTest\..*")
+  add_dependencies(check-integrations integration_tests)
 endif()
+
+# Execute all the tests
+add_custom_target(check-gross)
+if(GROSS_ENABLE_UNIT_TESTS)
+  add_dependencies(check-gross
+                   check-units check-integrations)
+endif()
+

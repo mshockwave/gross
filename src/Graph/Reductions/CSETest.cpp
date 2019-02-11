@@ -7,7 +7,7 @@
 
 using namespace gross;
 
-TEST(GRCSETest, TrivialValDepsTest) {
+TEST(GRCSEUnitTest, TrivialValDepsTest) {
   Graph G;
   auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
                .FuncName("func_cse1")

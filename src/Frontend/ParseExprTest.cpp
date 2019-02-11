@@ -8,7 +8,7 @@ using namespace gross;
 
 // TODO: Test factor when its rules are completed
 
-TEST(ParserTest, TestSimpleTerm) {
+TEST(ParserUnitTest, TestSimpleTerm) {
   std::stringstream SS;
   {
     // single term
@@ -61,7 +61,7 @@ TEST(ParserTest, TestSimpleTerm) {
   }
 }
 
-TEST(ParserTest, TestSimpleExpr) {
+TEST(ParserUnitTest, TestSimpleExpr) {
   std::stringstream SS;
   {
     // single expr
@@ -201,7 +201,7 @@ TEST(ParserTest, TestSimpleExpr) {
   }
 }
 
-TEST(ParserTest, TestRelation) {
+TEST(ParserUnitTest, TestRelation) {
   std::stringstream SS;
   {
     // trivial

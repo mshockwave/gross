@@ -8,7 +8,7 @@
 
 using namespace gross;
 
-TEST(GRValuePromotionTest, SimpleValuePromotionTest) {
+TEST(GRValuePromotionUnitTest, SimpleValuePromotionTest) {
   Graph G;
   auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
                .FuncName("func_mem2reg1")
@@ -66,7 +66,7 @@ TEST(GRValuePromotionTest, SimpleValuePromotionTest) {
   //}
 }
 
-TEST(GRValuePromotionTest, MultipleAssignTest) {
+TEST(GRValuePromotionUnitTest, MultipleAssignTest) {
   Graph G;
   auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
                .FuncName("func_mem2reg2")
@@ -134,7 +134,7 @@ TEST(GRValuePromotionTest, MultipleAssignTest) {
   //}
 }
 
-TEST(GRValuePromotionTest, ArrayReadTest) {
+TEST(GRValuePromotionUnitTest, ArrayReadTest) {
   {
     Graph G;
     // only read array element
@@ -177,7 +177,7 @@ TEST(GRValuePromotionTest, ArrayReadTest) {
   }
 }
 
-TEST(GRValuePromotionTest, ArrayWriteTest) {
+TEST(GRValuePromotionUnitTest, ArrayWriteTest) {
   {
     Graph G;
     // single array element write

@@ -4,7 +4,7 @@
 
 using namespace gross;
 
-TEST(LexerTest, TestBasicTokens) {
+TEST(LexerUnitTest, TestBasicTokens) {
   std::stringstream SS;
   {
     // Some keywords
@@ -48,7 +48,7 @@ TEST(LexerTest, TestBasicTokens) {
   }
 }
 
-TEST(LexerTest, TestCompleteSentence) {
+TEST(LexerUnitTest, TestCompleteSentence) {
   std::stringstream SS;
   {
     SS << "var foo;";

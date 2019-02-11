@@ -4,7 +4,7 @@
 
 using namespace gross;
 
-TEST(ParserUtilsTest, TestAffineRecordTable) {
+TEST(ParserUtilsUnitTest, TestAffineRecordTable) {
   AffineRecordTable<std::string,int> ART;
   using table_type = typename decltype(ART)::TableTy;
   // should create a default scope and table

@@ -8,7 +8,7 @@
 
 using namespace gross;
 
-TEST(ParserTest, TestVarDecl) {
+TEST(ParserUnitTest, TestVarDecl) {
   std::stringstream SS;
   {
     // single declaration
@@ -72,7 +72,7 @@ TEST(ParserTest, TestVarDecl) {
   }
 }
 
-TEST(ParserTest, ParseBasicFuncDecl) {
+TEST(ParserUnitTest, ParseBasicFuncDecl) {
   std::stringstream SS;
   {
     // only function header
@@ -113,7 +113,7 @@ TEST(ParserTest, ParseBasicFuncDecl) {
   }
 }
 
-TEST(ParserTest, ParseCompoundFuncDecl) {
+TEST(ParserUnitTest, ParseCompoundFuncDecl) {
   std::stringstream SS;
   {
     SS << "function foo; {\n"
