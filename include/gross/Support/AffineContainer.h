@@ -140,7 +140,10 @@ public:
 
   size_t num_tables() const { return BaseTy::num_entries(); }
 
-  // end iterator of current table
+  // begin/end iterators for current table
+  table_iterator begin() {
+    return BaseTy::CurEntry()->begin();
+  }
   table_iterator end() {
     return BaseTy::CurEntry()->end();
   }

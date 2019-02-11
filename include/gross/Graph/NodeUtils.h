@@ -862,6 +862,10 @@ struct NodeBuilder<IrOpcode::End> {
     TermNodes.push_back(N);
     return *this;
   }
+  NodeBuilder& AddEffectDep(Node* N) {
+    EffectDeps.push_back(N);
+    return *this;
+  }
 
   Node* Build() {
     // control dependent on terminator nodes,
@@ -871,9 +875,11 @@ struct NodeBuilder<IrOpcode::End> {
       CtrlDeps = std::move(TermNodes);
     CtrlDeps.insert(CtrlDeps.cbegin(), StartNode);
     auto* N = new Node(IrOpcode::End,
-                       {}, CtrlDeps);
+                       {}, CtrlDeps, EffectDeps);
     for(auto* TN : CtrlDeps)
       TN->Users.push_back(N);
+    for(auto* E : EffectDeps)
+      E->Users.push_back(N);
     G->InsertNode(N);
     return N;
   }
@@ -881,7 +887,7 @@ struct NodeBuilder<IrOpcode::End> {
 private:
   Graph* G;
   Node* StartNode;
-  std::vector<Node*> TermNodes;
+  std::vector<Node*> TermNodes, EffectDeps;
 };
 
 template<>

@@ -179,6 +179,10 @@ bool Parser::ParseFuncDecl() {
   if(!ParseStatements(FuncBodyStmts)) return false;
   NodeBuilder<IrOpcode::End> EB(&G, FuncNode);
   EB.AddTerminator(getLastCtrlPoint());
+  // must 'wait' after all side effects terminate
+  for(auto& P : LastModified) {
+    EB.AddEffectDep(P.second);
+  }
   auto* EndNode = EB.Build();
 
   Tok = CurTok();

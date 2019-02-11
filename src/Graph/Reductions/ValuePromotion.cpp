@@ -20,7 +20,17 @@ GraphReduction ValuePromotion::ReduceAssignment(Node* Assign) {
 
   auto* SrcVal = NP.source();
   for(Node* Usr : Assign->effect_users()) {
-    Usr->appendValueInput(SrcVal);
+    switch(Usr->getOp()) {
+    case IrOpcode::End:
+    case IrOpcode::Start:
+    case IrOpcode::IfTrue:
+    case IrOpcode::IfFalse:
+    case IrOpcode::Loop:
+      // these ctrl nodes will not use the defined values
+      continue;
+    default:
+      Usr->appendValueInput(SrcVal);
+    }
   }
   Assign->Kill(DeadNode);
 

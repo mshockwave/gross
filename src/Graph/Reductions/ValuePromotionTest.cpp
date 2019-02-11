@@ -202,10 +202,8 @@ TEST(GRValuePromotionTest, ArrayWriteTest) {
                    .Build();
     Assign->appendControlInput(Func);
     auto* End = NodeBuilder<IrOpcode::End>(&G, Func)
+                .AddEffectDep(Assign)
                 .Build();
-    // FIXME: should End node depend on any memory operations
-    // in general?
-    End->appendEffectInput(Assign);
     SubGraph FuncSG(End);
     G.AddSubRegion(FuncSG);
     {
