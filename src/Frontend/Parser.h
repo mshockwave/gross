@@ -138,7 +138,9 @@ public:
     (*LastControlPoint.CurEntryMutable())[0] = N;
   }
 
-  bool Parse();
+  /// For each ParseXXX, it would expect the lexer cursor
+  /// starting on the first token of its semantic rule.
+  bool Parse(bool StepLexer = true);
 
   template<IrOpcode::ID OC>
   bool ParseTypeDecl(NodeBuilder<OC>& NB);

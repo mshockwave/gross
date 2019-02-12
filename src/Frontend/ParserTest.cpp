@@ -1,6 +1,9 @@
 #include "Parser.h"
+#include "gross/Graph/Graph.h"
 #include "gtest/gtest.h"
 #include <string>
+#include <sstream>
+#include <fstream>
 
 using namespace gross;
 
@@ -69,4 +72,22 @@ TEST(ParserUtilsUnitTest, TestAffineRecordTable) {
   it_query = ART.find("hello");
   ASSERT_NE(it_query, ART.end());
   EXPECT_EQ(it_query->second, 94);
+}
+
+TEST(ParserUnitTest, ParseComputation) {
+  std::stringstream SS;
+  {
+    SS << "main\n"
+       << "var foo;\n"
+       << "array[8][7] bar;\n"
+       << "function yee;\n"
+       << "{ return bar[0][1] + foo };\n"
+       << "{ let foo <- 8 }.";
+    Graph G;
+    Parser P(SS, G);
+    ASSERT_TRUE(P.Parse());
+
+    std::ofstream OF("TestTopComputation1.dot");
+    G.dumpGraphviz(OF);
+  }
 }

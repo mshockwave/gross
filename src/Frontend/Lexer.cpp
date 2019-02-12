@@ -132,6 +132,9 @@ Lexer::Token Lexer::getNextToken() {
     case ';':
       CurToken = TOK_SEMI_COLON;
       break;
+    case '.':
+      CurToken = TOK_DOT;
+      break;
     case '+':
     case '-':
     case '*':

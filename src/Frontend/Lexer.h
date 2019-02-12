@@ -42,6 +42,7 @@ public:
     //TOK_DIGIT,
     TOK_COMMA,
     TOK_SEMI_COLON,
+    TOK_DOT,
     // Operations
     TOK_BIN_OP,
     TOK_REL_LE,
