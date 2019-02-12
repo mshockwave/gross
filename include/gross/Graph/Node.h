@@ -310,12 +310,18 @@ public:
             nullptr;
   }
 
-  bool insert(const N2VPairTy& Pair) {
-    if(Node2Value.count(Pair.first) ||
-       Value2Node.count(Pair.second))
-      return false;
-    Node2Value.insert(Pair);
-    Value2Node.insert(std::make_pair(Pair.second, Pair.first));
+  bool insert(const N2VPairTy& Pair, bool overwrite = false) {
+    if(overwrite) {
+      Node2Value[Pair.first] = Pair.second;
+      Value2Node[Pair.second] = Pair.first;
+    } else {
+      if(Node2Value.count(Pair.first) ||
+         Value2Node.count(Pair.second)) {
+        return false;
+      }
+      Node2Value.insert(Pair);
+      Value2Node.insert(std::make_pair(Pair.second, Pair.first));
+    }
     return true;
   }
 

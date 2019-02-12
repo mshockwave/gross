@@ -2,6 +2,7 @@
 #define GROSS_GRAPH_NODE_UTILS_H
 #include "gross/Graph/Node.h"
 #include "gross/Graph/Graph.h"
+#include "gross/Support/STLExtras.h"
 #include "gross/Support/type_traits.h"
 #include "gross/Support/iterator_range.h"
 #include <string>
@@ -68,6 +69,26 @@ NODE_PROPERTIES(ConstantStr) {
       return *V;
     else
       return "";
+  }
+};
+
+NODE_PROPERTIES(FunctionStub) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(FunctionStub, N) {}
+
+  Node* getFunctionStart(const Graph& G) const {
+    assert(*this && "Invalid node");
+    auto* SGPtr = G.FuncStubPool.find_value(NodePtr);
+    assert(SGPtr && "subgraph not found");
+    auto& SG = *SGPtr;
+    auto* EndNode = SubGraph::GetNodeFromIt(SG.node_begin());
+    auto StartIt = gross::find_if(EndNode->inputs(),
+                                  [](Node* N) -> bool {
+                                    return N->getOp() == IrOpcode::Start;
+                                  });
+    assert(StartIt != EndNode->input_end() &&
+           "no (ctrl) dependency on Start node?");
+    return *StartIt;
   }
 };
 
@@ -282,12 +303,17 @@ NODE_PROPERTIES(VirtGlobalValues) {
 
   operator bool() const {
     if(!NodePtr) return false;
-    auto Op = NodePtr->getOp();
-    return Op == IrOpcode::ConstantStr ||
-           Op == IrOpcode::ConstantInt ||
-           Op == IrOpcode::Start ||
-           Op == IrOpcode::End ||
-           Op == IrOpcode::Dead;
+    switch(NodePtr->getOp()) {
+    case IrOpcode::ConstantStr:
+    case IrOpcode::ConstantInt:
+    case IrOpcode::Start:
+    case IrOpcode::End:
+    case IrOpcode::Dead:
+    case IrOpcode::FunctionStub:
+      return true;
+    default:
+      return false;
+    }
   }
 };
 
@@ -431,6 +457,34 @@ struct NodeBuilder<IrOpcode::ConstantStr> {
 private:
   Graph *G;
   const std::string& SymName;
+};
+
+template<>
+struct NodeBuilder<IrOpcode::FunctionStub> {
+  NodeBuilder(Graph* graph, const SubGraph& subgraph)
+    : G(graph), SG(subgraph) {}
+
+  //NodeBuilder& AddAttribute(Node* N) {
+    // TODO
+    //return *this;
+  //}
+
+  Node* Build() {
+    if(auto* N = G->FuncStubPool.find_node(SG))
+      return N;
+    else {
+      // New function stub node
+      // TODO: attribute and node update
+      Node* NewN = new Node(IrOpcode::FunctionStub);
+      G->FuncStubPool.insert({NewN, SG});
+      G->InsertNode(NewN);
+      return NewN;
+    }
+  }
+
+private:
+  Graph* G;
+  SubGraph SG;
 };
 
 template<>

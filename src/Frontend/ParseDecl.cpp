@@ -199,7 +199,9 @@ bool Parser::ParseFuncDecl() {
   PopSymScope();
 
   // Add function sub-graph
-  G.AddSubRegion(SubGraph(EndNode));
+  SubGraph SG(EndNode);
+  G.AddSubRegion(SG);
+  (void) NodeBuilder<IrOpcode::FunctionStub>(&G, SG).Build();
 
   return true;
 }
