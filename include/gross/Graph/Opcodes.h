@@ -50,6 +50,13 @@ enum ID : unsigned {
   SrcAssignStmt,
   // Low(machine)-level opcodes
   DLXJmp,
+  DLXBic,
+  DLXLsh,
+  DLXLshI,
+  DLXAsh,
+  DLXAshI,
+  DLXPop,
+  DLXPush,
   // Virtual opcodes: abtraction nodes for several
   // opcodes with similar properties
   VirtSrcDecl,        // SrcVarDecl | SrcArrayDecl
