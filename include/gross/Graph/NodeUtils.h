@@ -86,9 +86,10 @@ NODE_PROPERTIES(FunctionStub) {
                                   [](Node* N) -> bool {
                                     return N->getOp() == IrOpcode::Start;
                                   });
-    assert(StartIt != EndNode->input_end() &&
-           "no (ctrl) dependency on Start node?");
-    return *StartIt;
+    if(StartIt != EndNode->input_end())
+      return *StartIt;
+    else
+      return nullptr;
   }
 };
 
@@ -148,6 +149,19 @@ NODE_PROPERTIES_VIRT(SrcArrayDecl, VirtSrcDecl) {
       NodePtr->value_input_begin() + 1,
       NodePtr->value_input_end()
     );
+  }
+};
+
+NODE_PROPERTIES(Start) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(Start, N) {}
+
+  const std::string& name(const Graph& G) const {
+    assert(NodePtr->getNumValueInput() > 0);
+    auto* NameNode = NodePtr->getValueInput(0);
+    assert(NameNode && NameNode->getOp() == IrOpcode::ConstantStr);
+    return NodeProperties<IrOpcode::ConstantStr>(NameNode)
+           .str(G);
   }
 };
 

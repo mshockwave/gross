@@ -366,6 +366,15 @@ struct graph_vertex_prop_writer {
          << ">\"]";
       break;
     }
+    case IrOpcode::FunctionStub: {
+      auto* FuncStart = NodeProperties<IrOpcode::FunctionStub>(N)
+                        .getFunctionStart(G);
+      std::string Name = "";
+      if(FuncStart)
+        Name = NodeProperties<IrOpcode::Start>(FuncStart).name(G);
+      OS << "[label=\"FunctionStub<" << Name << ">\"]";
+      break;
+    }
     CASE_OPCODE_STR(BinAdd);
     CASE_OPCODE_STR(BinSub);
     CASE_OPCODE_STR(BinMul);

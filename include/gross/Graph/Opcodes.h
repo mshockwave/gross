@@ -31,8 +31,6 @@ enum ID : unsigned {
   Return,
   Call,
   Argument,
-  MemLoad,
-  MemStore,
   FunctionStub, // Represent as function callee. Also allow additional metadata
                 // to be attached on it (e.g. no_mem).
                 // Since we use some lazy node traversal to represent Function
@@ -40,6 +38,9 @@ enum ID : unsigned {
                 // a bad idea(i.e. causing incorrect subgraph covering), thus we
                 // use function stub instead. Also, a stub instance is a single-
                 // ton, that is, global values in our framework.
+  Attribute,
+  MemLoad,
+  MemStore,
   // High-level primitives
   SrcVarDecl,
   SrcVarAccess,

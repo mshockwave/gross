@@ -3,6 +3,7 @@
 #include "gross/Support/iterator_range.h"
 #include "gross/Support/Graph.h"
 #include "gross/Graph/Node.h"
+#include "gross/Graph/Attribute.h"
 #include <memory>
 #include <iostream>
 #include <utility>
@@ -83,6 +84,9 @@ class Graph {
   // SubGraph should be trivial constructable so just use value
   // as key
   NodeBiMap<SubGraph> FuncStubPool;
+
+  // attribute storage (owner of attribute implements)
+  std::unordered_map<Node*, std::unique_ptr<AttributeConcept>> Attributes;
 
 public:
   Graph() : DeadNode(nullptr) {}
