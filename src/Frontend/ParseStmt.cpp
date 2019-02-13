@@ -147,12 +147,15 @@ Node* Parser::ParseIfStmt() {
       // Note: assume there won't be cases where a var is uninitialized
       // before IfStmt but only assigned in one of the branches
       if(Variant.size() < 2) continue;
-      NodeBuilder<IrOpcode::Phi> PB(&G);
-      PB.SetCtrlMerge(MergeNode);
       // only take the last two
       const auto VSize = Variant.size();
-      PB.AddEffectInput(Variant.at(VSize - 2));
-      PB.AddEffectInput(Variant.at(VSize - 1));
+      Node *N1 = Variant.at(VSize - 2),
+           *N2 = Variant.at(VSize - 1);
+      if(N1 == N2) continue;
+      NodeBuilder<IrOpcode::Phi> PB(&G);
+      PB.SetCtrlMerge(MergeNode);
+      PB.AddEffectInput(N1)
+        .AddEffectInput(N2);
       auto* PHI = PB.Build();
       // update previous table
       JoinTable[VP.first] = PHI;

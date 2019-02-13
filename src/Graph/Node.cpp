@@ -168,17 +168,20 @@ void Node::ReplaceWith(Node* Replacement, Use::Kind UseKind) {
     ReplaceWith(Replacement, Use::K_EFFECT);
     break;
   case Use::K_VALUE: {
-    for(Node* Usr : value_users())
+    std::vector<Node*> Usrs(value_users().begin(), value_users().end());
+    for(Node* Usr : Usrs)
       Usr->ReplaceUseOfWith(this, Replacement, UseKind);
     break;
   }
   case Use::K_CONTROL: {
-    for(Node* Usr : control_users())
+    std::vector<Node*> Usrs(control_users().begin(), control_users().end());
+    for(Node* Usr : Usrs)
       Usr->ReplaceUseOfWith(this, Replacement, UseKind);
     break;
   }
   case Use::K_EFFECT: {
-    for(Node* Usr : effect_users())
+    std::vector<Node*> Usrs(effect_users().begin(), effect_users().end());
+    for(Node* Usr : Usrs)
       Usr->ReplaceUseOfWith(this, Replacement, UseKind);
     break;
   }

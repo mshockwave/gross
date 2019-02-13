@@ -1,3 +1,17 @@
-function func; begin;
-
-end
+function func;
+var foo, bar, cond;
+{
+  let foo <- 0;
+  let bar <- 0;
+  if 1 < 2 then
+    let foo <- 2;
+    if 1 < 3 then
+      let bar <- 4
+    fi
+  fi;
+  if 1 < 4 then
+    return foo * 6
+  else
+    return foo / 5
+  fi
+};
