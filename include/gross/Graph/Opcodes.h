@@ -64,6 +64,7 @@ enum ID : unsigned {
   VirtSrcDesigAccess, // SrcVarAccess | SrcArrayAccess
   VirtIfBranches,     // IfTrue | IfFalse
   VirtFuncPrototype,  // Start + Argument(s)
+  VirtConstantValues, // Dead | ConstantInt | ConstantStr
   VirtGlobalValues,   // Dead | ConstantInt | ConstantStr | Start | End
                       // | FunctionStub
   VirtCtrlPoints,     // If | IfTrue | IfFalse | Merge | Start | End

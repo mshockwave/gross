@@ -331,6 +331,23 @@ NODE_PROPERTIES(VirtGlobalValues) {
   }
 };
 
+NODE_PROPERTIES(VirtConstantValues) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(VirtConstantValues, N) {}
+
+  operator bool() const {
+    if(!NodePtr) return false;
+    switch(NodePtr->getOp()) {
+    case IrOpcode::ConstantStr:
+    case IrOpcode::ConstantInt:
+    case IrOpcode::Dead:
+      return true;
+    default:
+      return false;
+    }
+  }
+};
+
 NODE_PROPERTIES(VirtCtrlPoints) {
   NodeProperties(Node *N)
     : NODE_PROP_BASE(VirtCtrlPoints, N) {}
@@ -399,6 +416,44 @@ NODE_PROPERTIES_VIRT(MemStore, VirtMemOps) {
       return NodePtr->getValueInput(2);
     }
     return nullptr;
+  }
+};
+
+NODE_PROPERTIES(VirtBinOps) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(VirtBinOps, N) {}
+
+  operator bool() const {
+    if(!NodePtr) return false;
+    switch(NodePtr->getOp()) {
+    case IrOpcode::BinAdd:
+    case IrOpcode::BinSub:
+    case IrOpcode::BinMul:
+    case IrOpcode::BinDiv:
+    case IrOpcode::BinLe:
+    case IrOpcode::BinLt:
+    case IrOpcode::BinGe:
+    case IrOpcode::BinGt:
+    case IrOpcode::BinEq:
+    case IrOpcode::BinNe:
+      return true;
+    default:
+      return false;
+    }
+  }
+
+  Node* LHS() const {
+    if(NodePtr->getNumValueInput() > 0)
+      return NodePtr->getValueInput(0);
+    else
+      return nullptr;
+  }
+
+  Node* RHS() const {
+    if(NodePtr->getNumValueInput() > 1)
+      return NodePtr->getValueInput(1);
+    else
+      return nullptr;
   }
 };
 #undef NODE_PROP_BASE

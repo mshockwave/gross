@@ -11,6 +11,8 @@ struct DCEReducer {
 
 private:
   void EliminateUnreachable(Graph& G);
+  // remove always true/false control structures
+  void DeadControlElimination(Graph& G);
 };
 } // end namespace gross
 #endif
