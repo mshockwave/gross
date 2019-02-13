@@ -34,8 +34,6 @@ GraphReduction ValuePromotion::ReduceAssignment(Node* Assign) {
     return Revisit(Assign);
   if(NodeProperties<IrOpcode::MemLoad>(NP.dest()))
     return ReduceMemAssignment(Assign);
-  if(!NodeProperties<IrOpcode::SrcVarAccess>(NP.dest()))
-    return NoChange();
 
   auto* SrcVal = NP.source();
   for(Node* Usr : Assign->effect_users()) {

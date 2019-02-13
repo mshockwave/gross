@@ -17,7 +17,7 @@ struct ReductionVisitor
     : Precedence(Preced) {}
 
   void finish_vertex(Node* N, const GraphT& G) {
-    Precedence.insert(Precedence.cbegin(), N);
+    Precedence.push_back(N);
     RSMarker::Set(N, ReductionState::OnStack);
   }
 
