@@ -8,11 +8,13 @@ class ValuePromotion {
   GraphReduction ReduceMemAssignment(Node* N);
   GraphReduction ReduceVarAccess(Node* N);
   GraphReduction ReduceMemAccess(Node* N);
+  GraphReduction ReducePhiNode(Node* N);
 
   Graph& G;
+  Node* DeadNode;
 
 public:
-  ValuePromotion(Graph& graph) : G(graph) {}
+  ValuePromotion(Graph& graph);
 
   static constexpr
   const char* name() { return "value-promotion"; }
