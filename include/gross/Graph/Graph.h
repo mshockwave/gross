@@ -35,6 +35,9 @@ public:
   }
   node_iterator node_begin() { return node_iterator(TailNode); }
   node_iterator node_end() { return node_iterator(); }
+  llvm::iterator_range<node_iterator> nodes() {
+    return llvm::make_range(node_begin(), node_end());
+  }
   const_node_iterator node_cbegin() const {
     return const_node_iterator(const_cast<const Node*>(TailNode));
   }
