@@ -246,6 +246,11 @@ NODE_PROPERTIES(If) {
   NodeProperties(Node *N)
     : NODE_PROP_BASE(If, N) {}
 
+  Node* Condition() {
+    assert(NodePtr->getNumValueInput() > 0);
+    return NodePtr->getValueInput(0);
+  }
+
   Node* TrueBranch() {
     for(auto* CU : NodePtr->control_users()) {
       if(CU->getOp() == IrOpcode::IfTrue)
@@ -452,6 +457,18 @@ NODE_PROPERTIES(VirtBinOps) {
   Node* RHS() const {
     if(NodePtr->getNumValueInput() > 1)
       return NodePtr->getValueInput(1);
+    else
+      return nullptr;
+  }
+};
+
+NODE_PROPERTIES(Return) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(Return, N) {}
+
+  Node* ReturnVal() const {
+    if(NodePtr->getNumValueInput() > 0)
+      return NodePtr->getValueInput(0);
     else
       return nullptr;
   }

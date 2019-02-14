@@ -7,4 +7,5 @@
 
 using namespace gross;
 
-TEST(GRDCEUnitTest, DeadEliminationTest) {}
+TEST(GRDCEUnitTest, DeadControlTest) {
+}

@@ -1,6 +1,7 @@
 #include "Frontend/Parser.h"
-#include "gross/Graph/Reductions/ValuePromotion.h"
 #include "gross/Graph/Reductions/DeadCodeElimination.h"
+#include "gross/Graph/Reductions/Peephole.h"
+#include "gross/Graph/Reductions/ValuePromotion.h"
 #include "gtest/gtest.h"
 #include <fstream>
 
@@ -26,9 +27,15 @@ TEST(ValueAssignIntegrateTest, TestBasicControlStructure) {
     G.dumpGraphviz(OF);
   }
 
+  RunReducer<PeepholeReducer>(G, G);
+  {
+    std::ofstream OF("TestBasicCtrlStructure.mem2reg.peephole.dot");
+    G.dumpGraphviz(OF);
+  }
+
   RunGlobalReducer<DCEReducer>(G);
   {
-    std::ofstream OF("TestBasicCtrlStructure.mem2reg.dce.dot");
+    std::ofstream OF("TestBasicCtrlStructure.mem2reg.peephole.dce.dot");
     G.dumpGraphviz(OF);
   }
 }

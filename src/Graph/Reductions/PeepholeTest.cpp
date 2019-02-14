@@ -35,6 +35,9 @@ TEST(GRPeepholeUnitTest, ConstReductionTest) {
       std::ofstream OF("TestPHConstReduce.after.dot");
       G.dumpGraphviz(OF);
     }
+    NodeProperties<IrOpcode::Return> RNP(Return);
+    EXPECT_EQ(NodeProperties<IrOpcode::ConstantInt>(RNP.ReturnVal())
+              .as<int32_t>(G), 181);
   }
   {
     // heirarchy expression
@@ -81,5 +84,42 @@ TEST(GRPeepholeUnitTest, ConstReductionTest) {
       std::ofstream OF("TestPHConstReduce2.after.dot");
       G.dumpGraphviz(OF);
     }
+    NodeProperties<IrOpcode::Return> RNP(Return);
+    EXPECT_EQ(NodeProperties<IrOpcode::ConstantInt>(RNP.ReturnVal())
+              .as<int32_t>(G), 65);
   }
+}
+
+TEST(GRPeepholeUnitTest, RelationReductionTest) {
+  Graph G;
+  auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
+               .FuncName("func_relation_reduce")
+               .Build();
+  auto* Const1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 87)
+                 .Build();
+  auto* Const2 = NodeBuilder<IrOpcode::ConstantInt>(&G, 94)
+                 .Build();
+  auto* RHSVal = NodeBuilder<IrOpcode::BinLe>(&G)
+                 .LHS(Const1).RHS(Const2)
+                 .Build();
+  auto* Return = NodeBuilder<IrOpcode::Return>(&G, RHSVal)
+                 .Build();
+  auto* End = NodeBuilder<IrOpcode::End>(&G, Func)
+              .AddTerminator(Return)
+              .Build();
+  SubGraph FuncSG(End);
+  G.AddSubRegion(FuncSG);
+  {
+    std::ofstream OF("TestPHRelationReduce.dot");
+    G.dumpGraphviz(OF);
+  }
+
+  RunReducer<PeepholeReducer>(G, G);
+  {
+    std::ofstream OF("TestPHRelationReduce.after.dot");
+    G.dumpGraphviz(OF);
+  }
+  NodeProperties<IrOpcode::Return> RNP(Return);
+  EXPECT_EQ(NodeProperties<IrOpcode::ConstantInt>(RNP.ReturnVal())
+            .as<int32_t>(G), 1);
 }
