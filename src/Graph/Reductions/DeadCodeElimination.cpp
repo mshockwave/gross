@@ -45,6 +45,7 @@ void DCEReducer::EliminateUnreachable(Graph& G) {
 }
 
 void DCEReducer::DeadControlElimination(Graph& G) {
+  // TODO
 }
 
 void DCEReducer::Reduce(Graph& G) {
