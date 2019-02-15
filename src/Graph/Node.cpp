@@ -10,6 +10,7 @@ Node::Node(IrOpcode::ID OC,
            const std::vector<Node*>& ControlInputs,
            const std::vector<Node*>& EffectInputs)
   : Op(OC),
+    MarkerData(0U),
     NumValueInput(ValueInputs.size()),
     NumControlInput(ControlInputs.size()),
     NumEffectInput(EffectInputs.size()) {

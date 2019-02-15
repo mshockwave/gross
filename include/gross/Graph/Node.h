@@ -77,8 +77,7 @@ class Node {
   friend class NodePropertiesBase;
   template<IrOpcode::ID>
   friend class NodeProperties;
-  template<class T>
-  friend class NodeMarker;
+  friend class NodeMarkerBase;
   template<IrOpcode::ID>
   friend class NodeBuilder;
   template<IrOpcode::ID OC,class SubT>
@@ -87,7 +86,6 @@ class Node {
   IrOpcode::ID Op;
 
   // used by NodeMarker
-  using MarkerTy = uint32_t;
   uint32_t MarkerData;
 
   unsigned NumValueInput;
@@ -114,6 +112,8 @@ class Node {
   void removeNodeInput(unsigned Index, unsigned& Size, unsigned Offset);
 
 public:
+  using MarkerTy = uint32_t;
+
   IrOpcode::ID getOp() const { return Op; }
 
   inline
@@ -234,6 +234,10 @@ public:
   using effect_user_iterator
     = boost::filter_iterator<is_effect_use, user_iterator>;
 
+  llvm::iterator_range<user_iterator>
+  users() {
+    return llvm::make_range(Users.begin(), Users.end());
+  }
   llvm::iterator_range<value_user_iterator>
   value_users();
   llvm::iterator_range<control_user_iterator>
@@ -245,12 +249,14 @@ public:
 
   Node()
     : Op(IrOpcode::None),
+      MarkerData(0U),
       NumValueInput(0),
       NumControlInput(0),
       NumEffectInput(0) {}
 
   Node(IrOpcode::ID OC)
     : Op(OC),
+      MarkerData(0U),
       NumValueInput(0),
       NumControlInput(0),
       NumEffectInput(0) {}
@@ -271,23 +277,6 @@ struct NodeHandle {
   Node* NodePtr;
 
   bool operator==(const NodeHandle& RHS) const;
-};
-
-/// scratch data inside Node that is fast to access
-/// note that there should be only one kind of NodeMarker
-/// active at a given time
-template<class T>
-struct NodeMarker {
-  static_assert(sizeof(T) <= sizeof(typename Node::MarkerTy),
-                "can't fit into marker scratch");
-
-  static T Get(Node* N) {
-    return static_cast<T>(N->MarkerData);
-  }
-  static void Set(Node* N, T val) {
-    N->MarkerData
-      = static_cast<typename Node::MarkerTy>(val);
-  }
 };
 
 template<typename ValueT>

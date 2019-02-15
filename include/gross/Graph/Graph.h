@@ -74,6 +74,7 @@ class Graph {
   friend class NodeBuilder;
   template<IrOpcode::ID Op>
   friend struct NodeProperties;
+  friend class NodeMarkerBase;
 
   std::vector<std::unique_ptr<Node>> Nodes;
 
@@ -91,8 +92,13 @@ class Graph {
   // attribute storage (owner of attribute implements)
   std::unordered_map<Node*, std::unique_ptr<AttributeConcept>> Attributes;
 
+  // recording state of NodeMarkers
+  typename Node::MarkerTy MarkerMax;
+
 public:
-  Graph() : DeadNode(nullptr) {}
+  Graph()
+    : DeadNode(nullptr),
+      MarkerMax(0U) {}
 
   using node_iterator = typename decltype(Nodes)::iterator;
   using const_node_iterator = typename decltype(Nodes)::const_iterator;

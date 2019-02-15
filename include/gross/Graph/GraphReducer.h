@@ -2,18 +2,22 @@
 #define GROSS_GRAPH_GRAPHREDUCER_H
 #include "gross/Graph/Graph.h"
 #include "gross/Graph/Node.h"
+#include "gross/Graph/NodeMarker.h"
 #include <utility>
 
 namespace gross {
 struct GraphReduction {
-  explicit GraphReduction(Node* N = nullptr)
-    : Replacement(N) {}
+  explicit GraphReduction(Node* N = nullptr, bool RV = false)
+    : Replacement(N),
+      NeedRevisit(RV) {}
 
   Node* ReplacementNode() const { return Replacement; }
   bool Changed() const { return Replacement != nullptr; }
+  bool Revisit() const { return NeedRevisit; }
 
 private:
   Node* Replacement;
+  bool NeedRevisit;
 };
 // some utilities
 namespace graph_reduction {
@@ -22,7 +26,7 @@ inline GraphReduction Replace(Node* RN) {
   return GraphReduction(RN);
 }
 inline GraphReduction Revisit(Node* N) {
-  return GraphReduction(N);
+  return GraphReduction(N, true);
 }
 } // end namespace graph_reduction
 
@@ -86,7 +90,8 @@ private:
   ReducerT Reducer;
 };
 
-void runReducerImpl(Graph& G, ReducerConcept* Reducer);
+void runReducerImpl(Graph& G, NodeMarker<ReductionState>& RSMarker,
+                    ReducerConcept* Reducer);
 } // end namespace _detail
 
 template<class ReducerT, class... Args>
@@ -94,7 +99,8 @@ void RunReducer(Graph& G, Args &&... CtorArgs) {
   _detail::ReducerModel<ReducerT, Args...> RM(
     std::forward<Args>(CtorArgs)...
   );
-  _detail::runReducerImpl(G, &RM);
+  NodeMarker<ReductionState> RSMarker(G, 3);
+  _detail::runReducerImpl(G, RSMarker, &RM);
 }
 
 template<class ReducerT, class... Args>

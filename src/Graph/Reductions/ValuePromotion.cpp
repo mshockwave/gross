@@ -69,18 +69,6 @@ GraphReduction ValuePromotion::ReduceMemAssignment(Node* Assign) {
 // Replace value dep on SrcVarAccess(SrcArrayAccess) with
 // value dep on the source value.
 GraphReduction ValuePromotion::ReduceVarAccess(Node* VarAccess) {
-  // wait until all inputs are visited
-  for(auto* N : VarAccess->value_inputs()) {
-    if(NodeMarker<ReductionState>::Get(N) != ReductionState::Visited &&
-       N != DeadNode)
-      return Revisit(VarAccess);
-  }
-  for(auto* N : VarAccess->effect_inputs()) {
-    if(NodeMarker<ReductionState>::Get(N) != ReductionState::Visited &&
-       N != DeadNode)
-      return Revisit(VarAccess);
-  }
-
   if(VarAccess->getNumValueInput() > 1) {
     // one is the original decl the other is the
     // newly promoted value
@@ -97,13 +85,6 @@ GraphReduction ValuePromotion::ReduceVarAccess(Node* VarAccess) {
 GraphReduction ValuePromotion::ReduceMemAccess(Node* MemAccess) {
   NodeProperties<IrOpcode::SrcArrayAccess> NP(MemAccess);
   assert(NP);
-
-  // wait until all inputs are visited
-  for(auto* N : MemAccess->value_inputs()) {
-    if(NodeMarker<ReductionState>::Get(N) != ReductionState::Visited &&
-       N != DeadNode)
-      return Revisit(MemAccess);
-  }
 
   Node* ArrayDecl = NP.decl();
   NodeProperties<IrOpcode::SrcArrayDecl> DNP(ArrayDecl);

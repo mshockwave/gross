@@ -3,6 +3,7 @@ set(_SOURCE_FILES
     Graph.cpp
     Node.cpp
     NodeUtils.cpp
+    NodeMarker.cpp
     GraphReducer.cpp
     )
 
