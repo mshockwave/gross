@@ -1,5 +1,4 @@
 #include "gross/Graph/Reductions/ValuePromotion.h"
-#include "gross/Graph/Reductions/DeadCodeElimination.h"
 #include "gross/Graph/NodeUtils.h"
 #include "gross/Graph/Graph.h"
 #include "gross/Support/STLExtras.h"
@@ -46,7 +45,7 @@ TEST(GRValuePromotionUnitTest, SimpleValuePromotionTest) {
     G.dumpGraphviz(OF);
   }
 
-  RunReducer<ValuePromotion>(G, G);
+  GraphReducer::RunWithEditor<ValuePromotion>(G);
   // return, end, start, function name string, bin add
   EXPECT_EQ(FuncSG.node_size(), 7);
   EXPECT_EQ(End->getNumControlInput(), 2);
@@ -58,12 +57,6 @@ TEST(GRValuePromotionUnitTest, SimpleValuePromotionTest) {
     std::ofstream OF("TestMem2RegSimple.after.dot");
     G.dumpGraphviz(OF);
   }
-
-  //RunGlobalReducer<DCEReducer>(G);
-  //{
-    //std::ofstream OF("TestMem2regSimple.dce.dot");
-    //G.dumpGraphviz(OF);
-  //}
 }
 
 TEST(GRValuePromotionUnitTest, MultipleAssignTest) {
@@ -113,7 +106,7 @@ TEST(GRValuePromotionUnitTest, MultipleAssignTest) {
     G.dumpGraphviz(OF);
   }
 
-  RunReducer<ValuePromotion>(G, G);
+  GraphReducer::RunWithEditor<ValuePromotion>(G);
   // same assertion as previous testcase
   // return, end, start, function name string, bin add
   EXPECT_EQ(FuncSG.node_size(), 7);
@@ -164,14 +157,9 @@ TEST(GRValuePromotionUnitTest, ArrayReadTest) {
       G.dumpGraphviz(OF);
     }
 
-    RunReducer<ValuePromotion>(G, G);
+    GraphReducer::RunWithEditor<ValuePromotion>(G);
     {
       std::ofstream OF("TestMem2RegArrayRead1.after.dot");
-      G.dumpGraphviz(OF);
-    }
-    RunGlobalReducer<DCEReducer>(G);
-    {
-      std::ofstream OF("TestMem2RegArrayRead1.dce.dot");
       G.dumpGraphviz(OF);
     }
   }
@@ -211,14 +199,9 @@ TEST(GRValuePromotionUnitTest, ArrayWriteTest) {
       G.dumpGraphviz(OF);
     }
 
-    RunReducer<ValuePromotion>(G, G);
+    GraphReducer::RunWithEditor<ValuePromotion>(G);
     {
       std::ofstream OF("TestMem2RegArrayWrite1.after.dot");
-      G.dumpGraphviz(OF);
-    }
-    RunGlobalReducer<DCEReducer>(G);
-    {
-      std::ofstream OF("TestMem2RegArrayWrite1.dce.dot");
       G.dumpGraphviz(OF);
     }
   }

@@ -7,45 +7,20 @@
 
 namespace gross {
 struct GraphReduction {
-  explicit GraphReduction(Node* N = nullptr, bool RV = false)
-    : Replacement(N),
-      NeedRevisit(RV) {}
+  explicit GraphReduction(Node* N = nullptr)
+    : ReplacementNode(N) {}
 
-  Node* ReplacementNode() const { return Replacement; }
-  bool Changed() const { return Replacement != nullptr; }
-  bool Revisit() const { return NeedRevisit; }
+  Node* Replacement() const { return ReplacementNode; }
+  bool Changed() const { return Replacement() != nullptr; }
 
 private:
-  Node* Replacement;
-  bool NeedRevisit;
-};
-// some utilities
-namespace graph_reduction {
-inline GraphReduction NoChange() { return GraphReduction(nullptr); }
-inline GraphReduction Replace(Node* RN) {
-  return GraphReduction(RN);
-}
-inline GraphReduction Revisit(Node* N) {
-  return GraphReduction(N, true);
-}
-} // end namespace graph_reduction
-
-enum class ReductionState : uint8_t {
-  OnStack,   // Observed and on stack
-  Revisit,   // Revisit later since some inputs are not visited
-  Visited    // Finished
+  Node* ReplacementNode;
 };
 
 // template<class T>
 // concept ReducerConcept = requires(T& R, Node* N) {
 //  { R::name() } -> const char*;
 //  { R.Reduce(N) } -> GraphReduction;
-// };
-//
-// template<class T>
-// concept GlobalReducerConcept = requires(T& R, Graph& G) {
-//  { R::name() } -> const char*;
-//  { R.Reduce(G) } -> void;
 // };
 
 namespace _detail {
@@ -55,11 +30,6 @@ struct ReducerConcept {
   virtual const char* name() const = 0;
 
   virtual GraphReduction Reduce(Node* N) = 0;
-};
-struct GlobalReducerConcept {
-  virtual const char* name() const = 0;
-
-  virtual void Reduce(Graph& G) = 0;
 };
 
 // a template wrapper used to implement the polymorphic API
@@ -77,38 +47,97 @@ struct ReducerModel : public ReducerConcept {
 private:
   ReducerT Reducer;
 };
-template<class ReducerT, class... CtorArgs>
-struct GlobalReducerModel : public GlobalReducerConcept {
-  GlobalReducerModel(CtorArgs &&... args)
-    : Reducer(std::forward<CtorArgs>(args)...) {}
-
-  void Reduce(Graph& G) override { Reducer.Reduce(G); }
-
-  const char* name() const override { return ReducerT::name(); }
-
-private:
-  ReducerT Reducer;
-};
-
-void runReducerImpl(Graph& G, NodeMarker<ReductionState>& RSMarker,
-                    ReducerConcept* Reducer);
 } // end namespace _detail
 
-template<class ReducerT, class... Args>
-void RunReducer(Graph& G, Args &&... CtorArgs) {
-  _detail::ReducerModel<ReducerT, Args...> RM(
-    std::forward<Args>(CtorArgs)...
-  );
-  NodeMarker<ReductionState> RSMarker(G, 3);
-  _detail::runReducerImpl(G, RSMarker, &RM);
-}
+/// Mixin for reducer to modify other nodes
+struct GraphEditor {
+  struct Interface {
+    virtual ~Interface() {}
 
-template<class ReducerT, class... Args>
-void RunGlobalReducer(Graph& G, Args &&... CtorArgs) {
-  _detail::GlobalReducerModel<ReducerT, Args...> RM(
-    std::forward<Args>(CtorArgs)...
-  );
-  RM.Reduce(G);
-}
+    virtual void Replace(Node* N, Node* Replacement) = 0;
+    virtual void Revisit(Node* N) = 0;
+
+    virtual Graph& GetGraph() = 0;
+  };
+
+protected:
+  Interface* Editor;
+
+  explicit GraphEditor(Interface* editor) : Editor(editor) {}
+
+  // some utility for subclass
+  Graph& GetGraph() {
+    return Editor->GetGraph();
+  }
+  void Replace(Node* N, Node* Replacement) {
+    Editor->Replace(N, Replacement);
+  }
+  void Revisit(Node* N) {
+    Editor->Revisit(N);
+  }
+  // for single node reduction
+  static GraphReduction Replace(Node* N) {
+    return GraphReduction(N);
+  }
+  static GraphReduction NoChange() {
+    return GraphReduction();
+  }
+};
+
+/// The primary graph reduction algorithm implement
+class GraphReducer : public GraphEditor::Interface {
+  enum class ReductionState : uint8_t {
+    Unvisited = 0, // Default state
+    Revisit,       // Revisit later
+    OnStack,       // Observed and on stack
+    Visited        // Finished
+  };
+
+  struct ReductionVisitor;
+
+  Graph& G;
+  Node* DeadNode;
+
+  // visiting stacks
+  std::vector<Node*> ReductionStack, RevisitStack;
+
+  // visiting marker
+  NodeMarker<ReductionState> RSMarker;
+
+  GraphReducer(Graph& graph);
+
+  // implement GraphEditor::Interface
+  void Replace(Node* N, Node* Replacement) override;
+  void Revisit(Node* N) override;
+  Graph& GetGraph() override { return G; }
+
+  void Push(Node* N);
+  void Pop();
+  // conditionally revisit
+  bool Recurse(Node* N);
+
+  void runImpl(_detail::ReducerConcept* R);
+  void runOnFunctionGraph(SubGraph& SG, _detail::ReducerConcept* R);
+
+public:
+  template<class ReducerT, class... Args>
+  static void Run(Graph& G, Args &&... CtorArgs) {
+    GraphReducer GR(G);
+    _detail::ReducerModel<ReducerT, Args...> RM(
+      std::forward<Args>(CtorArgs)...
+    );
+    GR.runImpl(&RM);
+  }
+
+  template<class ReducerT, class... Args>
+  static void RunWithEditor(Graph& G, Args &&...CtorArgs) {
+    GraphReducer GR(G);
+    _detail::ReducerModel<ReducerT, GraphEditor::Interface*, Args...> RM(
+      &GR, // first argument must be GraphEditor::Interface*
+      std::forward<Args>(CtorArgs)...
+    );
+    GR.runImpl(&RM);
+  }
+};
 } // end namespace gross
 #endif

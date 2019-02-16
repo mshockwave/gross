@@ -2,11 +2,11 @@
 #include "gross/Graph/NodeUtils.h"
 
 using namespace gross;
-using namespace gross::graph_reduction;
 
-PeepholeReducer::PeepholeReducer(Graph& graph) : G(graph), DeadNode(nullptr) {
-  DeadNode = NodeBuilder<IrOpcode::Dead>(&G).Build();
-}
+PeepholeReducer::PeepholeReducer(GraphEditor::Interface* editor)
+  : GraphEditor(editor),
+    G(Editor->GetGraph()),
+    DeadNode(NodeBuilder<IrOpcode::Dead>(&G).Build()) {}
 
 GraphReduction PeepholeReducer::ReduceArithmetic(Node* N) {
   NodeProperties<IrOpcode::VirtBinOps> NP(N);
@@ -21,8 +21,6 @@ GraphReduction PeepholeReducer::ReduceArithmetic(Node* N) {
            RHSVal = RNP.as<int32_t>(G);
       auto* NewNode
         = NodeBuilder<IrOpcode::ConstantInt>(&G, LHSVal + RHSVal).Build();
-      N->ReplaceWith(NewNode, Use::K_VALUE);
-      N->Kill(DeadNode);
       return Replace(NewNode);
     }
     case IrOpcode::BinSub: {
@@ -32,8 +30,6 @@ GraphReduction PeepholeReducer::ReduceArithmetic(Node* N) {
       if(LHSVal < RHSVal) return NoChange();
       auto* NewNode
         = NodeBuilder<IrOpcode::ConstantInt>(&G, LHSVal - RHSVal).Build();
-      N->ReplaceWith(NewNode, Use::K_VALUE);
-      N->Kill(DeadNode);
       return Replace(NewNode);
     }
     case IrOpcode::BinMul: {
@@ -41,8 +37,6 @@ GraphReduction PeepholeReducer::ReduceArithmetic(Node* N) {
            RHSVal = RNP.as<int32_t>(G);
       auto* NewNode
         = NodeBuilder<IrOpcode::ConstantInt>(&G, LHSVal * RHSVal).Build();
-      N->ReplaceWith(NewNode, Use::K_VALUE);
-      N->Kill(DeadNode);
       return Replace(NewNode);
     }
     // do not handle div for now
@@ -68,8 +62,6 @@ GraphReduction PeepholeReducer::ReduceRelation(Node* N) {
       = NodeBuilder<IrOpcode::ConstantInt>(&G,  \
                                            LHSVal Op RHSVal? 1 : 0) \
         .Build(); \
-    N->ReplaceWith(NewNode, Use::K_VALUE);  \
-    N->Kill(DeadNode);  \
     return Replace(NewNode);  \
   }
     switch(N->getOp()) {

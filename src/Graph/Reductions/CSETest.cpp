@@ -1,6 +1,5 @@
 #include "gross/Graph/Reductions/CSE.h"
 //#include "gross/Graph/Reductions/ValuePromotion.h"
-//#include "gross/Graph/Reductions/DeadCodeElimination.h"
 #include "gross/Graph/NodeUtils.h"
 #include "gtest/gtest.h"
 #include <fstream>
@@ -59,22 +58,9 @@ TEST(GRCSEUnitTest, TrivialValDepsTest) {
     G.dumpGraphviz(OF);
   }
 
-  RunReducer<CSEReducer>(G, G);
+  GraphReducer::RunWithEditor<CSEReducer>(G);
   {
     std::ofstream OF("TestTrivialValCSE.after.dot");
     G.dumpGraphviz(OF);
   }
-
-  /*
-  RunReducer<ValuePromotion>(G, G);
-  {
-    std::ofstream OF("TestTrivialValCSE.vp.dot");
-    G.dumpGraphviz(OF);
-  }
-  RunGlobalReducer<DCEReducer>(G);
-  {
-    std::ofstream OF("TestTrivialValCSE.dce.dot");
-    G.dumpGraphviz(OF);
-  }
-  */
 }

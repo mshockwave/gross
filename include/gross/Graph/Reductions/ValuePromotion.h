@@ -3,7 +3,7 @@
 #include "gross/Graph/GraphReducer.h"
 
 namespace gross {
-class ValuePromotion {
+class ValuePromotion : public GraphEditor {
   GraphReduction ReduceAssignment(Node* N);
   GraphReduction ReduceMemAssignment(Node* N);
   GraphReduction ReduceVarAccess(Node* N);
@@ -14,7 +14,7 @@ class ValuePromotion {
   Node* DeadNode;
 
 public:
-  ValuePromotion(Graph& graph);
+  explicit ValuePromotion(GraphEditor::Interface* editor);
 
   static constexpr
   const char* name() { return "value-promotion"; }

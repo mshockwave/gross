@@ -3,12 +3,11 @@
 #include <vector>
 
 using namespace gross;
-using namespace gross::graph_reduction;
 
-ValuePromotion::ValuePromotion(Graph& graph)
-  : G(graph), DeadNode(nullptr) {
-  DeadNode = NodeBuilder<IrOpcode::Dead>(&G).Build();
-}
+ValuePromotion::ValuePromotion(GraphEditor::Interface* editor)
+  : GraphEditor(editor),
+    G(Editor->GetGraph()),
+    DeadNode(NodeBuilder<IrOpcode::Dead>(&G).Build()) {}
 
 // Append value usage only on meaningful nodes
 static void appendValueUsage(Node* Usr, Node* Val) {
@@ -29,9 +28,11 @@ static void appendValueUsage(Node* Usr, Node* Val) {
 GraphReduction ValuePromotion::ReduceAssignment(Node* Assign) {
   NodeProperties<IrOpcode::SrcAssignStmt> NP(Assign);
   assert(NP);
-  if(NodeProperties<IrOpcode::SrcArrayAccess>(NP.dest()))
+  if(NodeProperties<IrOpcode::SrcArrayAccess>(NP.dest())) {
     // array access hasn't been reduced to MemLoad
-    return Revisit(Assign);
+    Revisit(Assign);
+    return NoChange();
+  }
   if(NodeProperties<IrOpcode::MemLoad>(NP.dest()))
     return ReduceMemAssignment(Assign);
 
@@ -39,9 +40,7 @@ GraphReduction ValuePromotion::ReduceAssignment(Node* Assign) {
   for(Node* Usr : Assign->effect_users()) {
     appendValueUsage(Usr, SrcVal);
   }
-  Assign->Kill(DeadNode);
-
-  return Replace(SrcVal);
+  return Replace(DeadNode);
 }
 
 GraphReduction ValuePromotion::ReduceMemAssignment(Node* Assign) {
@@ -61,8 +60,6 @@ GraphReduction ValuePromotion::ReduceMemAssignment(Node* Assign) {
     MemStoreNode->appendEffectInput(E);
   for(auto* C : MemLoadNode->control_inputs())
     MemStoreNode->appendControlInput(C);
-  Assign->ReplaceWith(MemStoreNode, Use::K_EFFECT);
-  Assign->Kill(DeadNode);
   return Replace(MemStoreNode);
 }
 
@@ -74,7 +71,6 @@ GraphReduction ValuePromotion::ReduceVarAccess(Node* VarAccess) {
     // newly promoted value
     assert(VarAccess->getNumValueInput() == 2);
     auto* PromotedVal = VarAccess->getValueInput(1);
-    VarAccess->ReplaceWith(PromotedVal, Use::K_VALUE);
     return Replace(PromotedVal);
   } else {
     return NoChange();
@@ -119,7 +115,6 @@ GraphReduction ValuePromotion::ReduceMemAccess(Node* MemAccess) {
     MemLoadNode->appendEffectInput(E);
   for(auto* C : MemAccess->control_inputs())
     MemLoadNode->appendControlInput(C);
-  MemAccess->ReplaceWith(MemLoadNode, Use::K_VALUE);
   return Replace(MemLoadNode);
 }
 
@@ -138,10 +133,10 @@ GraphReduction ValuePromotion::ReducePhiNode(Node* PHI) {
     for(auto* EU : EUsrs)
       appendValueUsage(EU, PHI);
     PHI->ReplaceWith(DeadNode, Use::K_EFFECT);
-    return NoChange();
   } else {
-    return Revisit(PHI);
+    Revisit(PHI);
   }
+  return NoChange();
 }
 
 GraphReduction ValuePromotion::Reduce(Node* N) {

@@ -4,7 +4,7 @@
 #include <unordered_set>
 
 namespace gross {
-class CSEReducer {
+class CSEReducer : public GraphEditor {
   Graph& G;
   // FIXME: these state information would preserved through
   // the entire graph instead of function subgraph
@@ -17,7 +17,9 @@ public:
   static constexpr
   const char* name() { return "cse"; }
 
-  CSEReducer(Graph& graph) : G(graph) {}
+  CSEReducer(GraphEditor::Interface* editor)
+    : GraphEditor(editor),
+      G(Editor->GetGraph()) {}
 
   GraphReduction Reduce(Node* N);
 };

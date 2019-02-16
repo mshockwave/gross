@@ -30,7 +30,7 @@ TEST(GRPeepholeUnitTest, ConstReductionTest) {
       G.dumpGraphviz(OF);
     }
 
-    RunReducer<PeepholeReducer>(G, G);
+    GraphReducer::RunWithEditor<PeepholeReducer>(G);
     {
       std::ofstream OF("TestPHConstReduce.after.dot");
       G.dumpGraphviz(OF);
@@ -79,7 +79,7 @@ TEST(GRPeepholeUnitTest, ConstReductionTest) {
       G.dumpGraphviz(OF);
     }
 
-    RunReducer<PeepholeReducer>(G, G);
+    GraphReducer::RunWithEditor<PeepholeReducer>(G);
     {
       std::ofstream OF("TestPHConstReduce2.after.dot");
       G.dumpGraphviz(OF);
@@ -114,7 +114,7 @@ TEST(GRPeepholeUnitTest, RelationReductionTest) {
     G.dumpGraphviz(OF);
   }
 
-  RunReducer<PeepholeReducer>(G, G);
+  GraphReducer::RunWithEditor<PeepholeReducer>(G);
   {
     std::ofstream OF("TestPHRelationReduce.after.dot");
     G.dumpGraphviz(OF);

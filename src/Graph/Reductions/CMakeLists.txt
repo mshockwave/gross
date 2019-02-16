@@ -1,7 +1,6 @@
 
 set(_SOURCE_FILES
     ValuePromotion.cpp
-    DeadCodeElimination.cpp
     CSE.cpp
     Peephole.cpp
     )
@@ -12,7 +11,6 @@ add_library(GrossGraphReductions OBJECT
 if(GROSS_ENABLE_UNIT_TESTS)
   set(_TEST_SOURCE_FILES
       ValuePromotionTest.cpp
-      DeadCodeEliminationTest.cpp
       CSETest.cpp
       PeepholeTest.cpp
       )

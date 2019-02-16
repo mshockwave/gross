@@ -14,7 +14,7 @@ TEST(GraphUnitTest, TestGraphvizConcept) {
   G.dumpGraphviz(SS);
 }
 
-TEST(GraphUnitTest, TestBasicGraphReducer) {
+TEST(GraphUnitTest, TestGraphReducerConcept) {
   Graph G;
   struct DummyReducer {
     GraphReduction Reduce(Node* N) {
@@ -25,5 +25,19 @@ TEST(GraphUnitTest, TestBasicGraphReducer) {
     const char* name() { return "dummy-reducer"; }
   };
 
-  RunReducer<DummyReducer>(G);
+  GraphReducer::Run<DummyReducer>(G);
+
+  struct DummyAdvanceReducer : public GraphEditor {
+    DummyAdvanceReducer(GraphEditor::Interface* editor)
+      : GraphEditor(editor) {}
+
+    GraphReduction Reduce(Node* N) {
+      return NoChange();
+    }
+
+    static constexpr
+    const char* name() { return "dummy-advance-reducer"; }
+  };
+
+  GraphReducer::RunWithEditor<DummyAdvanceReducer>(G);
 }

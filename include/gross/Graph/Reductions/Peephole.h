@@ -3,7 +3,7 @@
 #include "gross/Graph/GraphReducer.h"
 
 namespace gross {
-class PeepholeReducer {
+class PeepholeReducer : public GraphEditor {
   GraphReduction ReduceArithmetic(Node* N);
   GraphReduction ReduceRelation(Node* N);
 
@@ -11,7 +11,7 @@ class PeepholeReducer {
   Node* DeadNode;
 
 public:
-  PeepholeReducer(Graph& graph);
+  PeepholeReducer(GraphEditor::Interface* editor);
 
   static constexpr
   const char* name() { return "peephole"; }

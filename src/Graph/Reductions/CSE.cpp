@@ -4,7 +4,6 @@
 #include <vector>
 
 using namespace gross;
-using namespace gross::graph_reduction;
 
 GraphReduction CSEReducer::Reduce(Node* N) {
   return ReduceTrivialValues(N);
@@ -40,8 +39,6 @@ GraphReduction CSEReducer::ReduceTrivialValues(Node* N) {
     auto* ReplaceNode = TI->NodePtr;
     if(N == ReplaceNode) return NoChange();
 
-    N->ReplaceWith(ReplaceNode);
-    N->Kill(NodeBuilder<IrOpcode::Dead>(&G).Build());
     return Replace(ReplaceNode);
   } else if(onlyGlobalValDeps(N)) {
     TrivialVals.insert(NodeHandle{N});
