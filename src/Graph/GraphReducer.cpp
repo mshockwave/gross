@@ -8,10 +8,10 @@
 
 using namespace gross;
 
-struct GraphReducer::ReductionVisitor
+struct GraphReducer::DFSVisitor
   : public boost::default_dfs_visitor {
-  explicit ReductionVisitor(std::vector<Node*>& Preced,
-                            NodeMarker<GraphReducer::ReductionState>& M)
+  DFSVisitor(std::vector<Node*>& Preced,
+             NodeMarker<GraphReducer::ReductionState>& M)
     : Precedence(Preced), Marker(M) {
     Precedence.clear();
   }
@@ -26,10 +26,11 @@ private:
   NodeMarker<GraphReducer::ReductionState>& Marker;
 };
 
-GraphReducer::GraphReducer(Graph& graph)
+GraphReducer::GraphReducer(Graph& graph, bool TrimGraph)
   : G(graph),
     DeadNode(NodeBuilder<IrOpcode::Dead>(&G).Build()),
-    RSMarker(G, 4) {}
+    RSMarker(G, 4),
+    DoTrimGraph(TrimGraph) {}
 
 void GraphReducer::Replace(Node* N, Node* Replacement) {
   for(auto* Usr : N->users()) {
@@ -64,12 +65,16 @@ bool GraphReducer::Recurse(Node* N) {
   return true;
 }
 
-void GraphReducer::runOnFunctionGraph(SubGraph& SG,
-                                      _detail::ReducerConcept* Reducer) {
-  ReductionVisitor Vis(ReductionStack, RSMarker);
+void GraphReducer::DFSVisit(SubGraph& SG, NodeMarker<ReductionState>& Marker) {
+  DFSVisitor Vis(ReductionStack, Marker);
   std::unordered_map<Node*,boost::default_color_type> ColorStorage;
   StubColorMap<decltype(ColorStorage)> ColorMap(ColorStorage);
   boost::depth_first_search(SG, Vis, std::move(ColorMap));
+}
+
+void GraphReducer::runOnFunctionGraph(SubGraph& SG,
+                                      _detail::ReducerConcept* Reducer) {
+  DFSVisit(SG, RSMarker);
 
   while(!ReductionStack.empty() || !RevisitStack.empty()) {
     while(!ReductionStack.empty()) {
@@ -122,4 +127,20 @@ void GraphReducer::runOnFunctionGraph(SubGraph& SG,
 void GraphReducer::runImpl(_detail::ReducerConcept* Reducer) {
   for(auto& SG : G.subregions())
     runOnFunctionGraph(SG, Reducer);
+
+  if(DoTrimGraph) {
+    NodeMarker<ReductionState> TrimMarker(G, 4);
+    for(auto& SG : G.subregions()) {
+      DFSVisit(SG, TrimMarker);
+    }
+    for(auto NI = G.node_cbegin(); NI != G.node_cend();) {
+      auto* N = const_cast<Node*>(Graph::GetNodeFromIt(NI));
+      if(TrimMarker.Get(N) == ReductionState::Unvisited &&
+         !NodeProperties<IrOpcode::VirtGlobalValues>(N)) {
+        NI = G.RemoveNode(NI);
+      } else {
+        ++NI;
+      }
+    }
+  }
 }

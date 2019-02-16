@@ -93,7 +93,7 @@ class GraphReducer : public GraphEditor::Interface {
     Visited        // Finished
   };
 
-  struct ReductionVisitor;
+  struct DFSVisitor;
 
   Graph& G;
   Node* DeadNode;
@@ -104,7 +104,9 @@ class GraphReducer : public GraphEditor::Interface {
   // visiting marker
   NodeMarker<ReductionState> RSMarker;
 
-  GraphReducer(Graph& graph);
+  bool DoTrimGraph;
+
+  GraphReducer(Graph& graph, bool TrimGraph = true);
 
   // implement GraphEditor::Interface
   void Replace(Node* N, Node* Replacement) override;
@@ -115,6 +117,8 @@ class GraphReducer : public GraphEditor::Interface {
   void Pop();
   // conditionally revisit
   bool Recurse(Node* N);
+
+  void DFSVisit(SubGraph& SG, NodeMarker<ReductionState>& Marker);
 
   void runImpl(_detail::ReducerConcept* R);
   void runOnFunctionGraph(SubGraph& SG, _detail::ReducerConcept* R);
