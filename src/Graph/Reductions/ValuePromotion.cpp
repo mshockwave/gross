@@ -130,8 +130,10 @@ GraphReduction ValuePromotion::ReducePhiNode(Node* PHI) {
     // replace all effect usages with value usages
     std::vector<Node*> EUsrs(PHI->effect_users().begin(),
                              PHI->effect_users().end());
-    for(auto* EU : EUsrs)
+    for(auto* EU : EUsrs) {
       appendValueUsage(EU, PHI);
+      Revisit(EU);
+    }
     PHI->ReplaceWith(DeadNode, Use::K_EFFECT);
   } else {
     Revisit(PHI);

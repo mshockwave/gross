@@ -25,10 +25,25 @@ TEST(ValueAssignIntegrateTest, TestBasicControlStructure) {
     std::ofstream OF("TestBasicCtrlStructure.mem2reg.dot");
     G.dumpGraphviz(OF);
   }
+}
 
-  GraphReducer::RunWithEditor<PeepholeReducer>(G);
+TEST(ValueAssignIntegrateTest, TestSimpleLoop) {
+  std::ifstream IF("value_assignment2.txt");
+
+  Graph G;
+  Parser P(IF, G);
+  (void) P.getLexer().getNextToken();
+  P.NewSymScope(); // global scope
+
+  ASSERT_TRUE(P.ParseFuncDecl());
   {
-    std::ofstream OF("TestBasicCtrlStructure.mem2reg.peephole.dot");
+    std::ofstream OF("TestSimpleLoop.dot");
+    G.dumpGraphviz(OF);
+  }
+
+  GraphReducer::RunWithEditor<ValuePromotion>(G);
+  {
+    std::ofstream OF("TestSimpleLoop.mem2reg.dot");
     G.dumpGraphviz(OF);
   }
 }

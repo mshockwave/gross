@@ -18,10 +18,6 @@ class lazy_edge_iterator
   GraphT* G;
   unsigned CurInput;
   typename GraphT::node_iterator CurNodeIt, EndNodeIt;
-  // we use ADT instead of NodeMarker because
-  // the latter will make empty iterator(i.e. default ctor)
-  // more difficult
-  std::set<Node*> Visited;
 
   // no checks!
   inline Node* CurNode() const {
@@ -42,15 +38,11 @@ class lazy_edge_iterator
   }
 
   void nextValidPos() {
-    while((CurNodeIt != EndNodeIt &&
-           CurInput >= CurNode()->Inputs.size()) ||
-          (CurNodeIt != EndNodeIt &&
-           Visited.count(CurNode()))) {
+    while(CurNodeIt != EndNodeIt &&
+          CurInput >= CurNode()->Inputs.size()) {
       // switch node
       ++CurNodeIt;
       CurInput = 0;
-
-      if(CurNodeIt != EndNodeIt) Visited.insert(CurNode());
     }
   }
 
@@ -96,6 +88,9 @@ class lazy_node_iterator
                                   > {
   friend class boost::iterator_core_access;
   std::vector<NodeT> Queue;
+  // we use ADT instead of NodeMarker because
+  // the latter will make empty iterator(i.e. default ctor)
+  // more difficult
   std::set<NodeT> Visited;
 
   bool equal(const lazy_node_iterator& Other) const {
