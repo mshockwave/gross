@@ -110,6 +110,10 @@ class Node {
   void appendNodeInput(unsigned& Size, unsigned Offset,
                        Node* NewNode);
   void removeNodeInput(unsigned Index, unsigned& Size, unsigned Offset);
+  void removeNodeInputAll(Node* N, unsigned& Size, unsigned Offset);
+  void cleanupRemoveNodeInput(Node* OldInput);
+
+  bool IsKilled;
 
 public:
   using MarkerTy = uint32_t;
@@ -142,18 +146,22 @@ public:
   void setValueInput(unsigned Index, Node* NewNode);
   void appendValueInput(Node* NewNode);
   void removeValueInput(unsigned Index);
+  void removeValueInputAll(Node* N);
 
   void setControlInput(unsigned Index, Node* NewNode);
   void appendControlInput(Node* NewNode);
   void removeControlInput(unsigned Index);
+  void removeControlInputAll(Node* N);
 
   void setEffectInput(unsigned Index, Node* NewNode);
   void appendEffectInput(Node* NewNode);
   void removeEffectInput(unsigned Index);
+  void removeEffectInputAll(Node* N);
 
   // remove all the inputs, and replace all
   // (remaining) users with Dead Node
   void Kill(Node* DeadNode);
+  bool IsDead() const { return IsKilled; }
 
   using input_iterator = typename decltype(Inputs)::iterator;
   using const_input_iterator = typename decltype(Inputs)::const_iterator;
@@ -165,6 +173,7 @@ public:
   }
   input_iterator input_begin() { return Inputs.begin(); }
   input_iterator input_end() { return Inputs.end(); }
+  size_t input_size() const { return Inputs.size(); }
 
   // iterators
   llvm::iterator_range<input_iterator>
@@ -252,14 +261,16 @@ public:
       MarkerData(0U),
       NumValueInput(0),
       NumControlInput(0),
-      NumEffectInput(0) {}
+      NumEffectInput(0),
+      IsKilled(false) {}
 
   Node(IrOpcode::ID OC)
     : Op(OC),
       MarkerData(0U),
       NumValueInput(0),
       NumControlInput(0),
-      NumEffectInput(0) {}
+      NumEffectInput(0),
+      IsKilled(false) {}
 
   Node(IrOpcode::ID OC,
        const std::vector<Node*>& Values,

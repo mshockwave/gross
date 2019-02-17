@@ -79,6 +79,45 @@ GraphReduction PeepholeReducer::ReduceRelation(Node* N) {
   return NoChange();
 }
 
+GraphReduction PeepholeReducer::DeadPHIElimination(Node* N) {
+  using input_iterators = llvm::iterator_range<typename Node::input_iterator>;
+  auto TryMerge = [](input_iterators const& Inputs) -> Node* {
+    Node* Val = nullptr;
+    for(auto* NI : Inputs) {
+      if(!Val) Val = NI;
+      else if(Val != NI) return nullptr;
+    }
+    return Val;
+  };
+
+  if(N->input_size() > 1) {
+    auto* MergeVal = TryMerge(N->value_inputs());
+    if(MergeVal) {
+      N->ReplaceWith(MergeVal, Use::K_VALUE);
+      for(auto* U : N->value_users())
+        Revisit(U);
+    }
+
+    auto* MergeEffect = TryMerge(N->effect_inputs());
+    if(MergeEffect) {
+      N->ReplaceWith(MergeEffect, Use::K_EFFECT);
+      for(auto* U : N->effect_users())
+        Revisit(U);
+    }
+
+    auto* MergeControl = TryMerge(N->control_inputs());
+    if(MergeControl) {
+      N->ReplaceWith(MergeControl, Use::K_CONTROL);
+      for(auto* U : N->control_users())
+        Revisit(U);
+    }
+
+    if(MergeVal && MergeEffect && MergeControl)
+      return Replace(DeadNode);
+  }
+  return NoChange();
+}
+
 GraphReduction PeepholeReducer::Reduce(Node* N) {
   switch(N->getOp()) {
   case IrOpcode::BinAdd:
@@ -93,6 +132,8 @@ GraphReduction PeepholeReducer::Reduce(Node* N) {
   case IrOpcode::BinEq:
   case IrOpcode::BinNe:
     return ReduceRelation(N);
+  case IrOpcode::Phi:
+    return DeadPHIElimination(N);
   default:
     return NoChange();
   }

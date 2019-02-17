@@ -7,6 +7,8 @@ class PeepholeReducer : public GraphEditor {
   GraphReduction ReduceArithmetic(Node* N);
   GraphReduction ReduceRelation(Node* N);
 
+  GraphReduction DeadPHIElimination(Node* N);
+
   Graph& G;
   Node* DeadNode;
 

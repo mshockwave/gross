@@ -1,5 +1,6 @@
 #include "gross/Graph/Graph.h"
 #include "gross/Graph/BGL.h"
+#include "gross/Graph/NodeUtils.h"
 #include "boost/graph/graphviz.hpp"
 #include <algorithm>
 #include <iterator>
@@ -22,6 +23,20 @@ size_t SubGraph::edge_size() { return std::distance(edge_begin(),
 
 void Graph::InsertNode(Node* N) {
   Nodes.emplace_back(N);
+}
+
+typename Graph::const_node_iterator
+Graph::RemoveNode(typename Graph::const_node_iterator NI) {
+  auto* N = const_cast<Node*>(NI->get());
+  if(!N->IsDead()) {
+    auto* DeadNode = NodeBuilder<IrOpcode::Dead>(this).Build();
+    N->Kill(DeadNode);
+  }
+  // unlink it with DeadNode
+  N->removeValueInputAll(DeadNode);
+  N->removeEffectInputAll(DeadNode);
+  N->removeControlInputAll(DeadNode);
+  return Nodes.erase(NI);
 }
 
 void Graph::AddSubRegion(const SubGraph& SG) {

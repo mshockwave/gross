@@ -129,6 +129,7 @@ void GraphReducer::runImpl(_detail::ReducerConcept* Reducer) {
     runOnFunctionGraph(SG, Reducer);
 
   if(DoTrimGraph) {
+    // remove nodes that are unreachable from any function
     NodeMarker<ReductionState> TrimMarker(G, 4);
     for(auto& SG : G.subregions()) {
       DFSVisit(SG, TrimMarker);
@@ -142,5 +143,22 @@ void GraphReducer::runImpl(_detail::ReducerConcept* Reducer) {
         ++NI;
       }
     }
+
+    // remove all deps to Dead node
+    auto* DeadNode = NodeBuilder<IrOpcode::Dead>(&G).Build();
+    std::vector<Node*> DeadUsrs;
+    DeadUsrs.assign(DeadNode->value_users().begin(),
+                    DeadNode->value_users().end());
+    for(auto* N : DeadUsrs)
+      N->removeValueInputAll(DeadNode);
+    DeadUsrs.assign(DeadNode->effect_users().begin(),
+                    DeadNode->effect_users().end());
+    for(auto* N : DeadUsrs)
+      N->removeEffectInputAll(DeadNode);
+    DeadUsrs.assign(DeadNode->control_users().begin(),
+                    DeadNode->control_users().end());
+    for(auto* N : DeadUsrs)
+      N->removeEffectInputAll(DeadNode);
+
   }
 }

@@ -13,7 +13,8 @@ Node::Node(IrOpcode::ID OC,
     MarkerData(0U),
     NumValueInput(ValueInputs.size()),
     NumControlInput(ControlInputs.size()),
-    NumEffectInput(EffectInputs.size()) {
+    NumEffectInput(EffectInputs.size()),
+    IsKilled(false) {
   if(NumEffectInput > 0)
     Inputs.insert(Inputs.begin(),
                   EffectInputs.begin(), EffectInputs.end());
@@ -48,18 +49,37 @@ void Node::setNodeInput(unsigned Index, unsigned Size, unsigned Offset,
   NewNode->Users.push_back(this);
 }
 
+void Node::cleanupRemoveNodeInput(Node* OldInput) {
+  auto It = std::find(OldInput->Users.cbegin(), OldInput->Users.cend(),
+                      this);
+  assert(It != OldInput->Users.cend());
+  OldInput->Users.erase(It);
+}
+
 void Node::removeNodeInput(unsigned Index, unsigned& Size, unsigned Offset) {
   unsigned S = Size;
   Index += Offset;
   S += Offset;
   assert(Index < S);
   Node* OldNode = Inputs[Index];
-  auto It = std::find(OldNode->Users.cbegin(), OldNode->Users.cend(),
-                      this);
-  assert(It != OldNode->Users.cend());
-  OldNode->Users.erase(It);
-  Size -= 1;
+  cleanupRemoveNodeInput(OldNode);
   Inputs.erase(Inputs.cbegin() + Index);
+  Size -= 1;
+}
+
+void Node::removeNodeInputAll(Node* Target, unsigned& Size, unsigned Offset) {
+  auto I = Inputs.cbegin() + Offset;
+  while(I != (Inputs.cbegin() + Size + Offset)) {
+    auto* N = const_cast<Node*>(*I);
+    if(N == Target) {
+      // remove
+      cleanupRemoveNodeInput(N);
+      I = Inputs.erase(I);
+      --Size;
+    } else {
+      ++I;
+    }
+  }
 }
 
 void Node::setValueInput(unsigned Index, Node* NewNode) {
@@ -71,6 +91,9 @@ void Node::appendValueInput(Node* NewNode) {
 void Node::removeValueInput(unsigned Index) {
   removeNodeInput(Index, NumValueInput, 0);
 }
+void Node::removeValueInputAll(Node* N) {
+  removeNodeInputAll(N, NumValueInput, 0);
+}
 
 void Node::setControlInput(unsigned Index, Node* NewNode) {
   setNodeInput(Index, NumControlInput, NumValueInput, NewNode);
@@ -80,6 +103,9 @@ void Node::appendControlInput(Node* NewNode) {
 }
 void Node::removeControlInput(unsigned Index) {
   removeNodeInput(Index, NumControlInput, NumValueInput);
+}
+void Node::removeControlInputAll(Node* N) {
+  removeNodeInputAll(N, NumControlInput, NumValueInput);
 }
 
 void Node::setEffectInput(unsigned Index, Node* NewNode) {
@@ -91,6 +117,9 @@ void Node::appendEffectInput(Node* NewNode) {
 }
 void Node::removeEffectInput(unsigned Index) {
   removeNodeInput(Index, NumEffectInput, NumValueInput + NumControlInput);
+}
+void Node::removeEffectInputAll(Node* N) {
+  removeNodeInputAll(N, NumEffectInput, NumValueInput + NumControlInput);
 }
 
 void Node::Kill(Node* DeadNode) {
@@ -106,6 +135,8 @@ void Node::Kill(Node* DeadNode) {
   ReplaceWith(DeadNode, Use::K_VALUE);
   ReplaceWith(DeadNode, Use::K_CONTROL);
   ReplaceWith(DeadNode, Use::K_EFFECT);
+
+  IsKilled = true;
 }
 
 llvm::iterator_range<Node::value_user_iterator>

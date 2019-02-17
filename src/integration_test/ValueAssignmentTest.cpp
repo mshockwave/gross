@@ -46,4 +46,10 @@ TEST(ValueAssignIntegrateTest, TestSimpleLoop) {
     std::ofstream OF("TestSimpleLoop.mem2reg.dot");
     G.dumpGraphviz(OF);
   }
+
+  GraphReducer::RunWithEditor<PeepholeReducer>(G);
+  {
+    std::ofstream OF("TestSimpleLoop.mem2reg.peephole.dot");
+    G.dumpGraphviz(OF);
+  }
 }
