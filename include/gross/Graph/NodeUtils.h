@@ -282,11 +282,13 @@ NODE_PROPERTIES(Merge) {
     }
     return nullptr;
   }
-  Node* FalseBranch() const {
+  // return the If node if there is no IfFalse node and Fallthrough is true
+  Node* FalseBranch(bool Fallthrough = false) const {
     for(unsigned i = 0, CSize = NodePtr->getNumControlInput();
         i < CSize; ++i) {
       Node* N = NodePtr->getControlInput(i);
       if(NodeProperties<IrOpcode::IfFalse>(N)) return N;
+      else if(NodeProperties<IrOpcode::If>(N) && Fallthrough) return N;
     }
     return nullptr;
   }
@@ -301,6 +303,14 @@ NODE_PROPERTIES(VirtIfBranches) {
     auto Op = NodePtr->getOp();
     return Op == IrOpcode::IfTrue ||
            Op == IrOpcode::IfFalse;
+  }
+
+  Node* BranchPoint() const {
+    for(auto* N : NodePtr->control_inputs()) {
+      if(NodeProperties<IrOpcode::If>(N))
+        return N;
+    }
+    return nullptr;
   }
 };
 
