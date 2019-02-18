@@ -1,6 +1,7 @@
 #ifndef GROSS_SUPPORT_GRAPH_H
 #define GROSS_SUPPORT_GRAPH_H
 #include "boost/iterator/iterator_facade.hpp"
+#include "boost/graph/properties.hpp"
 #include "gross/Graph/Node.h"
 #include "gross/Support/type_traits.h"
 #include <vector>
@@ -127,5 +128,48 @@ public:
     Visited.insert(EndNode);
   }
 };
+
+// since boost::depth_first_search has some really STUPID
+// copy by value ColorMap parameter, we need some stub/proxy
+// to hold map storage across several usages.
+template<class T, class VertexTy>
+struct StubColorMap {
+  using value_type = boost::default_color_type;
+  using reference = value_type&;
+  using key_type = VertexTy*;
+  struct category : public boost::read_write_property_map_tag {};
+
+  StubColorMap(T& Impl) : Storage(Impl) {}
+  StubColorMap() = delete;
+  StubColorMap(const StubColorMap& Other) = default;
+
+  reference get(const key_type& key) const {
+    return const_cast<reference>(Storage.at(key));
+  }
+  void put(const key_type& key, const value_type& val) {
+    Storage[key] = val;
+  }
+
+private:
+  T& Storage;
+};
+
+// it is very strange that both StubColorMap and graph_id_map<G,T>
+// are PropertyMapConcept, but the get() function for the former one
+// should be defined in namespace gross :\
+/// ColorMap PropertyMap
+template<class T, class Vertex>
+inline typename gross::StubColorMap<T,Vertex>::reference
+get(const gross::StubColorMap<T,Vertex>& pmap,
+    const typename gross::StubColorMap<T,Vertex>::key_type& key) {
+  return pmap.get(key);
+}
+
+template<class T, class Vertex> inline
+void put(gross::StubColorMap<T,Vertex>& pmap,
+         const typename gross::StubColorMap<T,Vertex>::key_type& key,
+         const typename gross::StubColorMap<T,Vertex>::value_type& val) {
+  return pmap.put(key, val);
+}
 } // end namespace gross
 #endif

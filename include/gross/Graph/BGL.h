@@ -13,51 +13,6 @@
 #include <utility>
 #include <iostream>
 
-namespace gross {
-// since boost::depth_first_search has some really STUPID
-// copy by value ColorMap parameter, we need some stub/proxy
-// to hold map storage across several usages.
-template<class T>
-struct StubColorMap {
-  using value_type = boost::default_color_type;
-  using reference = value_type&;
-  using key_type = Node*;
-  struct category : public boost::read_write_property_map_tag {};
-
-  StubColorMap(T& Impl) : Storage(Impl) {}
-  StubColorMap() = delete;
-  StubColorMap(const StubColorMap& Other) = default;
-
-  reference get(const key_type& key) const {
-    return const_cast<reference>(Storage.at(key));
-  }
-  void put(const key_type& key, const value_type& val) {
-    Storage[key] = val;
-  }
-
-private:
-  T& Storage;
-};
-
-// it is very strange that both StubColorMap and graph_id_map<G,T>
-// are PropertyMapConcept, but the get() function for the former one
-// should be defined in namespace gross :\
-/// ColorMap PropertyMap
-template<class T>
-inline typename gross::StubColorMap<T>::reference
-get(const gross::StubColorMap<T>& pmap,
-    const typename gross::StubColorMap<T>::key_type& key) {
-  return pmap.get(key);
-}
-
-template<class T> inline
-void put(gross::StubColorMap<T>& pmap,
-         const typename gross::StubColorMap<T>::key_type& key,
-         const typename gross::StubColorMap<T>::value_type& val) {
-  return pmap.put(key, val);
-}
-} // end namespace gross
-
 namespace boost {
 template<>
 struct graph_traits<gross::Graph> {

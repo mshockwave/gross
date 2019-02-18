@@ -68,7 +68,7 @@ bool GraphReducer::Recurse(Node* N) {
 void GraphReducer::DFSVisit(SubGraph& SG, NodeMarker<ReductionState>& Marker) {
   DFSVisitor Vis(ReductionStack, Marker);
   std::unordered_map<Node*,boost::default_color_type> ColorStorage;
-  StubColorMap<decltype(ColorStorage)> ColorMap(ColorStorage);
+  StubColorMap<decltype(ColorStorage), Node> ColorMap(ColorStorage);
   boost::depth_first_search(SG, Vis, std::move(ColorMap));
 }
 
