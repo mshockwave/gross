@@ -53,15 +53,7 @@ enum ID : unsigned {
   DLX##OC,  \
   DLX##OC##I,
 #define DLX_COMMON(OC) DLX##OC,
-#define DLX_MEM_OP(OC) DLX_COMMON(OC)
-#define DLX_CTRL_OP(OC) DLX_COMMON(OC)
-#define DLX_BUILTIN(OC) DLX_COMMON(OC)
 #include "DLXOpcodes.def"
-#undef DLX_BUILTIN
-#undef DLX_CTRL_OP
-#undef DLX_MEM_OP
-#undef DLX_COMMON
-#undef DLX_ARITH_OP
   // Virtual opcodes: abtraction nodes for several
   // opcodes with similar properties
   VirtSrcDecl,        // SrcVarDecl | SrcArrayDecl
@@ -74,7 +66,8 @@ enum ID : unsigned {
                       // | FunctionStub
   VirtCtrlPoints,     // If | IfTrue | IfFalse | Merge | Start | End
                       // | Return | Loop
-  VirtMemOps          // MemLoad | MemStore
+  VirtMemOps,         // MemLoad | MemStore
+  VirtDLXOps          // All the OC starts with DLX
 };
 } // end namespace IrOpcode
 } // end namespace gross

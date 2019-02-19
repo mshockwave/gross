@@ -1,45 +1,12 @@
 #ifndef GROSS_GRAPH_NODE_UTILS_H
 #define GROSS_GRAPH_NODE_UTILS_H
-#include "gross/Graph/Node.h"
-#include "gross/Graph/Graph.h"
+#include "gross/Graph/NodeUtilsBase.h"
 #include "gross/Support/STLExtras.h"
 #include "gross/Support/type_traits.h"
 #include "gross/Support/iterator_range.h"
 #include <string>
 
 namespace gross {
-template<IrOpcode::ID Op>
-class NodePropertiesBase {
-protected:
-  Node* NodePtr;
-
-  NodePropertiesBase(Node* N)
-    : NodePtr(N) {}
-
-public:
-  operator bool() const {
-    return NodePtr && NodePtr->Op == Op;
-  }
-};
-
-template<IrOpcode::ID Op>
-struct NodeProperties : public NodePropertiesBase<Op> {
-  NodeProperties(Node* N)
-    : NodePropertiesBase<Op>(N) {}
-};
-
-#define NODE_PROPERTIES(OP) \
-  template<>  \
-  struct NodeProperties<IrOpcode::OP> : public NodePropertiesBase<IrOpcode::OP>
-#define NODE_PROPERTIES_VIRT(OP, VIRTOP) \
-  template<>  \
-  struct NodeProperties<IrOpcode::OP> : public NodeProperties<IrOpcode::VIRTOP>
-
-#define NODE_PROP_BASE(OP, NODE) \
-  NodePropertiesBase<IrOpcode::OP>(NODE)
-#define NODE_PROP_VIRT(VIRTOP, NODE)  \
-  NodeProperties<IrOpcode::VIRTOP>(NODE)
-
 NODE_PROPERTIES(ConstantInt) {
   NodeProperties(Node *N)
     : NODE_PROP_BASE(ConstantInt, N) {}
@@ -481,16 +448,6 @@ NODE_PROPERTIES(Return) {
       return NodePtr->getValueInput(0);
     else
       return nullptr;
-  }
-};
-#undef NODE_PROP_BASE
-#undef NODE_PROPERTIES
-
-template<IrOpcode::ID OP>
-struct NodeBuilder {
-  Node* Build() {
-    gross_unreachable("Unimplemented");
-    return nullptr;
   }
 };
 

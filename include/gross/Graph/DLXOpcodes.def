@@ -1,3 +1,9 @@
+#ifdef DLX_COMMON
+// Arithmetic always need special handle
+#define DLX_MEM_OP(OC)  DLX_COMMON(OC)
+#define DLX_CTRL_OP(OC) DLX_COMMON(OC)
+#define DLX_BUILTIN(OC) DLX_COMMON(OC)
+#endif
 
 /// Arithmetic Operations
 DLX_ARITH_OP(Add)
@@ -13,6 +19,7 @@ DLX_ARITH_OP(BitBIC)
 DLX_ARITH_OP(Lsh)
 DLX_ARITH_OP(Ash)
 DLX_ARITH_OP(Chk)
+#undef DLX_ARITH_OP
 
 /// Memory Operations
 DLX_MEM_OP(LdW)
@@ -21,6 +28,7 @@ DLX_MEM_OP(StW)
 DLX_MEM_OP(StX)
 DLX_MEM_OP(Push)
 DLX_MEM_OP(Pop)
+#undef DLX_MEM_OP
 
 /// Control Operations
 DLX_CTRL_OP(Beq)
@@ -34,9 +42,15 @@ DLX_CTRL_OP(Blr)
 // JSR
 DLX_CTRL_OP(Jlr)
 DLX_CTRL_OP(Ret)
+#undef DLX_CTRL_OP
 
 /// Builtins
 DLX_BUILTIN(Rdd)
 DLX_BUILTIN(Wrd)
 DLX_BUILTIN(Wrh)
 DLX_BUILTIN(Wrl)
+#undef DLX_BUILTIN
+
+#ifdef DLX_COMMON
+#undef DLX_COMMON
+#endif
