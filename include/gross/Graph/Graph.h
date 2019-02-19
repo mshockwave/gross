@@ -64,10 +64,6 @@ struct hash<gross::SubGraph> {
 } //end namespace std
 
 namespace gross {
-// map from vertex or edge to an unique id
-template<class GraphT, class PropertyTag>
-struct graph_id_map {};
-
 // Owner of nodes
 class Graph {
   template<IrOpcode::ID Op>

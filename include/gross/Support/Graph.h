@@ -8,6 +8,10 @@
 #include <set>
 
 namespace gross {
+// map from vertex or edge to an unique id
+template<class GraphT, class PropertyTag>
+struct graph_id_map {};
+
 template<class GraphT>
 class lazy_edge_iterator
   : public boost::iterator_facade<lazy_edge_iterator<GraphT>,

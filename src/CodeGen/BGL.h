@@ -6,6 +6,7 @@
 #include "gross/CodeGen/BasicBlock.h"
 #include "gross/Support/STLExtras.h"
 #include "gross/Support/type_traits.h"
+#include "gross/Support/Graph.h"
 #include "GraphScheduling.h"
 #include <utility>
 
@@ -32,6 +33,10 @@ struct graph_traits<gross::GraphSchedule> {
                                 >;
   using vertices_size_type = size_t;
 
+  /// EdgeListGraphConcept
+  using edge_iterator = typename gross::GraphSchedule::edge_iterator;
+  using edges_size_type = size_t;
+
   /// IncidenceGraphConcept
   using out_edge_iterator
     = boost::transform_iterator<typename gross::BasicBlock::EdgeBuilder,
@@ -43,6 +48,7 @@ struct graph_traits<gross::GraphSchedule> {
 
   struct traversal_category :
     public boost::vertex_list_graph_tag,
+    public boost::edge_list_graph_tag,
     public boost::incidence_graph_tag {};
 };
 
@@ -109,6 +115,72 @@ target(const typename boost::graph_traits<gross::GraphSchedule>::edge_descriptor
        &e,
        const gross::GraphSchedule& g) {
   return const_cast<gross::BasicBlock*>(e.second);
+}
+
+/// EdgeListGraphConcept
+inline
+std::pair<typename boost::graph_traits<gross::GraphSchedule>::edge_iterator,
+          typename boost::graph_traits<gross::GraphSchedule>::edge_iterator>
+edges(gross::GraphSchedule& g) {
+  return std::make_pair(g.edge_begin(), g.edge_end());
+}
+inline
+std::pair<typename boost::graph_traits<gross::GraphSchedule>::edge_iterator,
+          typename boost::graph_traits<gross::GraphSchedule>::edge_iterator>
+edges(const gross::GraphSchedule& g) {
+  return edges(const_cast<gross::GraphSchedule&>(g));
+}
+
+inline typename boost::graph_traits<gross::GraphSchedule>::edges_size_type
+num_edges(gross::GraphSchedule& g) {
+  return const_cast<const gross::GraphSchedule&>(g).edge_size();
+}
+inline typename boost::graph_traits<gross::GraphSchedule>::edges_size_type
+num_edges(const gross::GraphSchedule& g) {
+  return g.edge_size();
+}
+} // end namespace boost
+
+/// Property Map Concept
+namespace gross {
+template<>
+struct graph_id_map<GraphSchedule, boost::vertex_index_t> {
+  using value_type = size_t;
+  using reference = size_t;
+  using key_type = BasicBlock*;
+  struct category : public boost::readable_property_map_tag {};
+
+  graph_id_map(const GraphSchedule& g) : G(g) {}
+
+  reference operator[](const key_type& key) const {
+    // just use linear search for now
+    // TODO: improve time complexity
+    value_type Idx = 0;
+    for(auto I = G.block_cbegin(), E = G.block_cend();
+        I != E; ++I, ++Idx) {
+      if(I->get() == key) break;
+    }
+    return Idx;
+  }
+
+private:
+  const GraphSchedule &G;
+};
+using GraphScheduleVertexIdMap
+  = graph_id_map<GraphSchedule, boost::vertex_index_t>;
+} // end namespace gross
+
+namespace boost {
+// get() for vertex id property map
+inline typename gross::GraphScheduleVertexIdMap::reference
+get(const gross::GraphScheduleVertexIdMap &pmap,
+    const typename gross::GraphScheduleVertexIdMap::key_type &key) {
+  return pmap[key];
+}
+// get() for getting vertex id property map from graph
+inline gross::GraphScheduleVertexIdMap
+get(boost::vertex_index_t tag, const gross::GraphSchedule& g) {
+  return gross::GraphScheduleVertexIdMap(g);
 }
 } // end namespace boost
 #endif
