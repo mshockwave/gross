@@ -22,5 +22,41 @@ NODE_PROPERTIES(VirtDLXOps) {
     }
   }
 };
+
+template<>
+struct NodeBuilder<IrOpcode::VirtDLXBinOps> {
+  NodeBuilder(Graph* graph, IrOpcode::ID Op, bool Imm = false)
+    : G(graph), OC(Op), IsImmediate(Imm),
+      LHSVal(nullptr), RHSVal(nullptr) {}
+
+  NodeBuilder& LHS(Node* N) {
+    if(IsImmediate)
+      assert(N->getOp() != IrOpcode::ConstantInt);
+    LHSVal = N;
+    return *this;
+  }
+
+  NodeBuilder& RHS(Node* N) {
+    if(IsImmediate)
+      assert(N->getOp() == IrOpcode::ConstantInt);
+    RHSVal = N;
+    return *this;
+  }
+
+  Node* Build() {
+    assert(LHSVal && RHSVal);
+    auto* N = new Node(OC, {LHSVal, RHSVal});
+    LHSVal->Users.push_back(N);
+    RHSVal->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+
+private:
+  Graph* G;
+  IrOpcode::ID OC;
+  bool IsImmediate;
+  Node *LHSVal, *RHSVal;
+};
 } // end namespace gross
 #endif

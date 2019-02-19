@@ -4,10 +4,10 @@
 #include "boost/graph/properties.hpp"
 #include "boost/iterator/transform_iterator.hpp"
 #include "gross/CodeGen/BasicBlock.h"
+#include "gross/CodeGen/GraphScheduling.h"
 #include "gross/Support/STLExtras.h"
 #include "gross/Support/type_traits.h"
 #include "gross/Support/Graph.h"
-#include "GraphScheduling.h"
 #include <utility>
 
 namespace boost {

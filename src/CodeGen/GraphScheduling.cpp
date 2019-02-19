@@ -1,6 +1,6 @@
-#include "GraphScheduling.h"
 #include "BGL.h"
 #include "boost/graph/depth_first_search.hpp"
+#include "gross/CodeGen/GraphScheduling.h"
 #include "gross/Graph/Node.h"
 #include "gross/Graph/NodeUtils.h"
 #include <vector>

@@ -1,5 +1,4 @@
 #include "boost/concept/assert.hpp"
-#include "GraphScheduling.h"
 #include "BGL.h"
 #include "boost/graph/graph_concepts.hpp"
 #include "gtest/gtest.h"

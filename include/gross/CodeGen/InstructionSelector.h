@@ -4,6 +4,10 @@
 
 namespace gross {
 class InstructionSelector : public GraphEditor {
+  Graph& G;
+
+  GraphReduction SelectArithmetic(Node* N);
+
 public:
   InstructionSelector(GraphEditor::Interface* editor);
 

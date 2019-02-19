@@ -67,7 +67,8 @@ enum ID : unsigned {
   VirtCtrlPoints,     // If | IfTrue | IfFalse | Merge | Start | End
                       // | Return | Loop
   VirtMemOps,         // MemLoad | MemStore
-  VirtDLXOps          // All the OC starts with DLX
+  VirtDLXOps,         // All the OC starts with DLX
+  VirtDLXBinOps,      // All DLX arithmetic operations with binary operands
 };
 } // end namespace IrOpcode
 } // end namespace gross
