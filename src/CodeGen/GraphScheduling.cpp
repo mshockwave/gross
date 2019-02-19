@@ -1,4 +1,6 @@
 #include "GraphScheduling.h"
+#include "BGL.h"
+#include "boost/graph/depth_first_search.hpp"
 #include "gross/Graph/Node.h"
 #include "gross/Graph/NodeUtils.h"
 #include <vector>
@@ -11,6 +13,22 @@ BasicBlock* GraphSchedule::NewBasicBlock() {
   return Blocks.back().get();
 }
 
+typename GraphSchedule::edge_iterator
+GraphSchedule::edge_begin() {
+  return edge_iterator(Blocks.begin(), Blocks.end());
+}
+typename GraphSchedule::edge_iterator
+GraphSchedule::edge_end() {
+  return edge_iterator(Blocks.end(), Blocks.end());
+}
+llvm::iterator_range<typename GraphSchedule::edge_iterator>
+GraphSchedule::edges() {
+  return llvm::make_range(edge_begin(), edge_end());
+}
+size_t GraphSchedule::edge_size() {
+  return std::distance(edge_begin(), edge_end());
+}
+
 namespace gross {
 namespace _internal {
 class CFGBuilder {
@@ -19,11 +37,13 @@ class CFGBuilder {
   GraphSchedule& Schedule;
 
   std::vector<Node*> ControlNodes;
-  NodeBiMap<BasicBlock*> EnclosingBlocks;
+
+  BasicBlock* MapBlock(Node* N) {
+    return Schedule.MapBlock(N);
+  }
 
   void AddNodeToBlock(Node* N, BasicBlock* BB) {
     Schedule.AddNode(BB, N);
-    EnclosingBlocks.insert({N, BB});
   }
 
   void BlockPlacement();
@@ -33,9 +53,6 @@ class CFGBuilder {
     SuccBB->AddPredBlock(PredBB);
   }
   void ConnectBlock(Node* CtrlNode);
-
-  // sort the blocks as RPO
-  void Sort();
 
 public:
   CFGBuilder(const SubGraph& subgraph, GraphSchedule& schedule)
@@ -48,7 +65,11 @@ public:
     for(auto* N : ControlNodes) {
       ConnectBlock(N);
     }
+
+    Schedule.SortRPO();
   }
+
+  decltype(ControlNodes)& getCtrlNodes() { return ControlNodes; }
 };
 
 void CFGBuilder::BlockPlacement() {
@@ -62,7 +83,7 @@ void CFGBuilder::BlockPlacement() {
     case IrOpcode::If: {
       assert(N->getNumControlInput() > 0);
       auto* PrevCtrl = N->getControlInput(0);
-      auto* BB = *EnclosingBlocks.find_value(PrevCtrl);
+      auto* BB = MapBlock(PrevCtrl);
       assert(BB && "If node's previous control not visited yet?");
       AddNodeToBlock(N, BB);
       break;
@@ -85,7 +106,7 @@ void CFGBuilder::BlockPlacement() {
 }
 
 void CFGBuilder::ConnectBlock(Node* CtrlNode) {
-  auto* EncloseBB = *EnclosingBlocks.find_value(CtrlNode);
+  auto* EncloseBB = MapBlock(CtrlNode);
   assert(EncloseBB && "not enclosed in any BB?");
 
   switch(CtrlNode->getOp()) {
@@ -97,7 +118,7 @@ void CFGBuilder::ConnectBlock(Node* CtrlNode) {
     NodeProperties<IrOpcode::Merge> NP(CtrlNode);
     Node* Branches[2] = { NP.TrueBranch(), NP.FalseBranch(true) };
     for(auto* Br : Branches) {
-      auto* BB = *EnclosingBlocks.find_value(Br);
+      auto* BB = MapBlock(Br);
       assert(BB && "branch not enclosed in any BB?");
       EncloseBB->AddPredBlock(BB);
       BB->AddSuccBlock(EncloseBB);
@@ -107,14 +128,14 @@ void CFGBuilder::ConnectBlock(Node* CtrlNode) {
   case IrOpcode::IfTrue:
   case IrOpcode::IfFalse: {
     NodeProperties<IrOpcode::VirtIfBranches> NP(CtrlNode);
-    auto* PrevBB = *EnclosingBlocks.find_value(NP.BranchPoint());
+    auto* PrevBB = MapBlock(NP.BranchPoint());
     assert(PrevBB && "If node not enclosed in any BB?");
     connectBlocks(PrevBB, EncloseBB);
     break;
   }
   case IrOpcode::Loop: {
     for(auto* CI : CtrlNode->control_inputs()) {
-      auto* PrevBB = *EnclosingBlocks.find_value(CI);
+      auto* PrevBB = MapBlock(CI);
       assert(PrevBB);
       connectBlocks(PrevBB, EncloseBB);
     }
@@ -124,7 +145,7 @@ void CFGBuilder::ConnectBlock(Node* CtrlNode) {
     std::set<BasicBlock*> PrevBBs;
     BasicBlock* EntryBlock = nullptr;
     for(auto* CI : CtrlNode->control_inputs()) {
-      auto* PrevBB = *EnclosingBlocks.find_value(CI);
+      auto* PrevBB = MapBlock(CI);
       assert(PrevBB);
       if(CI->getOp() == IrOpcode::Start) {
         EntryBlock = PrevBB;
@@ -141,11 +162,29 @@ void CFGBuilder::ConnectBlock(Node* CtrlNode) {
   }
   }
 }
-
-void CFGBuilder::Sort() {
-}
 } // end namespace _internal
 } // end namespace gross
+
+struct GraphSchedule::RPOVisitor
+  : public boost::default_dfs_visitor {
+  void finish_vertex(BasicBlock* BB, const GraphSchedule& G) {
+    Trace.insert(Trace.cbegin(), BB);
+  }
+
+  RPOVisitor() = delete;
+  RPOVisitor(std::vector<BasicBlock*>& trace) : Trace(trace) {}
+
+private:
+  std::vector<BasicBlock*>& Trace;
+};
+
+void GraphSchedule::SortRPO() {
+  RPOBlocks.clear();
+  RPOVisitor Vis(RPOBlocks);
+  std::unordered_map<BasicBlock*,boost::default_color_type> ColorStorage;
+  StubColorMap<decltype(ColorStorage), BasicBlock> ColorMap(ColorStorage);
+  boost::depth_first_search(*this, Vis, std::move(ColorMap));
+}
 
 GraphScheduler::GraphScheduler(Graph& graph) : G(graph) {}
 
