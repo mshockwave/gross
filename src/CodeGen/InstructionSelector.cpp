@@ -74,6 +74,45 @@ GraphReduction InstructionSelector::SelectArithmetic(Node* N) {
   }
 }
 
+GraphReduction InstructionSelector::SelectMemOperations(Node* N) {
+  NodeProperties<IrOpcode::VirtMemOps> NP(N);
+  assert(NP);
+  auto* BaseAddr = NP.BaseAddr();
+  auto* Offset = NP.Offset();
+
+  if(N->getOp() == IrOpcode::MemLoad) {
+    Node* NewNode;
+    if(Offset->getOp() == IrOpcode::ConstantInt) {
+      NewNode = NodeBuilder<IrOpcode::DLXLdW>(&G)
+                .BaseAddr(BaseAddr).Offset(Offset)
+                .Build();
+    } else {
+      NewNode = NodeBuilder<IrOpcode::DLXLdX>(&G)
+                .BaseAddr(BaseAddr).Offset(Offset)
+                .Build();
+    }
+    return Replace(NewNode);
+  } else if(N->getOp() == IrOpcode::MemStore) {
+    NodeProperties<IrOpcode::MemStore> StNP(N);
+    Node* NewNode;
+    if(Offset->getOp() == IrOpcode::ConstantInt) {
+      NewNode = NodeBuilder<IrOpcode::DLXStW>(&G)
+                .BaseAddr(BaseAddr).Offset(Offset)
+                .Src(StNP.SrcVal())
+                .Build();
+    } else {
+      NewNode = NodeBuilder<IrOpcode::DLXStX>(&G)
+                .BaseAddr(BaseAddr).Offset(Offset)
+                .Src(StNP.SrcVal())
+                .Build();
+    }
+    return Replace(NewNode);
+  } else {
+    gross_unreachable("Unsupported Opcode");
+    return NoChange();
+  }
+}
+
 GraphReduction InstructionSelector::Reduce(Node* N) {
   switch(N->getOp()) {
   default:
@@ -83,5 +122,8 @@ GraphReduction InstructionSelector::Reduce(Node* N) {
   case IrOpcode::BinMul:
   case IrOpcode::BinDiv:
     return SelectArithmetic(N);
+  case IrOpcode::MemLoad:
+  case IrOpcode::MemStore:
+    return SelectMemOperations(N);
   }
 }

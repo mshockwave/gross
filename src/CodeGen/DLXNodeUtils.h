@@ -58,5 +58,91 @@ private:
   bool IsImmediate;
   Node *LHSVal, *RHSVal;
 };
+
+template<>
+struct NodeBuilder<IrOpcode::DLXLdW>
+  : public _internal::MemNodeBuilder<IrOpcode::DLXLdW> {
+  NodeBuilder(Graph* graph)
+    : _internal::MemNodeBuilder<IrOpcode::DLXLdW>(graph) {}
+
+  Node* Build() {
+    assert(OffsetNode->getOp() == IrOpcode::ConstantInt &&
+           "Offset not constant?");
+    auto* N = new Node(IrOpcode::DLXLdW,
+                       {BaseAddrNode, OffsetNode});
+    BaseAddrNode->Users.push_back(N);
+    OffsetNode->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+};
+template<>
+struct NodeBuilder<IrOpcode::DLXLdX>
+  : public _internal::MemNodeBuilder<IrOpcode::DLXLdX> {
+  NodeBuilder(Graph* graph)
+    : _internal::MemNodeBuilder<IrOpcode::DLXLdX>(graph) {}
+
+  Node* Build() {
+    auto* N = new Node(IrOpcode::DLXLdX,
+                       {BaseAddrNode, OffsetNode});
+    BaseAddrNode->Users.push_back(N);
+    OffsetNode->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+};
+
+template<>
+struct NodeBuilder<IrOpcode::DLXStW>
+  : public _internal::MemNodeBuilder<IrOpcode::DLXStW> {
+  NodeBuilder(Graph* graph)
+    : _internal::MemNodeBuilder<IrOpcode::DLXStW>(graph) {}
+
+  NodeBuilder& Src(Node* N) {
+    SrcNode = N;
+    return *this;
+  }
+
+  Node* Build() {
+    assert(OffsetNode->getOp() == IrOpcode::ConstantInt &&
+           "Offset not constant?");
+    auto* N = new Node(IrOpcode::DLXStW,
+                       {BaseAddrNode, OffsetNode,
+                        SrcNode});
+    BaseAddrNode->Users.push_back(N);
+    OffsetNode->Users.push_back(N);
+    SrcNode->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+
+private:
+  Node* SrcNode;
+};
+template<>
+struct NodeBuilder<IrOpcode::DLXStX>
+  : public _internal::MemNodeBuilder<IrOpcode::DLXStX> {
+  NodeBuilder(Graph* graph)
+    : _internal::MemNodeBuilder<IrOpcode::DLXStX>(graph) {}
+
+  NodeBuilder& Src(Node* N) {
+    SrcNode = N;
+    return *this;
+  }
+
+  Node* Build() {
+    auto* N = new Node(IrOpcode::DLXStX,
+                       {BaseAddrNode, OffsetNode,
+                        SrcNode});
+    BaseAddrNode->Users.push_back(N);
+    OffsetNode->Users.push_back(N);
+    SrcNode->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+
+private:
+  Node* SrcNode;
+};
 } // end namespace gross
 #endif

@@ -7,6 +7,7 @@ class InstructionSelector : public GraphEditor {
   Graph& G;
 
   GraphReduction SelectArithmetic(Node* N);
+  GraphReduction SelectMemOperations(Node* N);
 
 public:
   InstructionSelector(GraphEditor::Interface* editor);

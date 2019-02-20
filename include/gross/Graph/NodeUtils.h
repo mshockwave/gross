@@ -1057,31 +1057,6 @@ private:
   Node* Predicate;
 };
 
-namespace _internal {
-template<IrOpcode::ID OC,
-         class DerivedT = NodeBuilder<OC>>
-class MemNodeBuilder {
-  inline
-  DerivedT& derived() { return *static_cast<DerivedT*>(this); }
-
-public:
-  MemNodeBuilder(Graph* graph)
-    : G(graph) {}
-
-  DerivedT& BaseAddr(Node* N) {
-    BaseAddrNode = N;
-    return derived();
-  }
-  DerivedT& Offset(Node* N) {
-    OffsetNode = N;
-    return derived();
-  }
-
-protected:
-  Graph* G;
-  Node *BaseAddrNode, *OffsetNode;
-};
-} // end namespace _internal
 template<>
 struct NodeBuilder<IrOpcode::MemLoad>
   : public _internal::MemNodeBuilder<IrOpcode::MemLoad> {
