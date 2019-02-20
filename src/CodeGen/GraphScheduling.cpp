@@ -75,8 +75,22 @@ public:
 void CFGBuilder::BlockPlacement() {
   // we want normal BFS traveling order here
   std::vector<Node*> RPONodes;
-  for(auto* N : SG.nodes())
+  // force Start/End nodes be the first/last nodes
+  Node *StartNode = nullptr, *EndNode = nullptr;
+  for(auto* N : SG.nodes()) {
+    if(N->getOp() == IrOpcode::Start) {
+      StartNode = N;
+      continue;
+    }
+    if(N->getOp() == IrOpcode::End){
+      EndNode = N;
+      continue;
+    }
     RPONodes.insert(RPONodes.cbegin(), N);
+  }
+  assert(StartNode && EndNode);
+  RPONodes.insert(RPONodes.cbegin(), StartNode);
+  RPONodes.insert(RPONodes.cend(), EndNode);
 
   for(auto* N : RPONodes) {
     switch(N->getOp()) {
@@ -96,6 +110,14 @@ void CFGBuilder::BlockPlacement() {
     case IrOpcode::Merge: {
       auto* BB = Schedule.NewBasicBlock();
       AddNodeToBlock(N, BB);
+      break;
+    }
+    case IrOpcode::Alloca: {
+      // needs to be placed in the entry block
+      // TODO: tell local alloca from global variable
+      auto* EntryBlock = MapBlock(StartNode);
+      assert(EntryBlock);
+      AddNodeToBlock(N, EntryBlock);
       break;
     }
     default:
@@ -186,7 +208,8 @@ void GraphSchedule::SortRPO() {
   boost::depth_first_search(*this, Vis, std::move(ColorMap));
 }
 
-GraphScheduler::GraphScheduler(Graph& graph) : G(graph) {}
+GraphScheduler::GraphScheduler(Graph& graph)
+  : G(graph) {}
 
 void GraphScheduler::ComputeScheduledGraph() {
   // Phases:

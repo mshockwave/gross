@@ -8,7 +8,6 @@ class PreMachineLowering : public GraphEditor {
 
   GraphReduction SelectArithmetic(Node* N);
   GraphReduction SelectMemOperations(Node* N);
-  GraphReduction SelectMemAllocation(Node* N);
 
 public:
   PreMachineLowering(GraphEditor::Interface* editor);

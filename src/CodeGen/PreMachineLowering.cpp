@@ -113,11 +113,6 @@ GraphReduction PreMachineLowering::SelectMemOperations(Node* N) {
   }
 }
 
-GraphReduction PreMachineLowering::SelectMemAllocation(Node* N) {
-  // TODO
-  return NoChange();
-}
-
 GraphReduction PreMachineLowering::Reduce(Node* N) {
   switch(N->getOp()) {
   default:
@@ -130,7 +125,5 @@ GraphReduction PreMachineLowering::Reduce(Node* N) {
   case IrOpcode::MemLoad:
   case IrOpcode::MemStore:
     return SelectMemOperations(N);
-  case IrOpcode::Alloca:
-    return SelectMemAllocation(N);
   }
 }
