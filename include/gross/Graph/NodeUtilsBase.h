@@ -36,12 +36,19 @@ struct NodeProperties : public NodePropertiesBase<Op> {
 #define NODE_PROP_VIRT(VIRTOP, NODE)  \
   NodeProperties<IrOpcode::VIRTOP>(NODE)
 
-template<IrOpcode::ID OP>
+template<IrOpcode::ID OC>
 struct NodeBuilder {
+  NodeBuilder(Graph* graph) : G(graph) {}
+
   Node* Build() {
-    gross_unreachable("Unimplemented");
-    return nullptr;
+    // default implementation
+    auto* N = new Node(OC, {});
+    G->InsertNode(N);
+    return N;
   }
+
+private:
+  Graph* G;
 };
 
 namespace _internal {

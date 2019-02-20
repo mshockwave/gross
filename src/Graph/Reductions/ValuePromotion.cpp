@@ -72,6 +72,20 @@ GraphReduction ValuePromotion::ReduceVarAccess(Node* VarAccess) {
     assert(VarAccess->getNumValueInput() == 2);
     auto* PromotedVal = VarAccess->getValueInput(1);
     return Replace(PromotedVal);
+  } else if(VarAccess->getNumValueInput() == 1) {
+    auto* Decl = VarAccess->getValueInput(0);
+    Node* AllocaNode;
+    if(Decl->getOp() == IrOpcode::Alloca) {
+      AllocaNode = Decl;
+    } else if(Decl->getOp() == IrOpcode::SrcVarDecl) {
+      // we really need a stack slot
+      // TODO: Tell global variable from local one
+      AllocaNode = NodeBuilder<IrOpcode::Alloca>(&G).Build();
+      Replace(Decl, AllocaNode);
+    } else {
+      return NoChange();
+    }
+    return Replace(AllocaNode);
   } else {
     return NoChange();
   }

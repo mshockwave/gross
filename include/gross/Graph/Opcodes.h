@@ -39,6 +39,7 @@ enum ID : unsigned {
                 // use function stub instead. Also, a stub instance is a single-
                 // ton, that is, global values in our framework.
   Attribute,
+  Alloca, // stack allocation
   MemLoad,
   MemStore,
   // High-level primitives
