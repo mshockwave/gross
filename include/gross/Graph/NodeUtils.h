@@ -1058,6 +1058,34 @@ private:
 };
 
 template<>
+struct NodeBuilder<IrOpcode::Alloca> {
+  NodeBuilder(Graph* graph)
+    : G(graph), AllocationSize(nullptr) {}
+
+  NodeBuilder& Size(Node* N) {
+    AllocationSize = N;
+    return *this;
+  }
+
+  Node* Build() {
+    if(!AllocationSize)
+      // default to be one
+      AllocationSize = NodeBuilder<IrOpcode::ConstantInt>(G, 1)
+                       .Build();
+
+    auto* N = new Node(IrOpcode::Alloca,
+                       {AllocationSize});
+    AllocationSize->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+
+private:
+  Graph* G;
+  Node* AllocationSize;
+};
+
+template<>
 struct NodeBuilder<IrOpcode::MemLoad>
   : public _internal::MemNodeBuilder<IrOpcode::MemLoad> {
   NodeBuilder(Graph* graph)

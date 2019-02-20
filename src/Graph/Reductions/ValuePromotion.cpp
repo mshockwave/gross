@@ -80,7 +80,8 @@ GraphReduction ValuePromotion::ReduceVarAccess(Node* VarAccess) {
     } else if(Decl->getOp() == IrOpcode::SrcVarDecl) {
       // we really need a stack slot
       // TODO: Tell global variable from local one
-      AllocaNode = NodeBuilder<IrOpcode::Alloca>(&G).Build();
+      AllocaNode = NodeBuilder<IrOpcode::Alloca>(&G)
+                   .Build();
       Replace(Decl, AllocaNode);
     } else {
       return NoChange();
@@ -129,7 +130,35 @@ GraphReduction ValuePromotion::ReduceMemAccess(Node* MemAccess) {
     MemLoadNode->appendEffectInput(E);
   for(auto* C : MemAccess->control_inputs())
     MemLoadNode->appendControlInput(C);
+  // break the link between ArrayDecl and ArrayAccess
+  MemAccess->removeValueInputAll(ArrayDecl);
+  // revisit ArrayDecl later in order to reduce to Alloca
+  Revisit(ArrayDecl);
+
   return Replace(MemLoadNode);
+}
+
+// reduce to Alloca after all users are not SrcArrayAccess anymore
+GraphReduction ValuePromotion::ReduceArrayDecl(Node* ArrayDecl) {
+  NodeProperties<IrOpcode::SrcArrayDecl> DNP(ArrayDecl);
+  assert(DNP);
+  for(auto* U : ArrayDecl->value_users())
+    if(U->getOp() == IrOpcode::SrcArrayAccess) {
+      return NoChange();
+    }
+
+  // calculate the total size needed
+  auto DimSize = DNP.dim_size();
+  auto* Accum = NodeBuilder<IrOpcode::ConstantInt>(&G, 1).Build();
+  for(auto I = 0U; I < DimSize; ++I) {
+    Accum = NodeBuilder<IrOpcode::BinMul>(&G)
+            .LHS(Accum).RHS(DNP.dim(I))
+            .Build();
+  }
+
+  auto* AllocaNode = NodeBuilder<IrOpcode::Alloca>(&G)
+                     .Size(Accum).Build();
+  return Replace(AllocaNode);
 }
 
 // Simlinar to ReduceVarAccess, if all the effect inputs of this PHI
@@ -161,6 +190,8 @@ GraphReduction ValuePromotion::Reduce(Node* N) {
     return ReduceAssignment(N);
   case IrOpcode::SrcVarAccess:
     return ReduceVarAccess(N);
+  case IrOpcode::SrcArrayDecl:
+    return ReduceArrayDecl(N);
   case IrOpcode::SrcArrayAccess:
     return ReduceMemAccess(N);
   case IrOpcode::Phi:

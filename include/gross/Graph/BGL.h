@@ -358,6 +358,7 @@ struct graph_vertex_prop_writer {
     CASE_OPCODE_STR(Dead);
     CASE_OPCODE_STR(MemLoad);
     CASE_OPCODE_STR(MemStore);
+    CASE_OPCODE_STR(Alloca);
 #define DLX_COMMON(OC) \
     CASE_OPCODE_STR(DLX##OC);
 #define DLX_ARITH_OP(OC)  \

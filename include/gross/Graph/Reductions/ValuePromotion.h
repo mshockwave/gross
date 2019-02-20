@@ -7,6 +7,7 @@ class ValuePromotion : public GraphEditor {
   GraphReduction ReduceAssignment(Node* N);
   GraphReduction ReduceMemAssignment(Node* N);
   GraphReduction ReduceVarAccess(Node* N);
+  GraphReduction ReduceArrayDecl(Node* N);
   GraphReduction ReduceMemAccess(Node* N);
   GraphReduction ReducePhiNode(Node* N);
 
