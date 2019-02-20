@@ -1,4 +1,23 @@
-Copyright 2018 Min-Yih Hsu
+This license applies to all parts of GROSS that are not externally
+maintained libraries.  The externally maintained libraries used by GROSS
+are:
+
+  - Google Test, located in third_party/googletest. This is released under a
+    3-clause BSD license.
+
+  - Boost libraries, located in third_party/boost. This is released under
+    Boost Software License.
+
+  - LLVM ADT utilities, located in include/gross/Support. This is release under
+    Apache 2.0 license.
+
+These libraries have their own licenses; we recommend you read them,
+as their terms may differ from the terms below.
+
+Further license information can be found in LICENSE files located in
+sub-directories.
+
+Copyright 2018-2019 Min-Yih Hsu <minyihh@uci.edu>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
