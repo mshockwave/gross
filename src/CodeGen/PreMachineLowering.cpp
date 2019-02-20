@@ -1,15 +1,15 @@
-#include "gross/CodeGen/InstructionSelector.h"
+#include "gross/CodeGen/PreMachineLowering.h"
 #include "gross/Graph/NodeUtils.h"
 #include "DLXNodeUtils.h"
 #include <cmath>
 
 using namespace gross;
 
-InstructionSelector::InstructionSelector(GraphEditor::Interface* editor)
+PreMachineLowering::PreMachineLowering(GraphEditor::Interface* editor)
   : GraphEditor(editor),
     G(Editor->GetGraph()){}
 
-GraphReduction InstructionSelector::SelectArithmetic(Node* N) {
+GraphReduction PreMachineLowering::SelectArithmetic(Node* N) {
   NodeProperties<IrOpcode::VirtBinOps> NP(N);
   auto* LHSVal = NP.LHS();
   auto* RHSVal = NP.RHS();
@@ -74,7 +74,7 @@ GraphReduction InstructionSelector::SelectArithmetic(Node* N) {
   }
 }
 
-GraphReduction InstructionSelector::SelectMemOperations(Node* N) {
+GraphReduction PreMachineLowering::SelectMemOperations(Node* N) {
   NodeProperties<IrOpcode::VirtMemOps> NP(N);
   assert(NP);
   auto* BaseAddr = NP.BaseAddr();
@@ -113,7 +113,7 @@ GraphReduction InstructionSelector::SelectMemOperations(Node* N) {
   }
 }
 
-GraphReduction InstructionSelector::Reduce(Node* N) {
+GraphReduction PreMachineLowering::Reduce(Node* N) {
   switch(N->getOp()) {
   default:
     return NoChange();

@@ -1,8 +1,9 @@
 
 set(_SOURCE_FILES
+    PreMachineLowering.cpp
     GraphScheduling.cpp
-    InstructionSelector.cpp
     RegisterAllocator.cpp
+    PostMachineLowering.cpp
     )
 
 add_library(GrossCodeGen OBJECT

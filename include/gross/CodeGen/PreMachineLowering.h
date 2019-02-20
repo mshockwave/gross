@@ -1,19 +1,19 @@
-#ifndef GROSS_CODEGEN_INSTRUCTIONSELECTOR_H
-#define GROSS_CODEGEN_INSTRUCTIONSELECTOR_H
+#ifndef GROSS_CODEGEN_PREMACHINELOWERING_H
+#define GROSS_CODEGEN_PREMACHINELOWERING_H
 #include "gross/Graph/GraphReducer.h"
 
 namespace gross {
-class InstructionSelector : public GraphEditor {
+class PreMachineLowering : public GraphEditor {
   Graph& G;
 
   GraphReduction SelectArithmetic(Node* N);
   GraphReduction SelectMemOperations(Node* N);
 
 public:
-  InstructionSelector(GraphEditor::Interface* editor);
+  PreMachineLowering(GraphEditor::Interface* editor);
 
   static constexpr
-  const char* name() { return "isel"; }
+  const char* name() { return "pre-machine-lowering"; }
 
   GraphReduction Reduce(Node* N);
 };
