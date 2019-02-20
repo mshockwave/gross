@@ -23,6 +23,35 @@ NODE_PROPERTIES(VirtDLXOps) {
   }
 };
 
+NODE_PROPERTIES(VirtDLXBinOps) {
+  NodeProperties(Node* N)
+    : NODE_PROP_BASE(VirtDLXBinOps, N) {}
+
+  Node* LHS() const {
+    if(NodePtr->getNumValueInput() > 0)
+      return NodePtr->getValueInput(0);
+    else
+      return nullptr;
+  }
+
+  Node* RHS() const {
+    if(NodePtr->getNumValueInput() > 1)
+      return NodePtr->getValueInput(1);
+    else
+      return nullptr;
+  }
+  Node* ImmRHS() const {
+    if(auto* V = RHS()) {
+      if(V->getOp() == IrOpcode::ConstantInt)
+        return V;
+      else
+        return nullptr;
+    } else {
+      return nullptr;
+    }
+  }
+};
+
 template<>
 struct NodeBuilder<IrOpcode::VirtDLXBinOps> {
   NodeBuilder(Graph* graph, IrOpcode::ID Op, bool Imm = false)

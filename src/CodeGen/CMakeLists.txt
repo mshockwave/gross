@@ -12,6 +12,7 @@ add_library(GrossCodeGen OBJECT
 if(GROSS_ENABLE_UNIT_TESTS)
   set(_TEST_SOURCE_FILES
       GraphSchedulingTest.cpp
+      PreMachineLoweringTest.cpp
       )
 
   add_executable(GrossCodeGenTest

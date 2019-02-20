@@ -44,7 +44,7 @@ GraphReduction PreMachineLowering::SelectArithmetic(Node* N) {
 
     auto RHSInt = NodeProperties<IrOpcode::ConstantInt>(RHSVal)
                   .as<int32_t>(G);
-    double Exp = std::exp2(RHSInt);
+    double Exp = std::log2(RHSInt);
     double FloatIntExp;
     if(N->getOp() == IrOpcode::BinMul &&
        std::modf(Exp, &FloatIntExp) == 0.0L) {

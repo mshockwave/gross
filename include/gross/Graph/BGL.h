@@ -358,6 +358,12 @@ struct graph_vertex_prop_writer {
     CASE_OPCODE_STR(Dead);
     CASE_OPCODE_STR(MemLoad);
     CASE_OPCODE_STR(MemStore);
+#define DLX_COMMON(OC) \
+    CASE_OPCODE_STR(DLX##OC);
+#define DLX_ARITH_OP(OC)  \
+    CASE_OPCODE_STR(DLX##OC); \
+    CASE_OPCODE_STR(DLX##OC##I);
+#include "gross/Graph/DLXOpcodes.def"
     default: OS << "UNKNOWN";
     }
 
