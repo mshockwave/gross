@@ -6,9 +6,6 @@
 #ifndef COMMON_OP
 #define COMMON_OP(OC)
 #endif
-COMMON_OP(Dead)
-COMMON_OP(ConstantInt)
-COMMON_OP(ConstantStr)
 COMMON_OP(BinAdd)
 COMMON_OP(BinSub)
 COMMON_OP(BinMul)
@@ -19,9 +16,18 @@ COMMON_OP(BinGe)
 COMMON_OP(BinGt)
 COMMON_OP(BinEq)
 COMMON_OP(BinNe)
-COMMON_OP(Attribute)
 #undef COMMON_OP
 VIRT_OP(BinOps)         // Bin*
+
+/// Constant Ops
+#ifndef CONST_OP
+#define CONST_OP(OC)
+#endif
+CONST_OP(Dead)
+CONST_OP(ConstantInt)
+CONST_OP(ConstantStr)
+CONST_OP(Attribute)
+#undef CONST_OP
 VIRT_OP(ConstantValues) // Dead | ConstantInt | ConstantStr
 
 /// Control Ops

@@ -301,74 +301,9 @@ struct graph_vertex_prop_writer {
 
   void operator()(std::ostream& OS, const Node* v) const {
     Node* N = const_cast<Node*>(v);
-#define CASE_OPCODE_STR(OC)  \
-    case IrOpcode::OC:    \
-      OS << "[label=\""   \
-         << #OC           \
-         << "\"]";        \
-      break
-
-    switch(N->getOp()) {
-    case IrOpcode::ConstantInt: {
-      OS << "[label=\"ConstInt<"
-         << NodeProperties<IrOpcode::ConstantInt>(N).as<int32_t>(G)
-         << ">\"]";
-      break;
-    }
-    case IrOpcode::ConstantStr: {
-      OS << "[label=\"ConstStr<"
-         << NodeProperties<IrOpcode::ConstantStr>(N).str(G)
-         << ">\"]";
-      break;
-    }
-    case IrOpcode::FunctionStub: {
-      auto* FuncStart = NodeProperties<IrOpcode::FunctionStub>(N)
-                        .getFunctionStart(G);
-      std::string Name = "";
-      if(FuncStart)
-        Name = NodeProperties<IrOpcode::Start>(FuncStart).name(G);
-      OS << "[label=\"FunctionStub<" << Name << ">\"]";
-      break;
-    }
-    CASE_OPCODE_STR(BinAdd);
-    CASE_OPCODE_STR(BinSub);
-    CASE_OPCODE_STR(BinMul);
-    CASE_OPCODE_STR(BinDiv);
-    CASE_OPCODE_STR(BinGe);
-    CASE_OPCODE_STR(BinGt);
-    CASE_OPCODE_STR(BinLe);
-    CASE_OPCODE_STR(BinLt);
-    CASE_OPCODE_STR(BinNe);
-    CASE_OPCODE_STR(BinEq);
-    CASE_OPCODE_STR(SrcVarDecl);
-    CASE_OPCODE_STR(SrcVarAccess);
-    CASE_OPCODE_STR(SrcArrayDecl);
-    CASE_OPCODE_STR(SrcArrayAccess);
-    CASE_OPCODE_STR(SrcAssignStmt);
-    CASE_OPCODE_STR(If);
-    CASE_OPCODE_STR(IfTrue);
-    CASE_OPCODE_STR(IfFalse);
-    CASE_OPCODE_STR(Merge);
-    CASE_OPCODE_STR(Phi);
-    CASE_OPCODE_STR(Loop);
-    CASE_OPCODE_STR(Start);
-    CASE_OPCODE_STR(End);
-    CASE_OPCODE_STR(Argument);
-    CASE_OPCODE_STR(Return);
-    CASE_OPCODE_STR(Dead);
-    CASE_OPCODE_STR(MemLoad);
-    CASE_OPCODE_STR(MemStore);
-    CASE_OPCODE_STR(Alloca);
-#define DLX_COMMON(OC) \
-    CASE_OPCODE_STR(DLX##OC);
-#define DLX_ARITH_OP(OC)  \
-    CASE_OPCODE_STR(DLX##OC); \
-    CASE_OPCODE_STR(DLX##OC##I);
-#include "gross/Graph/DLXOpcodes.def"
-    default: OS << "UNKNOWN";
-    }
-
-#undef CASE_OPCODE_STR
+    OS << "[label=\"";
+    IrOpcode::Print(G, OS, N);
+    OS << "\"]";
   }
 
 private:

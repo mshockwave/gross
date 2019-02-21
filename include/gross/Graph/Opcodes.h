@@ -12,6 +12,7 @@ enum ID : unsigned {
   None = 0,
   /// Frontend and middle-end opcodes
 #define COMMON_OP(OC) OC,
+#define CONST_OP(OC) OC,
 #define CONTROL_OP(OC) OC,
 #define MEMORY_OP(OC) OC,
 #define INTERPROC_OP(OC)  OC,
