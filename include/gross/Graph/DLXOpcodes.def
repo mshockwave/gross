@@ -5,7 +5,16 @@
 #define DLX_BUILTIN(OC) DLX_COMMON(OC)
 #endif
 
+#ifndef VIRT_OP
+#define VIRT_OP(OC)
+#endif
+
+VIRT_OP(DLXOps)         // All the OC starts with DLX
+
 /// Arithmetic Operations
+#ifndef DLX_ARITH_OP
+#define DLX_ARITH_OP(OC)
+#endif
 DLX_ARITH_OP(Add)
 DLX_ARITH_OP(Sub)
 DLX_ARITH_OP(Mul)
@@ -20,8 +29,12 @@ DLX_ARITH_OP(Lsh)
 DLX_ARITH_OP(Ash)
 DLX_ARITH_OP(Chk)
 #undef DLX_ARITH_OP
+VIRT_OP(DLXBinOps)      // All DLX arithmetic operations with binary operands
 
 /// Memory Operations
+#ifndef DLX_MEM_OP
+#define DLX_MEM_OP(OC)
+#endif
 DLX_MEM_OP(LdW)
 DLX_MEM_OP(LdX)
 DLX_MEM_OP(StW)
@@ -31,6 +44,9 @@ DLX_MEM_OP(Pop)
 #undef DLX_MEM_OP
 
 /// Control Operations
+#ifndef DLX_CTRL_OP
+#define DLX_CTRL_OP(OC)
+#endif
 DLX_CTRL_OP(Beq)
 DLX_CTRL_OP(Bne)
 DLX_CTRL_OP(Ble)
@@ -45,11 +61,16 @@ DLX_CTRL_OP(Ret)
 #undef DLX_CTRL_OP
 
 /// Builtins
+#ifndef DLX_BUILTIN
+#define DLX_BUILTIN(OC)
+#endif
 DLX_BUILTIN(Rdd)
 DLX_BUILTIN(Wrd)
 DLX_BUILTIN(Wrh)
 DLX_BUILTIN(Wrl)
 #undef DLX_BUILTIN
+
+#undef VIRT_OP
 
 #ifdef DLX_COMMON
 #undef DLX_COMMON

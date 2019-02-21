@@ -1,0 +1,93 @@
+#ifndef VIRT_OP
+#define VIRT_OP(OC)
+#endif
+
+/// Common Ops
+#ifndef COMMON_OP
+#define COMMON_OP(OC)
+#endif
+COMMON_OP(Dead)
+COMMON_OP(ConstantInt)
+COMMON_OP(ConstantStr)
+COMMON_OP(BinAdd)
+COMMON_OP(BinSub)
+COMMON_OP(BinMul)
+COMMON_OP(BinDiv)
+COMMON_OP(BinLe)
+COMMON_OP(BinLt)
+COMMON_OP(BinGe)
+COMMON_OP(BinGt)
+COMMON_OP(BinEq)
+COMMON_OP(BinNe)
+COMMON_OP(Attribute)
+#undef COMMON_OP
+VIRT_OP(BinOps)         // Bin*
+VIRT_OP(ConstantValues) // Dead | ConstantInt | ConstantStr
+
+/// Control Ops
+#ifndef CONTROL_OP
+#define CONTROL_OP(OC)
+#endif
+CONTROL_OP(If)
+CONTROL_OP(IfTrue)
+CONTROL_OP(IfFalse)
+CONTROL_OP(Region)
+// start of a function
+CONTROL_OP(Start)
+// end of a function
+CONTROL_OP(End)
+// control flow merge
+CONTROL_OP(Merge)
+CONTROL_OP(Phi)
+CONTROL_OP(Loop)
+CONTROL_OP(Return)
+#undef CONTROL_OP
+VIRT_OP(IfBranches)     // IfTrue | IfFalse
+VIRT_OP(CtrlPoints)     // If | IfTrue | IfFalse | Merge | Start | End
+                        // | Return | Loop
+
+/// Memory Ops
+#ifndef MEMORY_OP
+#define MEMORY_OP(OC)
+#endif
+// stack allocation
+MEMORY_OP(Alloca)
+MEMORY_OP(MemLoad)
+MEMORY_OP(MemStore)
+#undef MEMORY_OP
+VIRT_OP(MemOps)         // MemLoad | MemStore
+
+/// Interprocesure Ops
+#ifndef INTERPROC_OP
+#define INTERPROC_OP(OC)
+#endif
+INTERPROC_OP(Call)
+INTERPROC_OP(Argument)
+// Represent as function callee. Also allow additional metadata
+// to be attached on it (e.g. no_mem).
+// Since we use some lazy node traversal to represent Function
+// subgraph, pointing to real function body at callsite will be
+// a bad idea(i.e. causing incorrect subgraph covering), thus we
+// use function stub instead. Also, a stub instance is a single-
+// ton, that is, global values in our framework.
+INTERPROC_OP(FunctionStub)
+#undef INTERPROC_OP
+VIRT_OP(FuncPrototype)  // Start + Argument(s)
+
+/// High-level primitives
+#ifndef SRC_OP
+#define SRC_OP(OC)
+#endif
+SRC_OP(VarDecl)
+SRC_OP(VarAccess)
+SRC_OP(ArrayDecl)
+SRC_OP(ArrayAccess)
+SRC_OP(WhileStmt)
+SRC_OP(AssignStmt)
+#undef SRC_OP
+VIRT_OP(SrcDecl)        // SrcVarDecl | SrcArrayDecl
+VIRT_OP(SrcDesigAccess) // SrcVarAccess | SrcArrayAccess
+
+VIRT_OP(GlobalValues)   // Dead | ConstantInt | ConstantStr | Start | End
+                        // | FunctionStub
+#undef VIRT_OP
