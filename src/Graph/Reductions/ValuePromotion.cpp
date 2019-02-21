@@ -72,7 +72,9 @@ GraphReduction ValuePromotion::ReduceVarAccess(Node* VarAccess) {
     assert(VarAccess->getNumValueInput() == 2);
     auto* PromotedVal = VarAccess->getValueInput(1);
     return Replace(PromotedVal);
-  } else if(VarAccess->getNumValueInput() == 1) {
+  } else if(VarAccess->getNumValueInput() == 1 &&
+            // effect input might be reduced to value input later
+            VarAccess->getNumEffectInput() == 0) {
     auto* Decl = VarAccess->getValueInput(0);
     Node* AllocaNode;
     if(Decl->getOp() == IrOpcode::Alloca) {

@@ -212,8 +212,7 @@ std::ostream& GraphSchedule::printBlock(std::ostream& OS, BasicBlock* BB) {
     assert(BB->getNodeId(N));
     BB->getNodeId(N)->print(OS);
     OS << " = ";
-    // TODO: print OC
-    OS << "OC";
+    IrOpcode::Print(G, OS, N);
     for(auto* VI : N->value_inputs()) {
       // ignore non-value inputs here
       OS << " ";
