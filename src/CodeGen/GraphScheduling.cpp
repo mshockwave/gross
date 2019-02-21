@@ -4,11 +4,18 @@
 #include "gross/Graph/Node.h"
 #include "gross/Graph/NodeUtils.h"
 #include <vector>
+#include <iostream>
 
 using namespace gross;
 
 BasicBlock* GraphSchedule::NewBasicBlock() {
-  auto* BB = new BasicBlock();
+  BasicBlock* BB;
+  if(Blocks.empty())
+    BB = new BasicBlock();
+  else {
+    auto& PrevBB = *Blocks.back().get();
+    BB = new BasicBlock(BasicBlock::Id::AdvanceFrom(PrevBB.getId()));
+  }
   Blocks.emplace_back(BB);
   return Blocks.back().get();
 }
@@ -199,6 +206,36 @@ struct GraphSchedule::RPOVisitor
 private:
   std::vector<BasicBlock*>& Trace;
 };
+
+std::ostream& GraphSchedule::printBlock(std::ostream& OS, BasicBlock* BB) {
+  for(auto* N : BB->nodes()) {
+    assert(BB->getNodeId(N));
+    BB->getNodeId(N)->print(OS);
+    OS << " = ";
+    // TODO: print OC
+    OS << "OC";
+    for(auto* VI : N->value_inputs()) {
+      // ignore non-value inputs here
+      OS << " ";
+      if(VI->getOp() == IrOpcode::ConstantInt) {
+        OS << "#"
+           << NodeProperties<IrOpcode::ConstantInt>(VI)
+              .as<int32_t>(G);
+      } else if(auto* DestBB = MapBlock(VI)) {
+        if(DestBB != BB) {
+          DestBB->getId().print(OS);
+          OS << "/";
+        }
+        assert(DestBB->getNodeId(VI));
+        DestBB->getNodeId(VI)->print(OS);
+      } else {
+        continue;
+      }
+    }
+    OS << "\n";
+  }
+  return OS;
+}
 
 void GraphSchedule::SortRPO() {
   RPOBlocks.clear();

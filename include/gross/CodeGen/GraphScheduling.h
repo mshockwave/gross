@@ -13,6 +13,8 @@
 
 namespace gross {
 class GraphSchedule {
+  Graph& G;
+
   // owner of basic blocks
   std::list<std::unique_ptr<BasicBlock>> Blocks;
   std::vector<BasicBlock*> RPOBlocks;
@@ -21,6 +23,8 @@ class GraphSchedule {
   struct RPOVisitor;
 
 public:
+  GraphSchedule(Graph& graph) : G(graph) {}
+
   using block_iterator = typename decltype(Blocks)::iterator;
   using const_block_iterator = typename decltype(Blocks)::const_iterator;
   block_iterator block_begin() { return Blocks.begin(); }
@@ -62,6 +66,8 @@ public:
     if(!Node2Block.count(N)) return nullptr;
     return Node2Block.at(N);
   }
+
+  std::ostream& printBlock(std::ostream&, BasicBlock* BB);
 };
 
 class GraphSchedule::edge_iterator
