@@ -1,5 +1,6 @@
 #include "BGL.h"
 #include "boost/graph/depth_first_search.hpp"
+#include "boost/graph/graphviz.hpp"
 #include "gross/CodeGen/GraphScheduling.h"
 #include "gross/Graph/Node.h"
 #include "gross/Graph/NodeUtils.h"
@@ -62,8 +63,8 @@ class CFGBuilder {
   void ConnectBlock(Node* CtrlNode);
 
 public:
-  CFGBuilder(const SubGraph& subgraph, GraphSchedule& schedule)
-    : SG(subgraph),
+  CFGBuilder(GraphSchedule& schedule)
+    : SG(schedule.getSubGraph()),
       Schedule(schedule) {}
 
   void Run() {
@@ -175,7 +176,10 @@ void CFGBuilder::ConnectBlock(Node* CtrlNode) {
     BasicBlock* EntryBlock = nullptr;
     for(auto* CI : CtrlNode->control_inputs()) {
       auto* PrevBB = MapBlock(CI);
-      assert(PrevBB);
+      //assert(PrevBB);
+      // FIXME: should Return node be the side effect
+      // dependency for End node?
+      if(!PrevBB) continue;
       if(CI->getOp() == IrOpcode::Start) {
         EntryBlock = PrevBB;
         continue;
@@ -207,6 +211,14 @@ private:
   std::vector<BasicBlock*>& Trace;
 };
 
+void GraphSchedule::SortRPO() {
+  RPOBlocks.clear();
+  RPOVisitor Vis(RPOBlocks);
+  std::unordered_map<BasicBlock*,boost::default_color_type> ColorStorage;
+  StubColorMap<decltype(ColorStorage), BasicBlock> ColorMap(ColorStorage);
+  boost::depth_first_search(*this, Vis, std::move(ColorMap));
+}
+
 std::ostream& GraphSchedule::printBlock(std::ostream& OS, BasicBlock* BB) {
   for(auto* N : BB->nodes()) {
     assert(BB->getNodeId(N));
@@ -236,20 +248,65 @@ std::ostream& GraphSchedule::printBlock(std::ostream& OS, BasicBlock* BB) {
   return OS;
 }
 
-void GraphSchedule::SortRPO() {
-  RPOBlocks.clear();
-  RPOVisitor Vis(RPOBlocks);
-  std::unordered_map<BasicBlock*,boost::default_color_type> ColorStorage;
-  StubColorMap<decltype(ColorStorage), BasicBlock> ColorMap(ColorStorage);
-  boost::depth_first_search(*this, Vis, std::move(ColorMap));
+void GraphSchedule::dumpGraphviz(std::ostream& OS) {
+  struct block_prop_writer {
+    block_prop_writer(GraphSchedule& g)
+      : Schedule(g) {}
+
+    void operator()(std::ostream& OS, const BasicBlock* v) const {
+      auto* BB = const_cast<BasicBlock*>(v);
+      OS << "[shape=record,";
+      OS << "label=\"";
+      std::stringstream SS;
+      Schedule.printBlock(SS, BB);
+      // adapt the string
+      auto OutStr = SS.str();
+      for(auto i = 0U; i < OutStr.size(); ++i) {
+        if(OutStr[i] == '\n') {
+          // replace with left-justified '\l'
+          OutStr[i] = '\\';
+          OutStr.insert(OutStr.cbegin() + i + 1, 'l');
+        }
+      }
+      OS << OutStr << "\"]";
+    }
+
+  private:
+    GraphSchedule& Schedule;
+  };
+
+  boost::write_graphviz(OS, *this,
+                        block_prop_writer(*this));
 }
 
-GraphScheduler::GraphScheduler(Graph& graph)
-  : G(graph) {}
+/// ======= GraphScheduler ========
+GraphScheduler::GraphScheduler(Graph& graph) : G(graph) {
+  // create new schedule for each SubGraph
+  for(auto& SG : G.subregions()) {
+    Schedules.emplace_back(new GraphSchedule(G, SG));
+  }
+}
+
+typename GraphScheduler::schedule_iterator
+GraphScheduler::schedule_begin() {
+  gross::unique_ptr_unwrapper<GraphSchedule> Functor;
+  return schedule_iterator(Schedules.begin(), Functor);
+}
+typename GraphScheduler::schedule_iterator
+GraphScheduler::schedule_end() {
+  gross::unique_ptr_unwrapper<GraphSchedule> Functor;
+  return schedule_iterator(Schedules.end(), Functor);
+}
 
 void GraphScheduler::ComputeScheduledGraph() {
-  // Phases:
-  // 1. Build CFG. Insert fix nodes
-  // 2. Insert rest of the nodes according to
-  //    control dependencies.
+  for(auto& SchedulePtr : Schedules) {
+    auto& Schedule = *SchedulePtr.get();
+
+    // Phase 1. Build CFG and insert fixed nodes
+    _internal::CFGBuilder CFB(Schedule);
+    CFB.Run();
+
+    // Phase 2. Place rest of the nodes.
+    // TODO
+  }
 }

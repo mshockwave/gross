@@ -1,12 +1,15 @@
 #ifndef GROSS_CODEGEN_GRAPHSCHEDULING_H
 #define GROSS_CODEGEN_GRAPHSCHEDULING_H
 #include "boost/iterator/iterator_facade.hpp"
+#include "boost/iterator/transform_iterator.hpp"
 #include "gross/CodeGen/Function.h"
 #include "gross/CodeGen/BasicBlock.h"
 #include "gross/Graph/Graph.h"
 #include "gross/Support/iterator_range.h"
+#include "gross/Support/STLExtras.h"
 #include "gross/Support/Graph.h"
 #include <list>
+#include <limits>
 #include <memory>
 #include <unordered_map>
 #include <utility>
@@ -14,6 +17,7 @@
 namespace gross {
 class GraphSchedule {
   Graph& G;
+  SubGraph SG;
 
   // owner of basic blocks
   std::list<std::unique_ptr<BasicBlock>> Blocks;
@@ -23,7 +27,10 @@ class GraphSchedule {
   struct RPOVisitor;
 
 public:
-  GraphSchedule(Graph& graph) : G(graph) {}
+  GraphSchedule(Graph& graph, const SubGraph& subgraph)
+    : G(graph), SG(subgraph) {}
+
+  const SubGraph& getSubGraph() const { return SG; }
 
   using block_iterator = typename decltype(Blocks)::iterator;
   using const_block_iterator = typename decltype(Blocks)::const_iterator;
@@ -68,6 +75,8 @@ public:
   }
 
   std::ostream& printBlock(std::ostream&, BasicBlock* BB);
+
+  void dumpGraphviz(std::ostream&);
 };
 
 class GraphSchedule::edge_iterator
@@ -80,16 +89,15 @@ class GraphSchedule::edge_iterator
   friend class boost::iterator_core_access;
   using block_iterator = typename GraphSchedule::block_iterator;
   block_iterator BlockIt, BlockEnd;
-  typename BasicBlock::succ_iterator SuccIt, SuccEnd;
+  size_t SuccIt;
+  static constexpr size_t Tombstone = std::numeric_limits<size_t>::max();
 
   void nextValidPos() {
-    while(SuccIt == SuccEnd &&
-          BlockIt != BlockEnd) {
+    while(BlockIt != BlockEnd &&
+          SuccIt >= BlockIt->get()->succ_size()) {
       // step to next block
       ++BlockIt;
-      auto SuccRange = BlockIt->get()->succs();
-      SuccIt = SuccRange.begin();
-      SuccEnd = SuccRange.end();
+      SuccIt = 0;
     }
   }
 
@@ -100,19 +108,22 @@ class GraphSchedule::edge_iterator
 
   typename GraphSchedule::edge_type
   dereference() const {
-    return std::make_pair(BlockIt->get(), *SuccIt);
+    auto* BB = BlockIt->get();
+    return std::make_pair(BB,
+                          *std::next(BB->succ_begin(), SuccIt));
   }
 
   bool equal(const edge_iterator& Other) const {
     return BlockIt == Other.BlockIt &&
-           SuccIt == Other.SuccIt;
+           (SuccIt == Other.SuccIt ||
+            BlockIt == BlockEnd);
   }
 
 public:
   edge_iterator() = default;
   edge_iterator(block_iterator Start, block_iterator End)
     : BlockIt(Start), BlockEnd(End),
-      SuccIt(), SuccEnd() {
+      SuccIt(Tombstone) {
     nextValidPos();
   }
 };
@@ -120,9 +131,24 @@ public:
 /// Linearlize the Nodes into instruction sequence
 class GraphScheduler {
   Graph& G;
+  // owner of all the schedules
+  std::vector<std::unique_ptr<GraphSchedule>> Schedules;
 
 public:
   GraphScheduler(Graph& graph);
+
+  using schedule_iterator
+    = boost::transform_iterator<gross::unique_ptr_unwrapper<GraphSchedule>,
+                                typename decltype(Schedules)::iterator,
+                                GraphSchedule*, // Reference type
+                                GraphSchedule*  // Value type
+                                >;
+  schedule_iterator schedule_begin();
+  schedule_iterator schedule_end();
+  llvm::iterator_range<schedule_iterator> schedules() {
+    return llvm::make_range(schedule_begin(), schedule_end());
+  }
+  size_t schedule_size() const { return Schedules.size(); }
 
   void ComputeScheduledGraph();
 };
