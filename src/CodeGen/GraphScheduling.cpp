@@ -102,14 +102,6 @@ void CFGBuilder::BlockPlacement() {
 
   for(auto* N : RPONodes) {
     switch(N->getOp()) {
-    case IrOpcode::If: {
-      assert(N->getNumControlInput() > 0);
-      auto* PrevCtrl = N->getControlInput(0);
-      auto* BB = MapBlock(PrevCtrl);
-      assert(BB && "If node's previous control not visited yet?");
-      AddNodeToBlock(N, BB);
-      break;
-    }
     case IrOpcode::Start:
     case IrOpcode::End:
     case IrOpcode::Loop: // loop header
@@ -117,6 +109,14 @@ void CFGBuilder::BlockPlacement() {
     case IrOpcode::IfFalse:
     case IrOpcode::Merge: {
       auto* BB = Schedule.NewBasicBlock();
+      AddNodeToBlock(N, BB);
+      break;
+    }
+    case IrOpcode::If: {
+      assert(N->getNumControlInput() > 0);
+      auto* PrevCtrl = N->getControlInput(0);
+      auto* BB = MapBlock(PrevCtrl);
+      assert(BB && "If node's previous control not visited yet?");
       AddNodeToBlock(N, BB);
       break;
     }
@@ -145,9 +145,7 @@ void CFGBuilder::ConnectBlock(Node* CtrlNode) {
     return;
   case IrOpcode::Merge: {
     // merge from two branches
-    NodeProperties<IrOpcode::Merge> NP(CtrlNode);
-    Node* Branches[2] = { NP.TrueBranch(), NP.FalseBranch(true) };
-    for(auto* Br : Branches) {
+    for(auto* Br : CtrlNode->control_inputs()) {
       auto* BB = MapBlock(Br);
       assert(BB && "branch not enclosed in any BB?");
       EncloseBB->AddPredBlock(BB);

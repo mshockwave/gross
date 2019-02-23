@@ -9,7 +9,6 @@
 #include "gross/Support/STLExtras.h"
 #include "gross/Support/Graph.h"
 #include <list>
-#include <limits>
 #include <memory>
 #include <unordered_map>
 #include <utility>
@@ -90,7 +89,6 @@ class GraphSchedule::edge_iterator
   using block_iterator = typename GraphSchedule::block_iterator;
   block_iterator BlockIt, BlockEnd;
   size_t SuccIt;
-  static constexpr size_t Tombstone = std::numeric_limits<size_t>::max();
 
   void nextValidPos() {
     while(BlockIt != BlockEnd &&
@@ -123,7 +121,7 @@ public:
   edge_iterator() = default;
   edge_iterator(block_iterator Start, block_iterator End)
     : BlockIt(Start), BlockEnd(End),
-      SuccIt(Tombstone) {
+      SuccIt(0U) {
     nextValidPos();
   }
 };

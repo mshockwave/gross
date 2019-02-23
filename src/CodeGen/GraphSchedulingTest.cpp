@@ -20,41 +20,39 @@ TEST(CodeGenUnitTest, TestGraphScheduleConcepts) {
                           gross::BasicBlock* > ));
 }
 
-TEST(CodeGenUnitTest, TestGraphScheduleDump) {
+TEST(CodeGenUnitTest, TestGraphScheduleSimpleCtrl) {
   Graph G;
   auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
-               .FuncName("func")
+               .FuncName("func_schedule_simple_ctrl")
                .Build();
-  auto* VarDecl = NodeBuilder<IrOpcode::SrcVarDecl>(&G)
-                  .SetSymbolName("foo")
-                  .Build();
-  auto* Const1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 87)
-                 .Build();
-  auto* Const2 = NodeBuilder<IrOpcode::ConstantInt>(&G, 94)
-                 .Build();
-  auto* RHSVal = NodeBuilder<IrOpcode::BinAdd>(&G)
-                 .LHS(Const1).RHS(Const2)
-                 .Build();
-  auto* VarAccessDest = NodeBuilder<IrOpcode::SrcVarAccess>(&G)
-                        .Decl(VarDecl)
-                        .Build();
-  auto* Assign = NodeBuilder<IrOpcode::SrcAssignStmt>(&G)
-                 .Dest(VarAccessDest).Src(RHSVal)
-                 .Build();
-  Assign->appendControlInput(Func);
-  auto* VarAccess = NodeBuilder<IrOpcode::SrcVarAccess>(&G)
-                    .Decl(VarDecl)
-                    .Effect(Assign)
-                    .Build();
-  auto* Return = NodeBuilder<IrOpcode::Return>(&G, VarAccess)
-                 .Build();
+  auto* Const = NodeBuilder<IrOpcode::ConstantInt>(&G, 1).Build();
+  auto* Branch = NodeBuilder<IrOpcode::If>(&G)
+                 .Condition(Const).Build();
+  Branch->appendControlInput(Func);
+  auto* TrueBr = NodeBuilder<IrOpcode::VirtIfBranches>(&G, true)
+                 .IfStmt(Branch).Build();
+  auto* FalseBr = NodeBuilder<IrOpcode::VirtIfBranches>(&G, false)
+                  .IfStmt(Branch).Build();
+  auto* Branch2 = NodeBuilder<IrOpcode::If>(&G)
+                  .Condition(Const).Build();
+  Branch2->appendControlInput(TrueBr);
+  auto* TrueBr2 = NodeBuilder<IrOpcode::VirtIfBranches>(&G, true)
+                  .IfStmt(Branch2).Build();
+  auto* FalseBr2 = NodeBuilder<IrOpcode::VirtIfBranches>(&G, false)
+                   .IfStmt(Branch2).Build();
+  auto* MergeInner = NodeBuilder<IrOpcode::Merge>(&G)
+                     .AddCtrlInput(TrueBr2).AddCtrlInput(FalseBr2)
+                     .Build();
+  auto* MergeOuter = NodeBuilder<IrOpcode::Merge>(&G)
+                     .AddCtrlInput(FalseBr).AddCtrlInput(MergeInner)
+                     .Build();
   auto* End = NodeBuilder<IrOpcode::End>(&G, Func)
-              .AddTerminator(Return)
+              .AddTerminator(MergeOuter)
               .Build();
   SubGraph FuncSG(End);
   G.AddSubRegion(FuncSG);
   {
-    std::ofstream OF("TestGraphScheduleDump.dot");
+    std::ofstream OF("TestGraphScheduleSimpleCtrl.dot");
     G.dumpGraphviz(OF);
   }
 
@@ -63,7 +61,36 @@ TEST(CodeGenUnitTest, TestGraphScheduleDump) {
   EXPECT_EQ(Scheduler.schedule_size(), 1);
   auto* FuncSchedule = *Scheduler.schedule_begin();
   {
-    std::ofstream OF("TestGraphScheduleDump.func.dot");
+    std::ofstream OF("TestGraphScheduleSimpleCtrl.after.dot");
+    FuncSchedule->dumpGraphviz(OF);
+  }
+}
+
+TEST(CodeGenUnitTest, TestGraphScheduleSimpleLoop) {
+  Graph G;
+  auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
+               .FuncName("func_schedule_simple_loop")
+               .Build();
+  auto* Const = NodeBuilder<IrOpcode::ConstantInt>(&G, 1).Build();
+  auto* Loop = NodeBuilder<IrOpcode::Loop>(&G, Func)
+               .Condition(Const).Build();
+  auto* Br = NodeProperties<IrOpcode::Loop>(Loop).Branch();
+  auto* End = NodeBuilder<IrOpcode::End>(&G, Func)
+              .AddTerminator(NodeProperties<IrOpcode::If>(Br).FalseBranch())
+              .Build();
+  SubGraph FuncSG(End);
+  G.AddSubRegion(FuncSG);
+  {
+    std::ofstream OF("TestGraphScheduleSimpleLoop.dot");
+    G.dumpGraphviz(OF);
+  }
+
+  GraphScheduler Scheduler(G);
+  Scheduler.ComputeScheduledGraph();
+  EXPECT_EQ(Scheduler.schedule_size(), 1);
+  auto* FuncSchedule = *Scheduler.schedule_begin();
+  {
+    std::ofstream OF("TestGraphScheduleSimpleLoop.after.dot");
     FuncSchedule->dumpGraphviz(OF);
   }
 }

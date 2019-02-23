@@ -98,6 +98,11 @@ class lazy_node_iterator
   // more difficult
   std::set<NodeT> Visited;
 
+  void Enqueue(NodeT N) {
+    Queue.push_back(N);
+    Visited.insert(N);
+  }
+
   bool equal(const lazy_node_iterator& Other) const {
     if(Queue.size() != Other.Queue.size()) return false;
     if(!Queue.size()) return true;
@@ -118,18 +123,16 @@ class lazy_node_iterator
   void increment() {
     NodeT Top = Queue.front();
     Queue.erase(Queue.cbegin());
-    Visited.insert(Top);
     for(NodeT N : Top->inputs()) {
       if(Visited.count(N)) continue;
-      Queue.push_back(N);
+      Enqueue(N);
     }
   }
 
 public:
   lazy_node_iterator() = default;
   explicit lazy_node_iterator(NodeT EndNode) {
-    Queue.push_back(EndNode);
-    Visited.insert(EndNode);
+    Enqueue(EndNode);
   }
 };
 
