@@ -2,6 +2,7 @@
 #define GROSS_CODEGEN_BASICBLOCK_H
 #include "gross/Graph/Node.h"
 #include "gross/Support/iterator_range.h"
+#include "gross/Support/STLExtras.h"
 #include <list>
 #include <utility>
 #include <unordered_map>
@@ -73,25 +74,7 @@ public:
 
   const Id& getId() const { return BlockId; }
 
-  SeqNodeId* getNodeId(Node* N) const {
-    if(NodeIds.count(N))
-      return const_cast<SeqNodeId*>(&NodeIds.at(N));
-    else
-      return nullptr;
-  }
-
-  void AddNode(Node* N) {
-    if(NodeSequence.empty()) {
-      NodeIds.insert({N, SeqNodeId::Create(0U)});
-    } else {
-      auto* PrevNodeId = getNodeId(NodeSequence.back());
-      assert(PrevNodeId);
-      NodeIds.insert({N, SeqNodeId::AdvanceFrom(*PrevNodeId)});
-    }
-    NodeSequence.push_back(N);
-  }
-
-  // iterators
+  // block iterators
   using pred_iterator = typename decltype(Predecessors)::iterator;
   using succ_iterator = typename decltype(Successors)::iterator;
   pred_iterator pred_begin() { return Predecessors.begin(); }
@@ -114,11 +97,49 @@ public:
   // { source BB, dest BB }
   struct EdgeBuilder;
 
+  // Node iterators
   using node_iterator = typename decltype(NodeSequence)::iterator;
+  using const_node_iterator = typename decltype(NodeSequence)::const_iterator;
   node_iterator node_begin() { return NodeSequence.begin(); }
   node_iterator node_end() { return NodeSequence.end(); }
+  const_node_iterator node_cbegin() { return NodeSequence.cbegin(); }
+  const_node_iterator node_cend() { return NodeSequence.cend(); }
   llvm::iterator_range<node_iterator> nodes() {
     return llvm::make_range(node_begin(), node_end());
+  }
+  llvm::iterator_range<const_node_iterator> const_nodes() {
+    return llvm::make_range(node_cbegin(), node_cend());
+  }
+
+  SeqNodeId* getNodeId(Node* N) const {
+    if(NodeIds.count(N))
+      return const_cast<SeqNodeId*>(&NodeIds.at(N));
+    else
+      return nullptr;
+  }
+
+  void AddNode(const_node_iterator Pos, Node* N) {
+    if(NodeSequence.empty()) {
+      NodeIds.insert({N, SeqNodeId::Create(0U)});
+    } else {
+      auto* PrevNodeId = getNodeId(NodeSequence.back());
+      assert(PrevNodeId);
+      NodeIds.insert({N, SeqNodeId::AdvanceFrom(*PrevNodeId)});
+    }
+    NodeSequence.insert(Pos, N);
+  }
+  bool AddNodeBefore(Node* Before, Node* N) {
+    auto NodeIt = gross::find_if(const_nodes(),
+                                 [=](const Node* Target) -> bool {
+                                   return const_cast<Node*>(Target) == Before;
+                                 });
+    if(NodeIt == node_cend()) return false;
+    AddNode(NodeIt, N);
+    return true;
+  }
+
+  void AddNode(Node* N) {
+    AddNode(node_cend(), N);
   }
 };
 

@@ -5,6 +5,7 @@
 #include "gross/CodeGen/Function.h"
 #include "gross/CodeGen/BasicBlock.h"
 #include "gross/Graph/Graph.h"
+#include "gross/Graph/NodeMarker.h"
 #include "gross/Support/iterator_range.h"
 #include "gross/Support/STLExtras.h"
 #include "gross/Support/Graph.h"
@@ -25,11 +26,78 @@ class GraphSchedule {
 
   struct RPOVisitor;
 
+  class DominatorNode {
+    BasicBlock* ThisBlock;
+    std::vector<BasicBlock*> Dominants;
+    BasicBlock* Dominator;
+
+  public:
+    explicit DominatorNode(BasicBlock* ThisBB)
+      : ThisBlock(ThisBB), Dominator(nullptr) {}
+
+    BasicBlock* getBlock() const { return ThisBlock; }
+
+    void setDominator(BasicBlock* BB) { Dominator = BB; }
+    BasicBlock* getDominator() { return Dominator; }
+
+    void AddDomChild(BasicBlock* DN) { Dominants.push_back(DN); }
+    bool RemoveDomChild(BasicBlock* DN) {
+      auto It
+        = gross::find_if(const_doms(),
+                         [=](const BasicBlock* BB) -> bool {
+                           return const_cast<BasicBlock*>(BB) == DN;
+                         });
+      if(It == dom_cend()) return false;
+      Dominants.erase(It);
+      return true;
+    }
+
+    using dom_iterator = typename decltype(Dominants)::iterator;
+    using const_dom_iterator = typename decltype(Dominants)::const_iterator;
+    dom_iterator dom_begin() { return Dominants.begin(); }
+    const_dom_iterator dom_cbegin() { return Dominants.cbegin(); }
+    dom_iterator dom_end() { return Dominants.end(); }
+    const_dom_iterator dom_cend() { return Dominants.cend(); }
+    llvm::iterator_range<dom_iterator> doms() {
+      return llvm::make_range(dom_begin(), dom_end());
+    }
+    llvm::iterator_range<const_dom_iterator> const_doms() {
+      return llvm::make_range(dom_cbegin(), dom_cend());
+    }
+  };
+  std::unordered_map<BasicBlock*, std::unique_ptr<DominatorNode>> DomNodes;
+
+  void ChangeDominator(BasicBlock* BB, BasicBlock* NewDomBB) {
+    assert(DomNodes.count(BB));
+    assert(DomNodes.count(NewDomBB));
+
+    auto* Node = DomNodes[BB].get();
+    auto* OldDomBB = Node->getDominator();
+    if(OldDomBB) {
+      assert(DomNodes.count(OldDomBB));
+      auto* OldDomNode = DomNodes[OldDomBB].get();
+      OldDomNode->RemoveDomChild(BB);
+    }
+    Node->setDominator(NewDomBB);
+    auto* NewDomNode = DomNodes[NewDomBB].get();
+    NewDomNode->AddDomChild(BB);
+  }
+
+
+  enum ScheduleState : uint8_t {
+    NotScheduled = 0,
+    Fixed,
+    Scheduled
+  };
+  NodeMarker<ScheduleState> StateMarker;
+
 public:
   GraphSchedule(Graph& graph, const SubGraph& subgraph)
-    : G(graph), SG(subgraph) {}
+    : G(graph), SG(subgraph),
+      StateMarker(G, 3) {}
 
   const SubGraph& getSubGraph() const { return SG; }
+  SubGraph& getSubGraph() { return SG; }
 
   using block_iterator = typename decltype(Blocks)::iterator;
   using const_block_iterator = typename decltype(Blocks)::const_iterator;
@@ -48,6 +116,13 @@ public:
   rpo_iterator rpo_end() { return RPOBlocks.end(); }
   llvm::iterator_range<rpo_iterator> rpo_blocks() {
     return llvm::make_range(rpo_begin(), rpo_end());
+  }
+  using rpo_reverse_iterator
+    = typename decltype(RPOBlocks)::reverse_iterator;
+  rpo_reverse_iterator rpo_rbegin() { return RPOBlocks.rbegin(); }
+  rpo_reverse_iterator rpo_rend() { return RPOBlocks.rend(); }
+  llvm::iterator_range<rpo_reverse_iterator> po_blocks() {
+    return llvm::make_range(rpo_rbegin(), rpo_rend());
   }
 
   // { FromBB, ToBB }
@@ -71,6 +146,19 @@ public:
   BasicBlock* MapBlock(Node* N) {
     if(!Node2Block.count(N)) return nullptr;
     return Node2Block.at(N);
+  }
+
+  bool Dominate(BasicBlock* FromBB, BasicBlock* ToBB);
+  // notify the DomTree to update
+  void OnConnectBlock(BasicBlock* Pred, BasicBlock* Succ);
+
+  void SetFixed(Node* N) { StateMarker.Set(N, Fixed); }
+  void SetScheduled(Node* N) { StateMarker.Set(N, Scheduled); }
+
+  bool IsNodeFixed(Node* N) { return StateMarker.Get(N) == Fixed; }
+  bool IsNodeScheduled(Node* N) {
+    return StateMarker.Get(N) == Scheduled ||
+           IsNodeFixed(N);
   }
 
   std::ostream& printBlock(std::ostream&, BasicBlock* BB);

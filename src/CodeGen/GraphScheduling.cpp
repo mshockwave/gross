@@ -4,6 +4,7 @@
 #include "gross/CodeGen/GraphScheduling.h"
 #include "gross/Graph/Node.h"
 #include "gross/Graph/NodeUtils.h"
+#include <queue>
 #include <vector>
 #include <iostream>
 
@@ -37,6 +38,56 @@ size_t GraphSchedule::edge_size() {
   return std::distance(edge_begin(), edge_end());
 }
 
+// basically a tree reachbility problem
+bool GraphSchedule::Dominate(BasicBlock* FromBB, BasicBlock* ToBB) {
+  if(!DomNodes.count(FromBB) ||
+     !DomNodes.count(ToBB)) return false;
+  if(FromBB == ToBB) return true;
+
+  // BFS search
+  std::queue<BasicBlock*> Queue;
+  Queue.push(FromBB);
+  while(!Queue.empty()) {
+    auto* BB = Queue.front();
+    Queue.pop();
+    if(!DomNodes.count(BB)) continue;
+    auto* DomNode = DomNodes[BB].get();
+    for(auto* ChildBB : DomNode->doms()) {
+      if(ChildBB == ToBB) return true;
+      Queue.push(ChildBB);
+    }
+  }
+  return false;
+}
+
+void GraphSchedule::OnConnectBlock(BasicBlock* Pred, BasicBlock* Succ) {
+  if(!DomNodes.count(Pred))
+    DomNodes[Pred] = gross::make_unique<DominatorNode>(Pred);
+  if(!DomNodes.count(Succ))
+    DomNodes[Succ] = gross::make_unique<DominatorNode>(Succ);
+
+  // treat Pred as Succ's immediate Dominator
+  // if there is only one predecessor on Succ
+  if(Succ->pred_size() <= 1) {
+    ChangeDominator(Succ, Pred);
+  } else {
+    // search upward until BB dominate Pred and previous
+    // immediate dominator of Succ
+    auto* SuccNode = DomNodes[Succ].get();
+    auto* Dom = SuccNode->getDominator();
+    auto* NewDom = Dom;
+    while(NewDom &&
+          !(Dominate(NewDom, Dom) &&
+            Dominate(NewDom, Pred))) {
+      assert(DomNodes.count(NewDom));
+      auto* NewDomNode = DomNodes[NewDom].get();
+      NewDom = NewDomNode->getDominator();
+    }
+    assert(NewDom);
+    ChangeDominator(Succ, NewDom);
+  }
+}
+
 namespace gross {
 namespace _internal {
 class CFGBuilder {
@@ -59,6 +110,7 @@ class CFGBuilder {
   void connectBlocks(BasicBlock* PredBB, BasicBlock* SuccBB) {
     PredBB->AddSuccBlock(SuccBB);
     SuccBB->AddPredBlock(PredBB);
+    Schedule.OnConnectBlock(PredBB, SuccBB);
   }
   void ConnectBlock(Node* CtrlNode);
 
@@ -76,8 +128,6 @@ public:
 
     Schedule.SortRPO();
   }
-
-  decltype(ControlNodes)& getCtrlNodes() { return ControlNodes; }
 };
 
 void CFGBuilder::BlockPlacement() {
@@ -112,13 +162,14 @@ void CFGBuilder::BlockPlacement() {
       AddNodeToBlock(N, BB);
       break;
     }
+    case IrOpcode::Phi:
     case IrOpcode::If: {
       assert(N->getNumControlInput() > 0);
       auto* PrevCtrl = N->getControlInput(0);
       auto* BB = MapBlock(PrevCtrl);
-      assert(BB && "If node's previous control not visited yet?");
+      assert(BB && "previous control not visited yet?");
       AddNodeToBlock(N, BB);
-      break;
+      continue;
     }
     case IrOpcode::Alloca: {
       // needs to be placed in the entry block
@@ -126,7 +177,7 @@ void CFGBuilder::BlockPlacement() {
       auto* EntryBlock = MapBlock(StartNode);
       assert(EntryBlock);
       AddNodeToBlock(N, EntryBlock);
-      break;
+      continue;
     }
     default:
       continue;
@@ -141,7 +192,6 @@ void CFGBuilder::ConnectBlock(Node* CtrlNode) {
 
   switch(CtrlNode->getOp()) {
   default:
-    // we ignore If node here
     return;
   case IrOpcode::Merge: {
     // merge from two branches
@@ -159,10 +209,26 @@ void CFGBuilder::ConnectBlock(Node* CtrlNode) {
     auto* PrevBB = MapBlock(NP.BranchPoint());
     assert(PrevBB && "If node not enclosed in any BB?");
     connectBlocks(PrevBB, EncloseBB);
+    // if IfTrue is the back edge of a loop
+    // connect now
+    if(CtrlNode->getOp() == IrOpcode::IfTrue) {
+      for(auto* CU : CtrlNode->control_users()) {
+        if(CU->getOp() == IrOpcode::Loop) {
+          auto* LoopHeader = MapBlock(CU);
+          assert(LoopHeader);
+          connectBlocks(EncloseBB, LoopHeader);
+        }
+      }
+    }
     break;
   }
   case IrOpcode::Loop: {
+    // connect except the back edge dep
+    NodeProperties<IrOpcode::Loop> LNP(CtrlNode);
+    auto* TrueBr = NodeProperties<IrOpcode::If>(LNP.Branch())
+                   .TrueBranch();
     for(auto* CI : CtrlNode->control_inputs()) {
+      if(CI == TrueBr) continue;
       auto* PrevBB = MapBlock(CI);
       assert(PrevBB);
       connectBlocks(PrevBB, EncloseBB);
@@ -191,6 +257,30 @@ void CFGBuilder::ConnectBlock(Node* CtrlNode) {
     }
     break;
   }
+  }
+}
+
+class PostOrderNodePlacement {
+  GraphSchedule& Schedule;
+
+  std::vector<Node*> WorkQueue;
+
+  void Push(Node* N) { WorkQueue.push_back(N); }
+  void Pop() { WorkQueue.erase(WorkQueue.cbegin()); }
+
+public:
+  PostOrderNodePlacement(GraphSchedule& schedule)
+    : Schedule(schedule) {}
+
+  void Compute();
+};
+
+void PostOrderNodePlacement::Compute() {
+  // Although SubGraph will walk nodes in PO order,
+  // we want more control on Node queuing
+  while(!WorkQueue.empty()) {
+    auto* NextNode = WorkQueue.front();
+    // TODO: Put in the block that dominate all value users
   }
 }
 } // end namespace _internal
@@ -305,6 +395,7 @@ void GraphScheduler::ComputeScheduledGraph() {
     CFB.Run();
 
     // Phase 2. Place rest of the nodes.
-    // TODO
+    _internal::PostOrderNodePlacement POP(Schedule);
+    POP.Compute();
   }
 }
