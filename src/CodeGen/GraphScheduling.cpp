@@ -136,15 +136,33 @@ void CFGBuilder::BlockPlacement() {
   // force Start/End nodes be the first/last nodes
   Node *StartNode = nullptr, *EndNode = nullptr;
   for(auto* N : SG.nodes()) {
-    if(N->getOp() == IrOpcode::Start) {
+    switch(N->getOp()) {
+    case IrOpcode::Start: {
       StartNode = N;
-      continue;
+      break;
     }
-    if(N->getOp() == IrOpcode::End){
+    case IrOpcode::End: {
       EndNode = N;
-      continue;
+      break;
     }
-    RPONodes.insert(RPONodes.cbegin(), N);
+    case IrOpcode::Loop: {
+      // put off Loop node to be inserted after
+      // backedge(i.e. IfTrue node) is inserted
+      break;
+    }
+    case IrOpcode::IfTrue: {
+      RPONodes.insert(RPONodes.cbegin(), N);
+      for(auto* CU : N->control_users()) {
+        if(CU->getOp() == IrOpcode::Loop) {
+          // backedge
+          RPONodes.insert(RPONodes.cbegin(), CU);
+        }
+      }
+      break;
+    }
+    default:
+      RPONodes.insert(RPONodes.cbegin(), N);
+    }
   }
   assert(StartNode && EndNode);
   RPONodes.insert(RPONodes.cbegin(), StartNode);

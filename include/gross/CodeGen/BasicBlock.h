@@ -62,6 +62,7 @@ struct BasicBlock {
 private:
   Id BlockId;
 
+  // first Node is always the control op of this block
   std::list<Node*> NodeSequence;
   std::unordered_map<Node*, SeqNodeId> NodeIds;
 
@@ -73,6 +74,9 @@ public:
     : BlockId(BBId) {}
 
   const Id& getId() const { return BlockId; }
+
+  Node* getCtrlNode() const { return NodeSequence.empty()?
+                                     nullptr : NodeSequence.front(); }
 
   // block iterators
   using pred_iterator = typename decltype(Predecessors)::iterator;
