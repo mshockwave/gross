@@ -64,8 +64,11 @@ class GraphSchedule {
     llvm::iterator_range<const_dom_iterator> const_doms() {
       return llvm::make_range(dom_cbegin(), dom_cend());
     }
+    size_t dom_size() const { return Dominants.size(); }
   };
-  std::unordered_map<BasicBlock*, std::unique_ptr<DominatorNode>> DomNodes;
+  using DomNodesTy
+    = std::unordered_map<BasicBlock*, std::unique_ptr<DominatorNode>>;
+  DomNodesTy DomNodes;
 
   void ChangeDominator(BasicBlock* BB, BasicBlock* NewDomBB) {
     assert(DomNodes.count(BB));
@@ -90,6 +93,9 @@ class GraphSchedule {
     Scheduled
   };
   NodeMarker<ScheduleState> StateMarker;
+
+  // for Graphviz printing
+  struct block_prop_writer;
 
 public:
   GraphSchedule(Graph& graph, const SubGraph& subgraph)
@@ -148,6 +154,8 @@ public:
     return Node2Block.at(N);
   }
 
+  // just a wrapper for printing DomTree
+  class DomTreeHandle;
   bool Dominate(BasicBlock* FromBB, BasicBlock* ToBB);
   // notify the DomTree to update
   void OnConnectBlock(BasicBlock* Pred, BasicBlock* Succ);
@@ -164,6 +172,8 @@ public:
   std::ostream& printBlock(std::ostream&, BasicBlock* BB);
 
   void dumpGraphviz(std::ostream&);
+
+  void dumpDomTreeGraphviz(std::ostream&);
 };
 
 class GraphSchedule::edge_iterator

@@ -64,6 +64,10 @@ TEST(CodeGenUnitTest, TestGraphScheduleSimpleCtrl) {
     std::ofstream OF("TestGraphScheduleSimpleCtrl.after.dot");
     FuncSchedule->dumpGraphviz(OF);
   }
+  {
+    std::ofstream OF("TestGraphScheduleSimpleCtrl.after.dom.dot");
+    FuncSchedule->dumpDomTreeGraphviz(OF);
+  }
 }
 
 TEST(CodeGenUnitTest, TestGraphScheduleSimpleLoop) {
@@ -92,5 +96,9 @@ TEST(CodeGenUnitTest, TestGraphScheduleSimpleLoop) {
   {
     std::ofstream OF("TestGraphScheduleSimpleLoop.after.dot");
     FuncSchedule->dumpGraphviz(OF);
+  }
+  {
+    std::ofstream OF("TestGraphScheduleSimpleLoop.after.dom.dot");
+    FuncSchedule->dumpDomTreeGraphviz(OF);
   }
 }
