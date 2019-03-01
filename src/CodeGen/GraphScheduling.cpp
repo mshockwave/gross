@@ -178,6 +178,7 @@ void CFGBuilder::BlockPlacement() {
     case IrOpcode::Merge: {
       auto* BB = Schedule.NewBasicBlock();
       AddNodeToBlock(N, BB);
+      Schedule.SetFixed(N);
       break;
     }
     case IrOpcode::Phi:
@@ -187,6 +188,7 @@ void CFGBuilder::BlockPlacement() {
       auto* BB = MapBlock(PrevCtrl);
       assert(BB && "previous control not visited yet?");
       AddNodeToBlock(N, BB);
+      Schedule.SetScheduled(N);
       continue;
     }
     case IrOpcode::Alloca: {
@@ -195,6 +197,7 @@ void CFGBuilder::BlockPlacement() {
       auto* EntryBlock = MapBlock(StartNode);
       assert(EntryBlock);
       AddNodeToBlock(N, EntryBlock);
+      Schedule.SetScheduled(N);
       continue;
     }
     default:
@@ -283,7 +286,15 @@ class PostOrderNodePlacement {
   std::vector<Node*> WorkQueue;
 
   void Push(Node* N) { WorkQueue.push_back(N); }
+  void PushInputs(Node* N) {
+    for(auto* IN : N->inputs())
+      if(!Schedule.IsNodeScheduled(IN))
+        Push(IN);
+  }
   void Pop() { WorkQueue.erase(WorkQueue.cbegin()); }
+
+  template<class SetT>
+  BasicBlock* GetCommonDominator(const SetT& BBs);
 
 public:
   PostOrderNodePlacement(GraphSchedule& schedule)
@@ -292,12 +303,62 @@ public:
   void Compute();
 };
 
+template<class SetT> BasicBlock*
+PostOrderNodePlacement::GetCommonDominator(const SetT& BBs) {
+  // find the BB with smallest RPO index
+  auto BI = Schedule.rpo_rbegin(),
+       BIE = Schedule.rpo_rend();
+  size_t Counter = 0U, BBSize = BBs.size();
+  for(; BI != BIE; ++BI) {
+    if(BBs.count(*BI)) ++Counter;
+    // we want to break on block that has the least RPO index
+    if(Counter >= BBSize) break;
+  }
+  for(; BI != BIE; ++BI) {
+    auto* DomBB = *BI;
+    bool Found = true;
+    for(auto* BB : BBs) {
+      if(!Schedule.Dominate(DomBB, BB)) {
+        Found = false;
+        break;
+      }
+    }
+    if(Found) return DomBB;
+  }
+  return nullptr;
+}
+
 void PostOrderNodePlacement::Compute() {
-  // Although SubGraph will walk nodes in PO order,
-  // we want more control on Node queuing
-  while(!WorkQueue.empty()) {
-    auto* NextNode = WorkQueue.front();
-    // TODO: Put in the block that dominate all value users
+  auto& SG = Schedule.getSubGraph();
+  for(auto* CurNode : SG.nodes()) {
+    if(Schedule.IsNodeScheduled(CurNode)) continue;
+
+    // consider all the value users first
+    std::unordered_set<BasicBlock*> UserBBs;
+    std::unordered_set<Node*> UserNodes;
+    for(auto* VU : CurNode->value_users()) {
+      assert(Schedule.IsNodeScheduled(VU) &&
+             "User not scheduled?");
+      UserNodes.insert(VU);
+      auto* BB = Schedule.MapBlock(VU);
+      assert(BB);
+      UserBBs.insert(BB);
+    }
+    if(!UserBBs.empty()) {
+      auto* DomBB = GetCommonDominator(UserBBs);
+      assert(DomBB);
+      // search from top to bottom within the block,
+      // insert right before a value user if any. Otherwise
+      // insert at the end
+      auto NI = DomBB->node_cbegin();
+      for(auto NE = DomBB->node_cend(); NI != NE; ++NI) {
+        if(UserNodes.count(const_cast<Node*>(*NI))) break;
+      }
+      DomBB->AddNode(NI, CurNode);
+      Schedule.SetScheduled(CurNode);
+      continue;
+    }
+    // TODO: other dependencies
   }
 }
 } // end namespace _internal
