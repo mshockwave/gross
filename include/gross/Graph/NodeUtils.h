@@ -293,6 +293,51 @@ NODE_PROPERTIES(Loop) {
   }
 };
 
+NODE_PROPERTIES(Phi) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(Phi, N) {}
+
+  Node* CtrlPivot() const {
+    assert(NodePtr->getNumControlInput() > 0);
+    return NodePtr->getControlInput(0);
+  }
+
+  using ctrl_input_iterator = typename Node::input_iterator;
+  ctrl_input_iterator ctrl_begin() {
+    return CtrlPivot()->control_input_begin();
+  }
+  ctrl_input_iterator ctrl_end() {
+    return CtrlPivot()->control_input_end();
+  }
+
+  // value/effect input to Phi -> corresponding control node
+  Node* MapCtrlNode(Node* N, Use::Kind InputKind = Use::K_VALUE) {
+    size_t Idx = 0U;
+    switch(InputKind) {
+    case Use::K_VALUE: {
+      auto Size = NodePtr->getNumValueInput();
+      for(; Idx < Size; ++Idx) {
+        if(N == NodePtr->getValueInput(Idx)) break;
+      }
+      if(Idx >= Size) return nullptr;
+      break;
+    }
+    case Use::K_EFFECT: {
+      auto Size = NodePtr->getNumEffectInput();
+      for(; Idx < Size; ++Idx) {
+        if(N == NodePtr->getEffectInput(Idx)) break;
+      }
+      if(Idx >= Size) return nullptr;
+      break;
+    }
+    default:
+      gross_unreachable("Invalid input kind");
+    }
+    assert(Idx < CtrlPivot()->getNumControlInput());
+    return CtrlPivot()->getControlInput(Idx);
+  }
+};
+
 NODE_PROPERTIES(VirtGlobalValues) {
   NodeProperties(Node *N)
     : NODE_PROP_BASE(VirtGlobalValues, N) {}

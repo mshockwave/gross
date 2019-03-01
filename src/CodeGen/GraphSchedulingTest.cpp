@@ -20,10 +20,10 @@ TEST(CodeGenUnitTest, TestGraphScheduleConcepts) {
                           gross::BasicBlock* > ));
 }
 
-TEST(CodeGenUnitTest, TestGraphScheduleSimpleCtrl) {
+TEST(CodeGenUnitTest, GraphScheduleCFGSimpleCtrl) {
   Graph G;
   auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
-               .FuncName("func_schedule_simple_ctrl")
+               .FuncName("func_schedule_cfg_simple_ctrl")
                .Build();
   auto* Const = NodeBuilder<IrOpcode::ConstantInt>(&G, 1).Build();
   auto* Branch = NodeBuilder<IrOpcode::If>(&G)
@@ -52,7 +52,7 @@ TEST(CodeGenUnitTest, TestGraphScheduleSimpleCtrl) {
   SubGraph FuncSG(End);
   G.AddSubRegion(FuncSG);
   {
-    std::ofstream OF("TestGraphScheduleSimpleCtrl.dot");
+    std::ofstream OF("TestGraphScheduleCFGSimpleCtrl.dot");
     G.dumpGraphviz(OF);
   }
 
@@ -61,19 +61,19 @@ TEST(CodeGenUnitTest, TestGraphScheduleSimpleCtrl) {
   EXPECT_EQ(Scheduler.schedule_size(), 1);
   auto* FuncSchedule = *Scheduler.schedule_begin();
   {
-    std::ofstream OF("TestGraphScheduleSimpleCtrl.after.dot");
+    std::ofstream OF("TestGraphScheduleCFGSimpleCtrl.after.dot");
     FuncSchedule->dumpGraphviz(OF);
   }
   {
-    std::ofstream OF("TestGraphScheduleSimpleCtrl.after.dom.dot");
+    std::ofstream OF("TestGraphScheduleCFGSimpleCtrl.after.dom.dot");
     FuncSchedule->dumpDomTreeGraphviz(OF);
   }
 }
 
-TEST(CodeGenUnitTest, TestGraphScheduleSimpleLoop) {
+TEST(CodeGenUnitTest, GraphScheduleCFGSimpleLoop) {
   Graph G;
   auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
-               .FuncName("func_schedule_simple_loop")
+               .FuncName("func_schedule_cfg_simple_loop")
                .Build();
   auto* Const = NodeBuilder<IrOpcode::ConstantInt>(&G, 1).Build();
   auto* Loop = NodeBuilder<IrOpcode::Loop>(&G, Func)
@@ -85,7 +85,7 @@ TEST(CodeGenUnitTest, TestGraphScheduleSimpleLoop) {
   SubGraph FuncSG(End);
   G.AddSubRegion(FuncSG);
   {
-    std::ofstream OF("TestGraphScheduleSimpleLoop.dot");
+    std::ofstream OF("TestGraphScheduleCFGSimpleLoop.dot");
     G.dumpGraphviz(OF);
   }
 
@@ -94,11 +94,86 @@ TEST(CodeGenUnitTest, TestGraphScheduleSimpleLoop) {
   EXPECT_EQ(Scheduler.schedule_size(), 1);
   auto* FuncSchedule = *Scheduler.schedule_begin();
   {
-    std::ofstream OF("TestGraphScheduleSimpleLoop.after.dot");
+    std::ofstream OF("TestGraphScheduleCFGSimpleLoop.after.dot");
     FuncSchedule->dumpGraphviz(OF);
   }
   {
-    std::ofstream OF("TestGraphScheduleSimpleLoop.after.dom.dot");
+    std::ofstream OF("TestGraphScheduleCFGSimpleLoop.after.dom.dot");
     FuncSchedule->dumpDomTreeGraphviz(OF);
+  }
+}
+
+TEST(CodeGenTest, GraphScheduleValueNodePlacement) {
+  {
+    Graph G;
+    auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
+                 .FuncName("func_schedule_value_node_placement")
+                 .Build();
+    auto* Const1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 1).Build();
+    auto* Const2 = NodeBuilder<IrOpcode::ConstantInt>(&G, 2).Build();
+    auto* Const3 = NodeBuilder<IrOpcode::ConstantInt>(&G, 3).Build();
+    auto* Const4 = NodeBuilder<IrOpcode::ConstantInt>(&G, 4).Build();
+    auto* Const5 = NodeBuilder<IrOpcode::ConstantInt>(&G, 5).Build();
+    auto* Sum1 = NodeBuilder<IrOpcode::BinAdd>(&G)
+                 .LHS(Const1).RHS(Const2).Build();
+    auto* Mul1 = NodeBuilder<IrOpcode::BinMul>(&G)
+                 .LHS(Sum1).RHS(Const3).Build();
+
+    auto* Branch = NodeBuilder<IrOpcode::If>(&G)
+                   .Condition(Const1).Build();
+    Branch->appendControlInput(Func);
+    auto* TrueBr = NodeBuilder<IrOpcode::VirtIfBranches>(&G, true)
+                   .IfStmt(Branch).Build();
+    auto* FalseBr = NodeBuilder<IrOpcode::VirtIfBranches>(&G, false)
+                    .IfStmt(Branch).Build();
+    auto* Return1 = NodeBuilder<IrOpcode::Return>(&G, Sum1).Build();
+    Return1->appendControlInput(FalseBr);
+
+    auto* Branch2 = NodeBuilder<IrOpcode::If>(&G)
+                    .Condition(Const1).Build();
+    Branch2->appendControlInput(TrueBr);
+    auto* TrueBr2 = NodeBuilder<IrOpcode::VirtIfBranches>(&G, true)
+                    .IfStmt(Branch2).Build();
+    auto* FalseBr2 = NodeBuilder<IrOpcode::VirtIfBranches>(&G, false)
+                     .IfStmt(Branch2).Build();
+    auto* Sum2_1 = NodeBuilder<IrOpcode::BinAdd>(&G)
+                   .LHS(Mul1).RHS(Const4).Build();
+    auto* Sum2_2 = NodeBuilder<IrOpcode::BinAdd>(&G)
+                   .LHS(Mul1).RHS(Const5).Build();
+    auto* MergeInner = NodeBuilder<IrOpcode::Merge>(&G)
+                       .AddCtrlInput(TrueBr2).AddCtrlInput(FalseBr2)
+                       .Build();
+    auto* PHINode = NodeBuilder<IrOpcode::Phi>(&G)
+                    .AddValueInput(Sum2_1).AddValueInput(Sum2_2)
+                    .SetCtrlMerge(MergeInner)
+                    .Build();
+
+    auto* MergeOuter = NodeBuilder<IrOpcode::Merge>(&G)
+                       .AddCtrlInput(Return1).AddCtrlInput(MergeInner)
+                       .Build();
+    auto* Return2 = NodeBuilder<IrOpcode::Return>(&G, PHINode).Build();
+    Return2->appendControlInput(MergeOuter);
+    auto* End = NodeBuilder<IrOpcode::End>(&G, Func)
+                .AddTerminator(Return2)
+                .Build();
+    SubGraph FuncSG(End);
+    G.AddSubRegion(FuncSG);
+    {
+      std::ofstream OF("TestGraphScheduleValueNodePlacement1.dot");
+      G.dumpGraphviz(OF);
+    }
+
+    GraphScheduler Scheduler(G);
+    Scheduler.ComputeScheduledGraph();
+    EXPECT_EQ(Scheduler.schedule_size(), 1);
+    auto* FuncSchedule = *Scheduler.schedule_begin();
+    {
+      std::ofstream OF("TestGraphScheduleValueNodePlacement1.after.dot");
+      FuncSchedule->dumpGraphviz(OF);
+    }
+    {
+      std::ofstream OF("TestGraphScheduleValueNodePlacement1.after.dom.dot");
+      FuncSchedule->dumpDomTreeGraphviz(OF);
+    }
   }
 }

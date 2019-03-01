@@ -182,7 +182,8 @@ void CFGBuilder::BlockPlacement() {
       break;
     }
     case IrOpcode::Phi:
-    case IrOpcode::If: {
+    case IrOpcode::If:
+    case IrOpcode::Return: {
       assert(N->getNumControlInput() > 0);
       auto* PrevCtrl = N->getControlInput(0);
       auto* BB = MapBlock(PrevCtrl);
@@ -332,6 +333,8 @@ void PostOrderNodePlacement::Compute() {
   auto& SG = Schedule.getSubGraph();
   for(auto* CurNode : SG.nodes()) {
     if(Schedule.IsNodeScheduled(CurNode)) continue;
+    if(NodeProperties<IrOpcode::VirtConstantValues>(CurNode))
+      continue;
 
     // consider all the value users first
     std::unordered_set<BasicBlock*> UserBBs;
@@ -340,11 +343,23 @@ void PostOrderNodePlacement::Compute() {
       assert(Schedule.IsNodeScheduled(VU) &&
              "User not scheduled?");
       UserNodes.insert(VU);
-      auto* BB = Schedule.MapBlock(VU);
+
+      BasicBlock* BB = nullptr;
+      if(VU->getOp() == IrOpcode::Phi) {
+        // don't need to dominate Phi block,
+        // use the branch block instead
+        NodeProperties<IrOpcode::Phi> PNP(VU);
+        auto* CN = PNP.MapCtrlNode(CurNode, Use::K_VALUE);
+        assert(CN && "failed to map input to control node");
+        BB = Schedule.MapBlock(CN);
+      } else {
+        BB = Schedule.MapBlock(VU);
+      }
       assert(BB);
       UserBBs.insert(BB);
     }
     if(!UserBBs.empty()) {
+      // TODO: Don't put nodes in loops
       auto* DomBB = GetCommonDominator(UserBBs);
       assert(DomBB);
       // search from top to bottom within the block,
@@ -354,7 +369,7 @@ void PostOrderNodePlacement::Compute() {
       for(auto NE = DomBB->node_cend(); NI != NE; ++NI) {
         if(UserNodes.count(const_cast<Node*>(*NI))) break;
       }
-      DomBB->AddNode(NI, CurNode);
+      Schedule.AddNode(DomBB, NI, CurNode);
       Schedule.SetScheduled(CurNode);
       continue;
     }
@@ -508,6 +523,8 @@ void GraphSchedule::SortRPO() {
 }
 
 std::ostream& GraphSchedule::printBlock(std::ostream& OS, BasicBlock* BB) {
+  BB->getId().print(OS << "BB");
+  OS << " :\n";
   for(auto* N : BB->nodes()) {
     assert(BB->getNodeId(N));
     BB->getNodeId(N)->print(OS);

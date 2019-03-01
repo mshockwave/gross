@@ -148,6 +148,15 @@ public:
     BB->AddNode(N);
     Node2Block[N] = BB;
   }
+  void AddNodeBefore(BasicBlock* BB, Node* Pos, Node* N) {
+    BB->AddNodeBefore(Pos, N);
+    Node2Block[N] = BB;
+  }
+  void AddNode(BasicBlock* BB, typename BasicBlock::const_node_iterator Pos,
+               Node* N) {
+    BB->AddNode(Pos, N);
+    Node2Block[N] = BB;
+  }
 
   BasicBlock* MapBlock(Node* N) {
     if(!Node2Block.count(N)) return nullptr;
