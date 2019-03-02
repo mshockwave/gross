@@ -104,6 +104,11 @@ class CFGBuilder {
   void AddNodeToBlock(Node* N, BasicBlock* BB) {
     Schedule.AddNode(BB, N);
   }
+  void AddNodeToBlock(Node* N,
+                      BasicBlock* BB,
+                      typename BasicBlock::const_node_iterator Pos) {
+    Schedule.AddNode(BB, Pos, N);
+  }
 
   void BlockPlacement();
 
@@ -181,7 +186,6 @@ void CFGBuilder::BlockPlacement() {
       Schedule.SetFixed(N);
       break;
     }
-    case IrOpcode::Phi:
     case IrOpcode::If:
     case IrOpcode::Return: {
       assert(N->getNumControlInput() > 0);
@@ -192,12 +196,26 @@ void CFGBuilder::BlockPlacement() {
       Schedule.SetScheduled(N);
       continue;
     }
+    case IrOpcode::Phi: {
+      assert(N->getNumControlInput() > 0);
+      auto* PrevCtrl = N->getControlInput(0);
+      auto* BB = MapBlock(PrevCtrl);
+      assert(BB && "previous control not visited yet?");
+      // add after the first(control) node
+      auto Pos = BB->node_cbegin();
+      ++Pos;
+      AddNodeToBlock(N, BB, Pos);
+      Schedule.SetScheduled(N);
+      continue;
+    }
     case IrOpcode::Alloca: {
       // needs to be placed in the entry block
       // TODO: tell local alloca from global variable
       auto* EntryBlock = MapBlock(StartNode);
       assert(EntryBlock);
-      AddNodeToBlock(N, EntryBlock);
+      auto Pos = EntryBlock->node_cbegin();
+      ++Pos;
+      AddNodeToBlock(N, EntryBlock, Pos);
       Schedule.SetScheduled(N);
       continue;
     }
@@ -367,7 +385,13 @@ void PostOrderNodePlacement::Compute() {
       // insert at the end
       auto NI = DomBB->node_cbegin();
       for(auto NE = DomBB->node_cend(); NI != NE; ++NI) {
-        if(UserNodes.count(const_cast<Node*>(*NI))) break;
+        auto* N = const_cast<Node*>(*NI);
+        if(UserNodes.count(N)) break;
+        // insert before terminate instructions
+        // FIXME: Is there any other way to generalize this
+        // concept
+        else if(NodeProperties<IrOpcode::VirtTerminate>(N))
+          break;
       }
       Schedule.AddNode(DomBB, NI, CurNode);
       Schedule.SetScheduled(CurNode);

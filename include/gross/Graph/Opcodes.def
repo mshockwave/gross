@@ -51,6 +51,7 @@ CONTROL_OP(Return)
 VIRT_OP(IfBranches)     // IfTrue | IfFalse
 VIRT_OP(CtrlPoints)     // If | IfTrue | IfFalse | Merge | Start | End
                         // | Return | Loop
+VIRT_OP(Terminate)      // If | Return
 
 /// Memory Ops
 #ifndef MEMORY_OP

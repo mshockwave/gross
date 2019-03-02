@@ -496,6 +496,23 @@ NODE_PROPERTIES(Return) {
   }
 };
 
+NODE_PROPERTIES(VirtTerminate) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(VirtTerminate, N) {}
+
+  operator bool() const {
+    if(!NodePtr) return false;
+    switch(NodePtr->getOp()) {
+    case IrOpcode::If:
+    case IrOpcode::Return:
+      return true;
+    default:
+      return false;
+    }
+  }
+};
+
+/// ======= Builders =======
 template<>
 struct NodeBuilder<IrOpcode::Dead> {
   NodeBuilder(Graph* graph) : G(graph) {}

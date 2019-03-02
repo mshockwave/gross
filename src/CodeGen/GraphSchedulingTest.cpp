@@ -176,4 +176,53 @@ TEST(CodeGenTest, GraphScheduleValueNodePlacement) {
       FuncSchedule->dumpDomTreeGraphviz(OF);
     }
   }
+  {
+    Graph G;
+    auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
+                 .FuncName("func_schedule_value_node_placement2")
+                 .Build();
+    auto* Const1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 1).Build();
+    auto* Const2 = NodeBuilder<IrOpcode::ConstantInt>(&G, 2).Build();
+    auto* Const3 = NodeBuilder<IrOpcode::ConstantInt>(&G, 3).Build();
+    auto* Const4 = NodeBuilder<IrOpcode::ConstantInt>(&G, 4).Build();
+    // FIXME: Sum1 should be hoisted out of loop since it's loop invariant
+    auto* Sum1 = NodeBuilder<IrOpcode::BinMul>(&G)
+                 .LHS(Const3).RHS(Const4).Build();
+    auto* Sum2 = NodeBuilder<IrOpcode::BinAdd>(&G)
+                 .LHS(Sum1).RHS(Const2).Build();
+
+    auto* Loop = NodeBuilder<IrOpcode::Loop>(&G, Func)
+                 .Condition(Const1).Build();
+    auto* PHINode = NodeBuilder<IrOpcode::Phi>(&G)
+                    .AddValueInput(Const2).AddValueInput(Sum2)
+                    .SetCtrlMerge(Loop)
+                    .Build();
+    Sum2->ReplaceUseOfWith(Const2, PHINode, Use::K_VALUE);
+    auto* Br = NodeProperties<IrOpcode::Loop>(Loop).Branch();
+    auto* Return1 = NodeBuilder<IrOpcode::Return>(&G, PHINode).Build();
+    Return1->appendControlInput(NodeProperties<IrOpcode::If>(Br).FalseBranch());
+    auto* End = NodeBuilder<IrOpcode::End>(&G, Func)
+                .AddTerminator(Return1)
+                .Build();
+
+    SubGraph FuncSG(End);
+    G.AddSubRegion(FuncSG);
+    {
+      std::ofstream OF("TestGraphScheduleValueNodePlacement2.dot");
+      G.dumpGraphviz(OF);
+    }
+
+    GraphScheduler Scheduler(G);
+    Scheduler.ComputeScheduledGraph();
+    EXPECT_EQ(Scheduler.schedule_size(), 1);
+    auto* FuncSchedule = *Scheduler.schedule_begin();
+    {
+      std::ofstream OF("TestGraphScheduleValueNodePlacement2.after.dot");
+      FuncSchedule->dumpGraphviz(OF);
+    }
+    {
+      std::ofstream OF("TestGraphScheduleValueNodePlacement2.after.dom.dot");
+      FuncSchedule->dumpDomTreeGraphviz(OF);
+    }
+  }
 }
