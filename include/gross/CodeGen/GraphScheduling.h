@@ -201,8 +201,11 @@ public:
     return Node2Block.at(N);
   }
 
-  // just a wrapper for printing DomTree
-  class DomTreeHandle;
+  // wrapper for printing DomTree and LoopTree
+  template<class ProxyT>
+  class TreeHandle;
+
+  struct DomTreeProxy;
   bool Dominate(BasicBlock* FromBB, BasicBlock* ToBB);
   BasicBlock* getDominator(BasicBlock* BB) {
     if(DomNodes.count(BB))
@@ -213,6 +216,7 @@ public:
   // notify the DomTree to update
   void OnConnectBlock(BasicBlock* Pred, BasicBlock* Succ);
 
+  struct LoopTreeProxy;
   bool IsLoopHeader(BasicBlock* BB) { return LoopTree.count(BB); }
   BasicBlock* getParentLoop(BasicBlock* HeaderBB) {
     if(IsLoopHeader(HeaderBB))
@@ -235,6 +239,7 @@ public:
   void dumpGraphviz(std::ostream&);
 
   void dumpDomTreeGraphviz(std::ostream&);
+  void dumpLoopTreeGraphviz(std::ostream&);
 };
 
 class GraphSchedule::edge_iterator

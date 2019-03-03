@@ -550,7 +550,58 @@ void PostOrderNodePlacement::Compute() {
 } // end namespace _internal
 } // end namespace gross
 
-struct GraphSchedule::DomTreeHandle {
+struct GraphSchedule::DomTreeProxy {
+  using map_type = GraphSchedule::DomNodesTy;
+  using map_iterator = typename map_type::iterator;
+  using value_type = DominatorNode*;
+  using child_iterator = typename DominatorNode::dom_iterator;
+
+  static map_type& GetMap(GraphSchedule& Schedule) {
+    return Schedule.DomNodes;
+  }
+
+  static value_type GetValue(map_iterator MapIt) {
+    return MapIt->second.get();
+  }
+
+  static child_iterator child_begin(value_type Value) {
+    return Value->dom_begin();
+  }
+  static child_iterator child_end(value_type Value) {
+    return Value->dom_end();
+  }
+  static size_t child_size(value_type Value) {
+    return Value->dom_size();
+  }
+};
+
+struct GraphSchedule::LoopTreeProxy {
+  using map_type = GraphSchedule::LoopTreeTy;
+  using map_iterator = typename map_type::iterator;
+  using value_type = LoopTreeNode*;
+  using child_iterator = typename LoopTreeNode::loop_iterator;
+
+  static map_type& GetMap(GraphSchedule& Schedule) {
+    return Schedule.LoopTree;
+  }
+
+  static value_type GetValue(map_iterator MapIt) {
+    return MapIt->second.get();
+  }
+
+  static child_iterator child_begin(value_type Value) {
+    return Value->child_loop_begin();
+  }
+  static child_iterator child_end(value_type Value) {
+    return Value->child_loop_end();
+  }
+  static size_t child_size(value_type Value) {
+    return Value->child_loop_size();
+  }
+};
+
+template<class ProxyT>
+struct GraphSchedule::TreeHandle {
   /// GraphConcept
   using vertex_descriptor = BasicBlock*;
   // { source, dest }
@@ -573,32 +624,33 @@ struct GraphSchedule::DomTreeHandle {
 
   /// EdgeListGraphConcept
   using edges_size_type = size_t;
-  class edge_iterator
-    : public boost::iterator_facade<edge_iterator,
-                                    typename DomTreeHandle::edge_descriptor,
-                                    boost::forward_traversal_tag,
-                                    typename DomTreeHandle::edge_descriptor>{
+  class edge_iterator : public boost::iterator_facade<
+        edge_iterator,
+        typename TreeHandle<ProxyT>::edge_descriptor,
+        boost::forward_traversal_tag,
+        typename TreeHandle<ProxyT>::edge_descriptor> {
     friend class boost::iterator_core_access;
     GraphSchedule* Schedule;
 
-    using edge_type = typename DomTreeHandle::edge_descriptor;
+    using edge_type = typename TreeHandle<ProxyT>::edge_descriptor;
 
-    using DomNodesTy = typename GraphSchedule::DomNodesTy;
-    using nodes_iterator = typename DomNodesTy::iterator;
+    using MapTy = typename ProxyT::map_type;
+    using ValueTy = typename ProxyT::value_type;
+    using iterator = typename MapTy::iterator;
     // iterator over the map
-    nodes_iterator DomNodeIt;
+    iterator MapIt;
 
-    typename GraphSchedule::DominatorNode::dom_iterator ChildIt;
+    typename ProxyT::child_iterator ChildIt;
 
     bool IsTombstone;
 
-    DomNodesTy& DomNodes() const {
+    MapTy& Map() const {
       assert(Schedule);
-      return Schedule->DomNodes;
+      return ProxyT::GetMap(*Schedule);
     }
-    DominatorNode* CurDomNode() const {
-      assert(DomNodeIt != DomNodes().end());
-      return DomNodeIt->second.get();
+    ValueTy CurValue() const {
+      assert(MapIt != Map().end());
+      return ProxyT::GetValue(MapIt);
     }
 
     bool equal(const edge_iterator& Other) const {
@@ -606,17 +658,17 @@ struct GraphSchedule::DomTreeHandle {
       // so it's nearly impossible to compare two arbitrary iterator.
       // Thus we only care about the case comparing with end iterator
       if(Other.IsTombstone) {
-        return DomNodeIt == DomNodes().end();
+        return MapIt == Map().end();
       }
       return false;
     }
 
     void nextValidPos() {
-      while(DomNodeIt != DomNodes().end() &&
-            ChildIt == CurDomNode()->dom_end() ) {
-        ++DomNodeIt;
-        if(DomNodeIt != DomNodes().end())
-          ChildIt = CurDomNode()->dom_begin();
+      while(MapIt != Map().end() &&
+            ChildIt == ProxyT::child_end(CurValue()) ) {
+        ++MapIt;
+        if(MapIt != Map().end())
+          ChildIt = ProxyT::child_begin(CurValue());
       }
     }
 
@@ -626,7 +678,7 @@ struct GraphSchedule::DomTreeHandle {
     }
 
     edge_type dereference() const {
-      return std::make_pair(DomNodeIt->first, *ChildIt);
+      return std::make_pair(MapIt->first, *ChildIt);
     }
 
   public:
@@ -637,9 +689,9 @@ struct GraphSchedule::DomTreeHandle {
       : Schedule(schedule),
         IsTombstone(IsEnd) {
       if(!IsEnd) {
-        DomNodeIt = DomNodes().begin();
-        if(DomNodeIt != DomNodes().end()) {
-          ChildIt = CurDomNode()->dom_begin();
+        MapIt = Map().begin();
+        if(MapIt != Map().end()) {
+          ChildIt = ProxyT::child_begin(CurValue());
           nextValidPos();
         }
       }
@@ -652,11 +704,11 @@ struct GraphSchedule::DomTreeHandle {
     return edge_iterator(&pImpl, true);
   }
   size_t edge_size() const {
-    auto& DomNodes = pImpl.DomNodes;
+    auto& Map = ProxyT::GetMap(pImpl);
     size_t Sum = 0U;
-    for(auto& DNPair : DomNodes) {
-      auto& DomNode = DNPair.second;
-      Sum += DomNode->dom_size();
+    for(auto I = Map.begin(), E = Map.end(); I != E; ++I) {
+      auto* Val = ProxyT::GetValue(I);
+      Sum += ProxyT::child_size(Val);
     }
     return Sum;
   }
@@ -665,7 +717,7 @@ struct GraphSchedule::DomTreeHandle {
     public boost::vertex_list_graph_tag,
     public boost::edge_list_graph_tag {};
 
-  DomTreeHandle(GraphSchedule& Impl) : pImpl(Impl) {}
+  TreeHandle(GraphSchedule& Impl) : pImpl(Impl) {}
   GraphSchedule& getImpl() const { return pImpl; }
 
 private:
@@ -758,52 +810,66 @@ void GraphSchedule::dumpGraphviz(std::ostream& OS) {
 // graph_traits for DomTree. So far we only need the trait
 // for Graphviz, so put it here
 namespace gross {
-std::pair<typename GraphSchedule::DomTreeHandle::vertex_iterator,
-          typename GraphSchedule::DomTreeHandle::vertex_iterator>
-vertices(const GraphSchedule::DomTreeHandle& g) {
+template<class ProxyT>
+std::pair<typename GraphSchedule::TreeHandle<ProxyT>::vertex_iterator,
+          typename GraphSchedule::TreeHandle<ProxyT>::vertex_iterator>
+vertices(const GraphSchedule::TreeHandle<ProxyT>& g) {
   auto& Impl = g.getImpl();
   using vertex_iterator
-    = typename GraphSchedule::DomTreeHandle::vertex_iterator;
+    = typename GraphSchedule::TreeHandle<ProxyT>::vertex_iterator;
   gross::unique_ptr_unwrapper<BasicBlock> functor;
   return std::make_pair(
     vertex_iterator(Impl.block_begin(), functor),
     vertex_iterator(Impl.block_end(), functor)
   );
 }
-size_t num_vertices(const GraphSchedule::DomTreeHandle& g) {
+template<class ProxyT>
+size_t num_vertices(const GraphSchedule::TreeHandle<ProxyT>& g) {
   return g.getImpl().block_size();
 }
 
-std::pair<typename GraphSchedule::DomTreeHandle::edge_iterator,
-          typename GraphSchedule::DomTreeHandle::edge_iterator>
-edges(const GraphSchedule::DomTreeHandle& g) {
+template<class ProxyT>
+std::pair<typename GraphSchedule::TreeHandle<ProxyT>::edge_iterator,
+          typename GraphSchedule::TreeHandle<ProxyT>::edge_iterator>
+edges(const GraphSchedule::TreeHandle<ProxyT>& g) {
   return std::make_pair(g.edge_begin(), g.edge_end());
 }
-size_t num_edges(const GraphSchedule::DomTreeHandle& g) {
+template<class ProxyT>
+size_t num_edges(const GraphSchedule::TreeHandle<ProxyT>& g) {
   return g.edge_size();
 }
 
-typename GraphSchedule::DomTreeHandle::vertex_descriptor
-source(const typename GraphSchedule::DomTreeHandle::edge_descriptor& e,
-       const GraphSchedule::DomTreeHandle& g) {
-  return const_cast<BasicBlock*>(e.first);
-}
-typename GraphSchedule::DomTreeHandle::vertex_descriptor
-target(const typename GraphSchedule::DomTreeHandle::edge_descriptor& e,
-       const GraphSchedule::DomTreeHandle& g) {
-  return const_cast<BasicBlock*>(e.second);
-}
+/// Well...there is a default implementation of source/target for std::pair
+/// in boost
+//template<class ProxyT>
+//typename GraphSchedule::TreeHandle<ProxyT>::vertex_descriptor
+//source(const typename GraphSchedule::TreeHandle<ProxyT>::edge_descriptor& e,
+//       const GraphSchedule::TreeHandle<ProxyT>& g) {
+//  return const_cast<BasicBlock*>(e.first);
+//}
+//template<class ProxyT>
+//typename GraphSchedule::TreeHandle<ProxyT>::vertex_descriptor
+//target(const typename GraphSchedule::TreeHandle<ProxyT>::edge_descriptor& e,
+//       const GraphSchedule::TreeHandle<ProxyT>& g) {
+//  return const_cast<BasicBlock*>(e.second);
+//}
 
 // get() for getting vertex id property map from graph
+template<class ProxyT>
 inline gross::GraphScheduleVertexIdMap
-get(boost::vertex_index_t tag, const GraphSchedule::DomTreeHandle& g) {
+get(boost::vertex_index_t tag, const GraphSchedule::TreeHandle<ProxyT>& g) {
   return gross::GraphScheduleVertexIdMap(g.getImpl());
 }
 } // end namespace gross
 
 void GraphSchedule::dumpDomTreeGraphviz(std::ostream& OS) {
-  DomTreeHandle DomTree(*this);
+  TreeHandle<DomTreeProxy> DomTree(*this);
   boost::write_graphviz(OS, DomTree,
+                        block_prop_writer(*this));
+}
+void GraphSchedule::dumpLoopTreeGraphviz(std::ostream& OS) {
+  TreeHandle<LoopTreeProxy> LoopTree(*this);
+  boost::write_graphviz(OS, LoopTree,
                         block_prop_writer(*this));
 }
 

@@ -101,6 +101,10 @@ TEST(CodeGenUnitTest, GraphScheduleCFGSimpleLoop) {
     std::ofstream OF("TestGraphScheduleCFGSimpleLoop.after.dom.dot");
     FuncSchedule->dumpDomTreeGraphviz(OF);
   }
+  {
+    std::ofstream OF("TestGraphScheduleCFGSimpleLoop.after.looptree.dot");
+    FuncSchedule->dumpLoopTreeGraphviz(OF);
+  }
 }
 
 TEST(CodeGenTest, GraphScheduleValueNodePlacement) {
@@ -185,7 +189,6 @@ TEST(CodeGenTest, GraphScheduleValueNodePlacement) {
     auto* Const2 = NodeBuilder<IrOpcode::ConstantInt>(&G, 2).Build();
     auto* Const3 = NodeBuilder<IrOpcode::ConstantInt>(&G, 3).Build();
     auto* Const4 = NodeBuilder<IrOpcode::ConstantInt>(&G, 4).Build();
-    // FIXME: Sum1 should be hoisted out of loop since it's loop invariant
     auto* Sum1 = NodeBuilder<IrOpcode::BinMul>(&G)
                  .LHS(Const3).RHS(Const4).Build();
     auto* Sum2 = NodeBuilder<IrOpcode::BinAdd>(&G)
