@@ -553,6 +553,13 @@ void PostOrderNodePlacement::Compute() {
 struct GraphSchedule::DomTreeProxy {
   using map_type = GraphSchedule::DomNodesTy;
   using map_iterator = typename map_type::iterator;
+  using block_iterator
+    = boost::transform_iterator<gross::unique_ptr_unwrapper<BasicBlock>,
+                                typename GraphSchedule::block_iterator,
+                                BasicBlock*, // Refrence type
+                                BasicBlock* // Value type
+                                >;
+
   using value_type = DominatorNode*;
   using child_iterator = typename DominatorNode::dom_iterator;
 
@@ -562,6 +569,18 @@ struct GraphSchedule::DomTreeProxy {
 
   static value_type GetValue(map_iterator MapIt) {
     return MapIt->second.get();
+  }
+
+  static block_iterator block_begin(GraphSchedule& Schedule) {
+    gross::unique_ptr_unwrapper<BasicBlock> functor;
+    return block_iterator(Schedule.block_begin(), std::move(functor));
+  }
+  static block_iterator block_end(GraphSchedule& Schedule) {
+    gross::unique_ptr_unwrapper<BasicBlock> functor;
+    return block_iterator(Schedule.block_end(), std::move(functor));
+  }
+  static size_t block_size(GraphSchedule& Schedule) {
+    return Schedule.block_size();
   }
 
   static child_iterator child_begin(value_type Value) {
@@ -578,6 +597,18 @@ struct GraphSchedule::DomTreeProxy {
 struct GraphSchedule::LoopTreeProxy {
   using map_type = GraphSchedule::LoopTreeTy;
   using map_iterator = typename map_type::iterator;
+  struct key_extractor {
+    BasicBlock*
+    operator()(typename map_type::value_type& Pair) const noexcept {
+      return Pair.first;
+    }
+  };
+  using block_iterator
+    = boost::transform_iterator<key_extractor, map_iterator,
+                                BasicBlock*, // Refrence type
+                                BasicBlock* // Value type
+                                >;
+
   using value_type = LoopTreeNode*;
   using child_iterator = typename LoopTreeNode::loop_iterator;
 
@@ -587,6 +618,20 @@ struct GraphSchedule::LoopTreeProxy {
 
   static value_type GetValue(map_iterator MapIt) {
     return MapIt->second.get();
+  }
+
+  static block_iterator block_begin(GraphSchedule& Schedule) {
+    key_extractor functor;
+    return block_iterator(Schedule.LoopTree.begin(),
+                          std::move(functor));
+  }
+  static block_iterator block_end(GraphSchedule& Schedule) {
+    key_extractor functor;
+    return block_iterator(Schedule.LoopTree.end(),
+                          std::move(functor));
+  }
+  static size_t block_size(GraphSchedule& Schedule) {
+    return Schedule.LoopTree.size();
   }
 
   static child_iterator child_begin(value_type Value) {
@@ -614,12 +659,7 @@ struct GraphSchedule::TreeHandle {
   }
 
   /// VertexListGraphConcept
-  using vertex_iterator
-    = boost::transform_iterator<gross::unique_ptr_unwrapper<BasicBlock>,
-                                typename GraphSchedule::block_iterator,
-                                BasicBlock*, // Refrence type
-                                BasicBlock* // Value type
-                                >;
+  using vertex_iterator = typename ProxyT::block_iterator;
   using vertices_size_type = size_t;
 
   /// EdgeListGraphConcept
@@ -815,17 +855,12 @@ std::pair<typename GraphSchedule::TreeHandle<ProxyT>::vertex_iterator,
           typename GraphSchedule::TreeHandle<ProxyT>::vertex_iterator>
 vertices(const GraphSchedule::TreeHandle<ProxyT>& g) {
   auto& Impl = g.getImpl();
-  using vertex_iterator
-    = typename GraphSchedule::TreeHandle<ProxyT>::vertex_iterator;
-  gross::unique_ptr_unwrapper<BasicBlock> functor;
-  return std::make_pair(
-    vertex_iterator(Impl.block_begin(), functor),
-    vertex_iterator(Impl.block_end(), functor)
-  );
+  return std::make_pair(ProxyT::block_begin(Impl),
+                        ProxyT::block_end(Impl));
 }
 template<class ProxyT>
 size_t num_vertices(const GraphSchedule::TreeHandle<ProxyT>& g) {
-  return g.getImpl().block_size();
+  return ProxyT::block_size(g.getImpl());
 }
 
 template<class ProxyT>
