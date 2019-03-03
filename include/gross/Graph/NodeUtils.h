@@ -291,6 +291,11 @@ NODE_PROPERTIES(Loop) {
     }
     return nullptr;
   }
+
+  Node* Backedge() {
+    assert(NodePtr->getNumControlInput() == 2);
+    return NodePtr->getControlInput(1);
+  }
 };
 
 NODE_PROPERTIES(Phi) {
@@ -1105,6 +1110,7 @@ struct NodeBuilder<IrOpcode::Loop> {
                     .IfStmt(IfNode)
                     .Build();
     auto* LoopNode = new Node(IrOpcode::Loop, {},
+                              // backedge is always behind LastCtrlPoint!
                               {LastCtrlPoint, IfTrue});
     IfNode->appendControlInput(LoopNode);
     LastCtrlPoint->Users.push_back(LoopNode);

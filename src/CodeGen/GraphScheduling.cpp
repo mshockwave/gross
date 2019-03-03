@@ -261,21 +261,18 @@ void CFGBuilder::BlockPlacement() {
     }
     case IrOpcode::Loop: {
       // put off Loop node to be inserted after
-      // backedge(i.e. IfTrue node) is inserted
-      break;
-    }
-    case IrOpcode::IfTrue: {
-      RPONodes.insert(RPONodes.cbegin(), N);
-      for(auto* CU : N->control_users()) {
-        if(CU->getOp() == IrOpcode::Loop) {
-          // backedge
-          RPONodes.insert(RPONodes.cbegin(), CU);
-        }
-      }
+      // backedge node is inserted
       break;
     }
     default:
       RPONodes.insert(RPONodes.cbegin(), N);
+      for(auto* CU : N->control_users()) {
+        if(CU->getOp() == IrOpcode::Loop &&
+           NodeProperties<IrOpcode::Loop>(CU).Backedge() == N) {
+          // backedge
+          RPONodes.insert(RPONodes.cbegin(), CU);
+        }
+      }
     }
   }
   assert(StartNode && EndNode);
@@ -342,6 +339,14 @@ void CFGBuilder::ConnectBlock(Node* CtrlNode) {
   switch(CtrlNode->getOp()) {
   default:
     return;
+  case IrOpcode::Start:
+  case IrOpcode::Phi:
+  case IrOpcode::Return:
+  case IrOpcode::If: {
+    // there are chances that we need to connect
+    // to these node from a backedge
+    break;
+  }
   case IrOpcode::Merge: {
     // merge from two branches
     for(auto* Br : CtrlNode->control_inputs()) {
@@ -357,26 +362,14 @@ void CFGBuilder::ConnectBlock(Node* CtrlNode) {
     auto* PrevBB = MapBlock(NP.BranchPoint());
     assert(PrevBB && "If node not enclosed in any BB?");
     connectBlocks(PrevBB, EncloseBB);
-    // if IfTrue is the back edge of a loop
-    // connect now
-    if(CtrlNode->getOp() == IrOpcode::IfTrue) {
-      for(auto* CU : CtrlNode->control_users()) {
-        if(CU->getOp() == IrOpcode::Loop) {
-          auto* LoopHeader = MapBlock(CU);
-          assert(LoopHeader);
-          connectBlocks(EncloseBB, LoopHeader);
-        }
-      }
-    }
     break;
   }
   case IrOpcode::Loop: {
     // connect except the back edge dep
     NodeProperties<IrOpcode::Loop> LNP(CtrlNode);
-    auto* TrueBr = NodeProperties<IrOpcode::If>(LNP.Branch())
-                   .TrueBranch();
+    auto* Backedge = LNP.Backedge();
     for(auto* CI : CtrlNode->control_inputs()) {
-      if(CI == TrueBr) continue;
+      if(CI == Backedge) continue;
       auto* PrevBB = MapBlock(CI);
       assert(PrevBB);
       connectBlocks(PrevBB, EncloseBB);
@@ -405,6 +398,16 @@ void CFGBuilder::ConnectBlock(Node* CtrlNode) {
     }
     break;
   }
+  }
+  // if this is the back edge of a loop
+  // connect now
+  for(auto* CU : CtrlNode->control_users()) {
+    if(CU->getOp() == IrOpcode::Loop &&
+       NodeProperties<IrOpcode::Loop>(CU).Backedge() == CtrlNode) {
+      auto* LoopHeader = MapBlock(CU);
+      assert(LoopHeader);
+      connectBlocks(EncloseBB, LoopHeader);
+    }
   }
 }
 

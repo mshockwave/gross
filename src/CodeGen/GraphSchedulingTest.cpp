@@ -107,6 +107,58 @@ TEST(CodeGenUnitTest, GraphScheduleCFGSimpleLoop) {
   }
 }
 
+TEST(CodeGenUnitTest, GraphScheduleCFGNestedLoop) {
+  Graph G;
+  auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
+               .FuncName("func_schedule_cfg_nested_loop")
+               .Build();
+  auto* Const = NodeBuilder<IrOpcode::ConstantInt>(&G, 1).Build();
+  auto* Loop1 = NodeBuilder<IrOpcode::Loop>(&G, Func)
+                .Condition(Const).Build();
+  auto* Br1 = NodeProperties<IrOpcode::Loop>(Loop1).Branch();
+  auto* False1 = NodeProperties<IrOpcode::If>(Br1).FalseBranch();
+  auto* True1 = NodeProperties<IrOpcode::If>(Br1).TrueBranch();
+
+  auto* Loop1_1 = NodeBuilder<IrOpcode::Loop>(&G, True1)
+                  .Condition(Const).Build();
+  auto* Br1_1 = NodeProperties<IrOpcode::Loop>(Loop1_1).Branch();
+  auto* False1_1 = NodeProperties<IrOpcode::If>(Br1_1).FalseBranch();
+
+  auto* Loop1_2 = NodeBuilder<IrOpcode::Loop>(&G, False1_1)
+                  .Condition(Const).Build();
+  auto* Br1_2 = NodeProperties<IrOpcode::Loop>(Loop1_2).Branch();
+  auto* False1_2 = NodeProperties<IrOpcode::If>(Br1_2).FalseBranch();
+  // FIXME: Parser didn't handle this kind of nested control loop
+  Loop1->ReplaceUseOfWith(True1, False1_2, Use::K_CONTROL);
+
+  auto* End = NodeBuilder<IrOpcode::End>(&G, Func)
+              .AddTerminator(False1)
+              .Build();
+  SubGraph FuncSG(End);
+  G.AddSubRegion(FuncSG);
+  {
+    std::ofstream OF("TestGraphScheduleCFGNestedLoop.dot");
+    G.dumpGraphviz(OF);
+  }
+
+  GraphScheduler Scheduler(G);
+  Scheduler.ComputeScheduledGraph();
+  EXPECT_EQ(Scheduler.schedule_size(), 1);
+  auto* FuncSchedule = *Scheduler.schedule_begin();
+  {
+    std::ofstream OF("TestGraphScheduleCFGNestedLoop.after.dot");
+    FuncSchedule->dumpGraphviz(OF);
+  }
+  {
+    std::ofstream OF("TestGraphScheduleCFGNestedLoop.after.dom.dot");
+    FuncSchedule->dumpDomTreeGraphviz(OF);
+  }
+  {
+    std::ofstream OF("TestGraphScheduleCFGNestedLoop.after.looptree.dot");
+    FuncSchedule->dumpLoopTreeGraphviz(OF);
+  }
+}
+
 TEST(CodeGenTest, GraphScheduleValueNodePlacement) {
   {
     Graph G;
