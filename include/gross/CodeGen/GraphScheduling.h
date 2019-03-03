@@ -65,27 +65,65 @@ class GraphSchedule {
       return llvm::make_range(dom_cbegin(), dom_cend());
     }
     size_t dom_size() const { return Dominants.size(); }
+
+    struct subdom_iterator;
   };
   using DomNodesTy
     = std::unordered_map<BasicBlock*, std::unique_ptr<DominatorNode>>;
   DomNodesTy DomNodes;
 
-  void ChangeDominator(BasicBlock* BB, BasicBlock* NewDomBB) {
-    assert(DomNodes.count(BB));
-    assert(DomNodes.count(NewDomBB));
+  DominatorNode::subdom_iterator subdom_begin(BasicBlock* BB);
 
-    auto* Node = DomNodes[BB].get();
-    auto* OldDomBB = Node->getDominator();
-    if(OldDomBB) {
-      assert(DomNodes.count(OldDomBB));
-      auto* OldDomNode = DomNodes[OldDomBB].get();
-      OldDomNode->RemoveDomChild(BB);
+  void ChangeDominator(BasicBlock* BB, BasicBlock* NewDomBB);
+
+  class LoopTreeNode {
+    BasicBlock* Header;
+    BasicBlock* ParentLoop;
+    std::vector<BasicBlock*> ChildLoops;
+
+  public:
+    explicit LoopTreeNode(BasicBlock* header)
+      : Header(header),
+        ParentLoop(nullptr) {}
+
+    BasicBlock* getHeader() const { return Header; }
+
+    BasicBlock* getParent() const { return ParentLoop; }
+    void setParent(BasicBlock* ParentHeader) {
+      ParentLoop = ParentHeader;
     }
-    Node->setDominator(NewDomBB);
-    auto* NewDomNode = DomNodes[NewDomBB].get();
-    NewDomNode->AddDomChild(BB);
-  }
 
+    void AddChildLoop(BasicBlock* ChildHeader) {
+      ChildLoops.push_back(ChildHeader);
+    }
+    void RemoveChildLoop(BasicBlock* ChildHeader) {
+      std::remove_if(child_loop_begin(), child_loop_end(),
+                     [=](BasicBlock* BB)->bool {
+                       return ChildHeader == BB;
+                     });
+    }
+
+    using loop_iterator = typename decltype(ChildLoops)::iterator;
+    loop_iterator child_loop_begin() { return ChildLoops.begin(); }
+    loop_iterator child_loop_end() { return ChildLoops.end(); }
+    llvm::iterator_range<loop_iterator> child_loops() {
+      return llvm::make_range(child_loop_begin(), child_loop_end());
+    }
+    size_t child_loop_size() const { return ChildLoops.size(); }
+  };
+  using LoopTreeTy
+    = std::unordered_map<BasicBlock*, std::unique_ptr<LoopTreeNode>>;
+  LoopTreeTy LoopTree;
+
+  LoopTreeNode* GetOrCreateLoopNode(BasicBlock* Header) {
+    if(!LoopTree.count(Header)) {
+      LoopTree.insert({
+        Header,
+        gross::make_unique<LoopTreeNode>(Header)
+      });
+    }
+    return LoopTree[Header].get();
+  }
 
   enum ScheduleState : uint8_t {
     NotScheduled = 0,
@@ -166,8 +204,22 @@ public:
   // just a wrapper for printing DomTree
   class DomTreeHandle;
   bool Dominate(BasicBlock* FromBB, BasicBlock* ToBB);
+  BasicBlock* getDominator(BasicBlock* BB) {
+    if(DomNodes.count(BB))
+      return DomNodes[BB]->getDominator();
+    else
+      return nullptr;
+  }
   // notify the DomTree to update
   void OnConnectBlock(BasicBlock* Pred, BasicBlock* Succ);
+
+  bool IsLoopHeader(BasicBlock* BB) { return LoopTree.count(BB); }
+  BasicBlock* getParentLoop(BasicBlock* HeaderBB) {
+    if(IsLoopHeader(HeaderBB))
+      return LoopTree[HeaderBB]->getParent();
+    else
+      return nullptr;
+  }
 
   void SetFixed(Node* N) { StateMarker.Set(N, Fixed); }
   void SetScheduled(Node* N) { StateMarker.Set(N, Scheduled); }

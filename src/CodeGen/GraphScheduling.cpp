@@ -4,6 +4,7 @@
 #include "gross/CodeGen/GraphScheduling.h"
 #include "gross/Graph/Node.h"
 #include "gross/Graph/NodeUtils.h"
+#include <functional>
 #include <queue>
 #include <vector>
 #include <iostream>
@@ -38,6 +39,58 @@ size_t GraphSchedule::edge_size() {
   return std::distance(edge_begin(), edge_end());
 }
 
+// a simple BFS iterator
+struct GraphSchedule::DominatorNode::subdom_iterator {
+  using QueryCallbackTy
+    = std::function<DominatorNode*(BasicBlock*)>;
+
+  subdom_iterator(BasicBlock* Start, QueryCallbackTy CB)
+    : Query(CB) {
+    WorkQueue.push(Start);
+  }
+
+  BasicBlock* operator*() const {
+    return WorkQueue.front();
+  }
+
+  subdom_iterator& operator++() {
+    assert(!WorkQueue.empty());
+    auto* BB = WorkQueue.front();
+    WorkQueue.pop();
+    auto* DomNode = Query(BB);
+    if(DomNode) {
+      for(auto* NewBB : DomNode->doms())
+        WorkQueue.push(NewBB);
+    }
+    return *this;
+  }
+  subdom_iterator operator++(int) {
+    subdom_iterator tmp(*this);
+    operator++();
+    return tmp;
+  }
+
+  bool isEnd() const {
+    return WorkQueue.empty();
+  }
+
+private:
+    QueryCallbackTy Query;
+    std::queue<BasicBlock*> WorkQueue;
+};
+
+GraphSchedule::DominatorNode::subdom_iterator
+GraphSchedule::subdom_begin(BasicBlock* RootBB) {
+  using subdom_iterator = DominatorNode::subdom_iterator;
+  return subdom_iterator(RootBB,
+                         [this](BasicBlock* BB) -> DominatorNode* {
+                           if(DomNodes.count(BB))
+                             return DomNodes[BB].get();
+                           else
+                             return nullptr;
+                         });
+}
+
 // basically a tree reachbility problem
 bool GraphSchedule::Dominate(BasicBlock* FromBB, BasicBlock* ToBB) {
   if(!DomNodes.count(FromBB) ||
@@ -58,6 +111,62 @@ bool GraphSchedule::Dominate(BasicBlock* FromBB, BasicBlock* ToBB) {
     }
   }
   return false;
+}
+
+void GraphSchedule::ChangeDominator(BasicBlock* BB, BasicBlock* NewDomBB) {
+  assert(DomNodes.count(BB));
+  assert(DomNodes.count(NewDomBB));
+
+  std::vector<LoopTreeNode*> StagingLoopNodes;
+  // any loop header in (BB) subtree is invalid now
+  for(auto SDI = subdom_begin(BB); !SDI.isEnd(); ++SDI) {
+    auto* SubBB = *SDI;
+    if(SubBB->getCtrlNode()->getOp() == IrOpcode::Loop)
+      StagingLoopNodes.push_back(GetOrCreateLoopNode(SubBB));
+  }
+
+  auto* Node = DomNodes[BB].get();
+  auto* OldDomBB = Node->getDominator();
+  if(OldDomBB) {
+    assert(DomNodes.count(OldDomBB));
+    auto* OldDomNode = DomNodes[OldDomBB].get();
+    OldDomNode->RemoveDomChild(BB);
+  }
+  Node->setDominator(NewDomBB);
+  auto* NewDomNode = DomNodes[NewDomBB].get();
+  NewDomNode->AddDomChild(BB);
+
+  // update LoopTree
+  for(auto* LoopNode : StagingLoopNodes) {
+    auto* HeaderBB = LoopNode->getHeader();
+    // search upward until hitting another loop header
+    // or reach null
+    assert(DomNodes.count(HeaderBB));
+    auto* DN = DomNodes.at(HeaderBB).get();
+    auto* PrevBB = HeaderBB;
+    auto* NewBB = DN->getDominator();
+    while(NewBB) {
+      if(LoopTree.count(NewBB) &&
+         PrevBB->getCtrlNode()->getOp() == IrOpcode::IfTrue)
+        break;
+      assert(DomNodes.count(NewBB));
+      PrevBB = NewBB;
+      DN = DomNodes.at(NewBB).get();
+      NewBB = DN->getDominator();
+    }
+    if(NewBB != LoopNode->getParent()) {
+      // remove the old link if any
+      if(auto* ParentHeader = LoopNode->getParent()) {
+        assert(LoopTree.count(ParentHeader));
+        LoopTree[ParentHeader]->RemoveChildLoop(HeaderBB);
+      }
+      if(NewBB) {
+        assert(LoopTree.count(NewBB));
+        LoopTree[NewBB]->AddChildLoop(HeaderBB);
+      }
+      LoopNode->setParent(NewBB);
+    }
+  }
 }
 
 void GraphSchedule::OnConnectBlock(BasicBlock* Pred, BasicBlock* Succ) {
@@ -302,18 +411,10 @@ void CFGBuilder::ConnectBlock(Node* CtrlNode) {
 class PostOrderNodePlacement {
   GraphSchedule& Schedule;
 
-  std::vector<Node*> WorkQueue;
-
-  void Push(Node* N) { WorkQueue.push_back(N); }
-  void PushInputs(Node* N) {
-    for(auto* IN : N->inputs())
-      if(!Schedule.IsNodeScheduled(IN))
-        Push(IN);
-  }
-  void Pop() { WorkQueue.erase(WorkQueue.cbegin()); }
-
   template<class SetT>
   BasicBlock* GetCommonDominator(const SetT& BBs);
+
+  BasicBlock* FindLoopInvariantPos(Node* N, BasicBlock* BB);
 
 public:
   PostOrderNodePlacement(GraphSchedule& schedule)
@@ -347,6 +448,50 @@ PostOrderNodePlacement::GetCommonDominator(const SetT& BBs) {
   return nullptr;
 }
 
+// For now, implement the simplest version which only handles nodes without
+// any effect/special control dependencies
+BasicBlock* PostOrderNodePlacement::FindLoopInvariantPos(Node* CurNode,
+                                                         BasicBlock* OrigBB) {
+  auto* SafeBB = OrigBB;
+  auto* NewBB = OrigBB;
+  BasicBlock* LastLoopHeader = nullptr;
+  // find the closest loop
+  while(NewBB) {
+    if(Schedule.IsLoopHeader(NewBB)) {
+      LastLoopHeader = NewBB;
+    }
+    NewBB = Schedule.getDominator(NewBB);
+    if(LastLoopHeader) break;
+  }
+  if(!NewBB) return SafeBB;
+
+  // still need to be after all input nodes if scheduled
+  std::set<BasicBlock*> InputBBs;
+  for(auto* IN : CurNode->value_inputs()) {
+    if(Schedule.IsNodeScheduled(IN)) {
+      if(auto* InputBB = Schedule.MapBlock(IN)) {
+        InputBBs.insert(InputBB);
+      }
+    }
+  }
+  auto isSafe = [this,&InputBBs](BasicBlock* BB) -> bool {
+    for(auto* InputBB : InputBBs) {
+      if(!Schedule.Dominate(InputBB, BB)) return false;
+    }
+    return true;
+  };
+
+  while(true) {
+    if(!isSafe(NewBB)) break;
+    SafeBB = NewBB;
+
+    LastLoopHeader = Schedule.getParentLoop(LastLoopHeader);
+    if(!LastLoopHeader) break; // reach the root
+    NewBB = Schedule.getDominator(LastLoopHeader);
+  }
+  return SafeBB;
+}
+
 void PostOrderNodePlacement::Compute() {
   auto& SG = Schedule.getSubGraph();
   for(auto* CurNode : SG.nodes()) {
@@ -377,9 +522,11 @@ void PostOrderNodePlacement::Compute() {
       UserBBs.insert(BB);
     }
     if(!UserBBs.empty()) {
-      // TODO: Don't put nodes in loops
       auto* DomBB = GetCommonDominator(UserBBs);
       assert(DomBB);
+      // Don't put node in a loop
+      DomBB = FindLoopInvariantPos(CurNode, DomBB);
+
       // search from top to bottom within the block,
       // insert right before a value user if any. Otherwise
       // insert at the end
