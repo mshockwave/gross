@@ -178,6 +178,8 @@ Node* Parser::ParseWhileStmt() {
   NodeBuilder<IrOpcode::Loop> LB(&G, getLastCtrlPoint());
   LB.Condition(RelNode);
   auto* LoopNode = LB.Build();
+  auto* LoopBranch = NodeProperties<IrOpcode::Loop>(LoopNode)
+                     .Branch();
 
   Tok = CurTok();
   if(Tok != Lexer::TOK_DO) {
@@ -188,10 +190,17 @@ Node* Parser::ParseWhileStmt() {
 
   NewSymScope();
   LastModified.NewAffineScope();
-  setLastCtrlPoint(LoopNode);
+  auto* LoopTrueBr = NodeProperties<IrOpcode::If>(LoopBranch)
+                     .TrueBranch();
+  setLastCtrlPoint(LoopTrueBr);
   std::vector<Node*> BodyStmts;
   if(!ParseStatements(BodyStmts)) return nullptr;
   PopSymScope();
+  if(getLastCtrlPoint() != LoopTrueBr) {
+    // update backedge
+    LoopNode->ReplaceUseOfWith(LoopTrueBr, getLastCtrlPoint(),
+                               Use::K_CONTROL);
+  }
 
   Tok = CurTok();
   if(Tok != Lexer::TOK_END_DO) {
@@ -240,9 +249,8 @@ Node* Parser::ParseWhileStmt() {
       N->ReplaceUseOfWith(OrigVal, PHI, Use::K_EFFECT);
   }
 
-  auto* LoopBr = NodeProperties<IrOpcode::Loop>(LoopNode).Branch();
-  assert(LoopBr);
-  setLastCtrlPoint(NodeProperties<IrOpcode::If>(LoopBr).FalseBranch());
+  setLastCtrlPoint(NodeProperties<IrOpcode::If>(LoopBranch)
+                   .FalseBranch());
 
   return LoopNode;
 }
