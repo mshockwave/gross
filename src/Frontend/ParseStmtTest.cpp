@@ -201,6 +201,29 @@ TEST(ParserUnitTest, TestIfStmt) {
     std::ofstream OF("TestIfStmt1-3.dot");
     G.dumpGraphviz(OF);
   }
+  SS.clear();
+  {
+    // multiple memory expressions within branch region
+    SS << "array[94][87] foo;\n"
+       << "if 1 < 2 then\n"
+       << "  let foo[0][1] <- 3;\n"
+       << "  let foo[2][3] <- 4\n"
+       << "else\n"
+       << "  let foo[4][5] <- 5\n"
+       << "fi";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    SetMockContext(P,G);
+
+    ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcArrayDecl>());
+
+    auto* MergeNode = P.ParseIfStmt();
+    ASSERT_TRUE(NodeProperties<IrOpcode::Merge>(MergeNode));
+
+    std::ofstream OF("TestIfStmt1-4.dot");
+    G.dumpGraphviz(OF);
+  }
 }
 
 TEST(ParserUnitTest, TestNestedIfStmt) {

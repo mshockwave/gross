@@ -58,8 +58,13 @@ GraphReduction ValuePromotion::ReduceMemAssignment(Node* Assign) {
   // propagate side effects and control deps
   for(auto* E : MemLoadNode->effect_inputs())
     MemStoreNode->appendEffectInput(E);
+  for(auto* E : Assign->effect_inputs())
+    MemStoreNode->appendEffectInput(E);
   for(auto* C : MemLoadNode->control_inputs())
     MemStoreNode->appendControlInput(C);
+  for(auto* C : Assign->control_inputs())
+    MemStoreNode->appendControlInput(C);
+
   return Replace(MemStoreNode);
 }
 

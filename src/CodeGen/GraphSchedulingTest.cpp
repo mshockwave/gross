@@ -128,7 +128,6 @@ TEST(CodeGenUnitTest, GraphScheduleCFGNestedLoop) {
                   .Condition(Const).Build();
   auto* Br1_2 = NodeProperties<IrOpcode::Loop>(Loop1_2).Branch();
   auto* False1_2 = NodeProperties<IrOpcode::If>(Br1_2).FalseBranch();
-  // FIXME: Parser didn't handle this kind of nested control loop
   Loop1->ReplaceUseOfWith(True1, False1_2, Use::K_CONTROL);
 
   auto* End = NodeBuilder<IrOpcode::End>(&G, Func)
