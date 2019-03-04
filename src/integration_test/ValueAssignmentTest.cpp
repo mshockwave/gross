@@ -53,3 +53,30 @@ TEST(ValueAssignIntegrateTest, TestSimpleLoop) {
     G.dumpGraphviz(OF);
   }
 }
+
+TEST(ValueAssignIntegrateTest, TestComplexCtrlStructure) {
+  std::ifstream IF("value_assignment3.txt");
+
+  Graph G;
+  Parser P(IF, G);
+  (void) P.getLexer().getNextToken();
+  P.NewSymScope(); // global scope
+
+  ASSERT_TRUE(P.ParseFuncDecl());
+  {
+    std::ofstream OF("TestComplexCtrlStructure.dot");
+    G.dumpGraphviz(OF);
+  }
+
+  GraphReducer::RunWithEditor<ValuePromotion>(G);
+  {
+    std::ofstream OF("TestComplexCtrlStructure.mem2reg.dot");
+    G.dumpGraphviz(OF);
+  }
+
+  GraphReducer::RunWithEditor<PeepholeReducer>(G);
+  {
+    std::ofstream OF("TestComplexCtrlStructure.mem2reg.peephole.dot");
+    G.dumpGraphviz(OF);
+  }
+}

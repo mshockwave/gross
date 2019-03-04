@@ -1,0 +1,21 @@
+function func;
+var foo, bar;
+{
+  let foo <- 0;
+  let bar <- 1;
+  while 1 < 3 do
+    while 2 < 3 do
+      if 3 < 4 then
+        let foo <- foo + bar
+      else
+        let foo <- foo + 2
+      fi
+    od;
+    if 3 < 4 then
+      let foo <- foo + 3
+    fi
+  od;
+  let bar <- bar + 4;
+
+  return foo + bar
+};

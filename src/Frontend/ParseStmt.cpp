@@ -221,6 +221,8 @@ Node* Parser::ParseWhileStmt() {
     for(auto& P : LoopBack) {
       auto& Decl = P.first;
       if(!InitVals.count(Decl)) continue;
+      // ignore duplicate values
+      if(InitVals[Decl] == P.second) continue;
       auto* PHI = NodeBuilder<IrOpcode::Phi>(&G)
                   .SetCtrlMerge(LoopNode)
                   // put original value on the first
