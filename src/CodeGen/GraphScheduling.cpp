@@ -413,6 +413,10 @@ void CFGBuilder::ConnectBlock(Node* CtrlNode) {
 
 class PostOrderNodePlacement {
   GraphSchedule& Schedule;
+  std::vector<Node*> PONodes;
+
+  std::map<Node*, std::stack<Node*>> MemEffectChain;
+  void MemoryReordering();
 
   template<class SetT>
   BasicBlock* GetCommonDominator(const SetT& BBs);
@@ -420,11 +424,71 @@ class PostOrderNodePlacement {
   BasicBlock* FindLoopInvariantPos(Node* N, BasicBlock* BB);
 
 public:
-  PostOrderNodePlacement(GraphSchedule& schedule)
-    : Schedule(schedule) {}
+  PostOrderNodePlacement(GraphSchedule& schedule);
 
   void Compute();
 };
+
+void PostOrderNodePlacement::MemoryReordering() {
+  for(auto NI = PONodes.cbegin(); NI != PONodes.cend();) {
+    auto* N = const_cast<Node*>(*NI);
+    if(MemEffectChain.count(N)) {
+      auto& Stack = MemEffectChain[N];
+      size_t Offset = Stack.size();
+      while(!Stack.empty()) {
+        auto* Load = Stack.top();
+        NI = PONodes.insert(NI, Load);
+        Stack.pop();
+      }
+      MemEffectChain.erase(N);
+
+      std::advance(NI, Offset);
+      if(N->getOp() == IrOpcode::Phi) {
+        // remove it
+        NI = PONodes.erase(NI);
+      } else {
+        ++NI;
+      }
+    } else {
+      ++NI;
+    }
+  }
+}
+
+PostOrderNodePlacement::PostOrderNodePlacement(GraphSchedule& schedule)
+  : Schedule(schedule) {
+  // re-order and filter nodes
+  auto& SG = Schedule.getSubGraph();
+  for(auto* CurNode : SG.nodes()) {
+    // PHI for memory side effects
+    if(CurNode->getOp() == IrOpcode::Phi &&
+       CurNode->getNumEffectInput() &&
+       !CurNode->getNumValueInput()) {
+      // we need to enqueue this Phi as 'marker'
+      // and remove it later
+      PONodes.push_back(CurNode);
+      continue;
+    }
+
+    if(CurNode->getOp() == IrOpcode::MemLoad) {
+      // FIXME: handle the case where load from uninitialized memory
+      assert(CurNode->getNumEffectInput() == 1);
+      auto* MemMut = CurNode->getEffectInput(0);
+      assert(MemMut->getOp() == IrOpcode::MemStore ||
+             MemMut->getOp() == IrOpcode::Phi);
+      MemEffectChain[MemMut].push(CurNode);
+      continue;
+    }
+
+    if(Schedule.IsNodeScheduled(CurNode)) continue;
+    if(NodeProperties<IrOpcode::VirtConstantValues>(CurNode))
+      continue;
+
+    PONodes.push_back(CurNode);
+  }
+
+  MemoryReordering();
+}
 
 template<class SetT> BasicBlock*
 PostOrderNodePlacement::GetCommonDominator(const SetT& BBs) {
@@ -496,34 +560,37 @@ BasicBlock* PostOrderNodePlacement::FindLoopInvariantPos(Node* CurNode,
 }
 
 void PostOrderNodePlacement::Compute() {
-  auto& SG = Schedule.getSubGraph();
-  for(auto* CurNode : SG.nodes()) {
-    if(Schedule.IsNodeScheduled(CurNode)) continue;
-    if(NodeProperties<IrOpcode::VirtConstantValues>(CurNode))
-      continue;
-
+  for(auto* CurNode : PONodes) {
     // consider all the value users first
     std::unordered_set<BasicBlock*> UserBBs;
     std::unordered_set<Node*> UserNodes;
-    for(auto* VU : CurNode->value_users()) {
-      assert(Schedule.IsNodeScheduled(VU) &&
+    auto collectUsages = [&,this](Node* UN) {
+      assert(Schedule.IsNodeScheduled(UN) &&
              "User not scheduled?");
-      UserNodes.insert(VU);
+      UserNodes.insert(UN);
 
       BasicBlock* BB = nullptr;
-      if(VU->getOp() == IrOpcode::Phi) {
+      if(UN->getOp() == IrOpcode::Phi) {
         // don't need to dominate Phi block,
         // use the branch block instead
-        NodeProperties<IrOpcode::Phi> PNP(VU);
+        NodeProperties<IrOpcode::Phi> PNP(UN);
         auto* CN = PNP.MapCtrlNode(CurNode, Use::K_VALUE);
         assert(CN && "failed to map input to control node");
         BB = Schedule.MapBlock(CN);
       } else {
-        BB = Schedule.MapBlock(VU);
+        BB = Schedule.MapBlock(UN);
       }
       assert(BB);
       UserBBs.insert(BB);
+    };
+
+    for(auto* VU : CurNode->value_users()) {
+      collectUsages(VU);
     }
+    for(auto* EU : CurNode->effect_users()) {
+      collectUsages(EU);
+    }
+
     if(!UserBBs.empty()) {
       auto* DomBB = GetCommonDominator(UserBBs);
       assert(DomBB);
