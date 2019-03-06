@@ -11,6 +11,7 @@ set(_TEST_INPUT_FILES
     value_assignment2.txt
     value_assignment3.txt
     memory1.txt
+    memory2.txt
     )
 
 if(GROSS_ENABLE_UNIT_TESTS)
