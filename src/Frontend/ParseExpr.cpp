@@ -69,7 +69,11 @@ Node* Parser::ParseArrayAccessDesignator(Node* DeclNode, Node* Effect,
     if(NextTok() != Lexer::TOK_L_BRACKET) break;
   }
 
-  return AAB.Build();
+  auto* AANode = AAB.Build();
+  if(Effect)
+    LastMemAccess[Effect].insert(AANode);
+
+  return AANode;
 }
 
 Node* Parser::ParseFactor() {

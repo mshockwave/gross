@@ -107,6 +107,9 @@ class Parser {
   // record last modify node on a certain decl
   // {decl, modifier}
   AffineRecordTable<Node*, Node*> LastModified;
+  // record last memory read/write node last memory write
+  // {MemStore, accessor}
+  AffineRecordTable<Node*, std::set<Node*>> LastMemAccess;
   AffineContainer<std::array<Node*,1>> LastControlPoint;
   inline void NewLastControlPoint() {
     LastControlPoint = std::move(decltype(LastControlPoint)());

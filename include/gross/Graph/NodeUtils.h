@@ -914,7 +914,7 @@ struct NodeBuilder<IrOpcode::Merge> {
     auto* N = new Node(IrOpcode::Merge,
                        {}, Ctrls);
     for(auto* Ctrl : Ctrls)
-      Ctrl->Users.push_back(Ctrl);
+      Ctrl->Users.push_back(N);
     G->InsertNode(N);
     return N;
   }
@@ -922,6 +922,29 @@ struct NodeBuilder<IrOpcode::Merge> {
 private:
   Graph* G;
   std::vector<Node*> Ctrls;
+};
+
+template<>
+struct NodeBuilder<IrOpcode::EffectMerge> {
+  NodeBuilder(Graph* graph) : G(graph) {}
+
+  NodeBuilder& AddEffectInput(Node* N) {
+    Effects.push_back(N);
+    return *this;
+  }
+
+  Node* Build() {
+    auto* N = new Node(IrOpcode::EffectMerge,
+                       {}, {}, Effects);
+    for(auto* Effect : Effects)
+      Effect->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+
+private:
+  std::vector<Node*> Effects;
+  Graph* G;
 };
 
 template<>

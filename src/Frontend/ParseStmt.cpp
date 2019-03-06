@@ -18,8 +18,14 @@ Node* Parser::ParseAssignment() {
   auto* DesigNode = ParseDesignator();
   NodeProperties<IrOpcode::VirtSrcDesigAccess> DNP(DesigNode);
   if(!DNP) return nullptr;
-  Tok = CurTok();
+  if(DesigNode->getOp() == IrOpcode::SrcArrayAccess &&
+     DesigNode->getNumEffectInput() == 1) {
+    // remove previous record in LastMemAccess
+    auto* PrevStore = DesigNode->getEffectInput(0);
+    LastMemAccess[PrevStore].erase(DesigNode);
+  }
 
+  Tok = CurTok();
   if(Tok != Lexer::TOK_L_ARROW) {
     Log::E() << "Expecting '<-' here\n";
     return nullptr;
@@ -29,10 +35,24 @@ Node* Parser::ParseAssignment() {
   auto* ExprNode = ParseExpr();
   if(!ExprNode) return nullptr;
 
+  if(DesigNode->getOp() == IrOpcode::SrcArrayAccess &&
+     DesigNode->getNumEffectInput() == 1) {
+    // append memory read dependency
+    auto* PrevStore = DesigNode->getEffectInput(0);
+    auto& MemReads = LastMemAccess[PrevStore];
+    for(auto* MemRead : MemReads) {
+      DesigNode->appendEffectInput(MemRead);
+    }
+    if(!MemReads.empty()) {
+      DesigNode->removeEffectInputAll(PrevStore);
+    }
+  }
+
   auto* AssignNode = NodeBuilder<IrOpcode::SrcAssignStmt>(&G)
                      .Dest(DesigNode).Src(ExprNode)
                      .Build();
   assert(AssignNode && "fail to build SrcAssignStmt node");
+#if 0
   // no effect dependency, then depend on the last control point
   // TODO: function call
   if(!DesigNode->getNumEffectInput()) {
@@ -42,6 +62,7 @@ Node* Parser::ParseAssignment() {
     if(FindNearestCtrlPoint(AssignNode) != getLastCtrlPoint())
       AssignNode->appendControlInput(getLastCtrlPoint());
   }
+#endif
 
   // update last modified map
   LastModified[DNP.decl()] = AssignNode;
@@ -74,6 +95,7 @@ Node* Parser::ParseIfStmt() {
   NewSymScope();
   LastModified.NewAffineScope();
   LastControlPoint.NewAffineScope();
+  LastMemAccess.NewAffineScope();
   auto* TrueBranch = NodeBuilder<IrOpcode::VirtIfBranches>(&G, true)
                      .IfStmt(IfNode)
                      .Build();
@@ -90,6 +112,7 @@ Node* Parser::ParseIfStmt() {
     NewSymScope();
     LastModified.NewBranch();
     LastControlPoint.NewBranch();
+    LastMemAccess.NewBranch();
     FalseBranch = NodeBuilder<IrOpcode::VirtIfBranches>(&G, false)
                   .IfStmt(IfNode)
                   .Build();
@@ -128,6 +151,23 @@ Node* Parser::ParseIfStmt() {
     return nullptr;
   }
   (void) NextTok();
+
+  using ma_affine_table_type = decltype(LastMemAccess);
+  using ma_table_type = typename ma_affine_table_type::TableTy;
+  auto MemAccessMergeCallback
+    = [&,this](ma_affine_table_type& JoinTable,
+               const std::vector<ma_table_type*> &BrTables) {
+    auto& InitEffects = *(JoinTable.CurEntry());
+    for(auto* BrTable : BrTables) {
+      for(auto& P : *BrTable) {
+        auto& Store = P.first;
+        if(!InitEffects.count(Store)) continue;
+        JoinTable[Store].insert(P.second.begin(),
+                                P.second.end());
+      }
+    }
+  };
+  LastMemAccess.CloseAffineScope<>(MemAccessMergeCallback);
 
   using affine_table_type = decltype(LastModified);
   using table_type = typename affine_table_type::TableTy;
@@ -190,6 +230,7 @@ Node* Parser::ParseWhileStmt() {
 
   NewSymScope();
   LastModified.NewAffineScope();
+  LastMemAccess.NewAffineScope();
   auto* LoopTrueBr = NodeProperties<IrOpcode::If>(LoopBranch)
                      .TrueBranch();
   setLastCtrlPoint(LoopTrueBr);
@@ -208,6 +249,23 @@ Node* Parser::ParseWhileStmt() {
     return nullptr;
   }
   (void) NextTok();
+
+  using ma_affine_table_type = decltype(LastMemAccess);
+  using ma_table_type = typename ma_affine_table_type::TableTy;
+  auto MemAccessMergeCallback
+    = [&,this](ma_affine_table_type& JoinTable,
+               const std::vector<ma_table_type*> &BrTables) {
+    assert(BrTables.size() == 1);
+    auto& LoopBack = *BrTables.front(); // loopback values
+    auto& InitEffects = *(JoinTable.CurEntry());
+    for(auto& P : LoopBack) {
+      auto& Store = P.first;
+      if(!InitEffects.count(Store)) continue;
+      JoinTable[Store].insert(P.second.begin(),
+                              P.second.end());
+    }
+  };
+  LastMemAccess.CloseAffineScope<>(MemAccessMergeCallback);
 
   // {Original Value, PhiNode}
   std::unordered_map<Node*,Node*> FixupMap;

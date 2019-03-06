@@ -136,12 +136,6 @@ TEST(ParserUnitTest, TestIfStmt) {
     // check statements within true branch
     auto* TrueBr = MNP.TrueBranch();
     ASSERT_TRUE(TrueBr);
-    auto CtrlUsers = TrueBr->control_users();
-    auto ItCU = std::find_if(
-      CtrlUsers.begin(), CtrlUsers.end(),
-      [](Node* N)-> bool{ return NodeProperties<IrOpcode::SrcAssignStmt>(N); }
-    );
-    EXPECT_NE(ItCU, CtrlUsers.end());
 
     std::ofstream OF("TestIfStmt1.dot");
     G.dumpGraphviz(OF);
@@ -209,7 +203,8 @@ TEST(ParserUnitTest, TestIfStmt) {
        << "  let foo[0][1] <- 3;\n"
        << "  let foo[2][3] <- 4\n"
        << "else\n"
-       << "  let foo[4][5] <- 5\n"
+       << "  let foo[4][5] <- 5;\n"
+       << "  let foo[6][7] <- foo[4][5]\n"
        << "fi";
     Graph G;
     Parser P(SS, G);

@@ -44,6 +44,8 @@ CONTROL_OP(Start)
 CONTROL_OP(End)
 // control flow merge
 CONTROL_OP(Merge)
+// effect edges merge
+CONTROL_OP(EffectMerge)
 CONTROL_OP(Phi)
 CONTROL_OP(Loop)
 CONTROL_OP(Return)

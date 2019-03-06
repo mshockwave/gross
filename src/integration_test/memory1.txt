@@ -1,0 +1,18 @@
+function func;
+array[94][87] foo, bar;
+{
+  let foo[0][0] <- 0;
+  let bar[1][1] <- 0;
+  if 1 < 2 then
+    let foo[2][2] <- 2;
+    let bar[3][3] <- 4;
+    let bar[4][4] <- foo[0][0];
+    let foo[5][5] <- bar[3][3]
+  fi;
+  let foo[6][6] <- bar[0][0] + 1;
+  if 1 < 2 then
+    return foo[6][6]
+  else
+    return bar[6][6]
+  fi
+};
