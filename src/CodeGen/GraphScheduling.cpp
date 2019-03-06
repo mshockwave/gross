@@ -1,15 +1,97 @@
 #include "BGL.h"
+#include "gross/Graph/BGL.h"
 #include "boost/graph/depth_first_search.hpp"
 #include "boost/graph/graphviz.hpp"
 #include "gross/CodeGen/GraphScheduling.h"
 #include "gross/Graph/Node.h"
 #include "gross/Graph/NodeUtils.h"
+#include <unordered_set>
+#include <set>
 #include <functional>
 #include <queue>
 #include <vector>
 #include <iostream>
 
 using namespace gross;
+
+struct GraphSchedule::RPONodesVisitor
+  : public boost::default_dfs_visitor {
+  struct PostEntity {
+    Node *StartNode, *EndNode;
+    std::unordered_set<Node*> LoopStartPoints;
+
+    PostEntity() : StartNode(nullptr), EndNode(nullptr) {}
+  };
+
+  void finish_vertex(Node* N, const SubGraph& G) {
+    switch(N->getOp()) {
+    case IrOpcode::Start:
+      PE.StartNode = N;
+      return;
+    case IrOpcode::End:
+      PE.EndNode = N;
+      return;
+    case IrOpcode::Loop:
+      return;
+    case IrOpcode::If: {
+      if(N->getControlInput(0)->getOp() == IrOpcode::Loop)
+        return;
+      else
+        break;
+    }
+    case IrOpcode::IfTrue:
+    case IrOpcode::IfFalse: {
+      NodeProperties<IrOpcode::VirtIfBranches> BNP(N);
+      auto* Br = BNP.BranchPoint();
+      if(Br->getControlInput(0)->getOp() == IrOpcode::Loop) {
+        if(!VisitedLoopBranches.count(Br)) {
+          VisitedLoopBranches.insert(Br);
+          PE.LoopStartPoints.insert(N);
+        }
+      }
+      break;
+    }
+    default: break;
+    }
+    Trace.push_back(N);
+  }
+
+  RPONodesVisitor(std::vector<Node*>& trace,
+                  PostEntity& entity)
+    : Trace(trace), PE(entity){}
+
+private:
+  std::vector<Node*>& Trace;
+  PostEntity& PE;
+  std::set<Node*> VisitedLoopBranches;
+};
+
+void GraphSchedule::SortRPONodes() {
+  RPONodesVisitor::PostEntity PE;
+  RPONodesVisitor Vis(RPONodes, PE);
+  std::unordered_map<Node*, boost::default_color_type> ColorStorage;
+  StubColorMap<decltype(ColorStorage), Node> ColorMap(ColorStorage);
+  boost::depth_first_search(getSubGraph(), Vis, std::move(ColorMap));
+  assert(PE.StartNode && PE.EndNode);
+
+  for(auto NI = RPONodes.cbegin(); NI != RPONodes.cend();) {
+    auto* N = const_cast<Node*>(*NI);
+    if(PE.LoopStartPoints.count(N)) {
+      NodeProperties<IrOpcode::VirtIfBranches> BNP(N);
+      assert(BNP);
+      auto* Br = BNP.BranchPoint();
+      auto* Loop = Br->getControlInput(0);
+      assert(Loop->getOp() == IrOpcode::Loop);
+      NI = RPONodes.insert(NI, Br);
+      NI = RPONodes.insert(NI, Loop);
+      std::advance(NI, 3);
+    } else {
+      ++NI;
+    }
+  }
+  RPONodes.insert(RPONodes.cbegin(), PE.StartNode);
+  RPONodes.push_back(PE.EndNode);
+}
 
 BasicBlock* GraphSchedule::NewBasicBlock() {
   BasicBlock* BB;
@@ -245,41 +327,10 @@ public:
 };
 
 void CFGBuilder::BlockPlacement() {
-  // we want normal BFS traveling order here
-  std::vector<Node*> RPONodes;
-  // force Start/End nodes be the first/last nodes
-  Node *StartNode = nullptr, *EndNode = nullptr;
-  for(auto* N : SG.nodes()) {
-    switch(N->getOp()) {
-    case IrOpcode::Start: {
-      StartNode = N;
-      break;
-    }
-    case IrOpcode::End: {
-      EndNode = N;
-      break;
-    }
-    case IrOpcode::Loop: {
-      // put off Loop node to be inserted after
-      // backedge node is inserted
-      break;
-    }
-    default:
-      RPONodes.insert(RPONodes.cbegin(), N);
-      for(auto* CU : N->control_users()) {
-        if(CU->getOp() == IrOpcode::Loop &&
-           NodeProperties<IrOpcode::Loop>(CU).Backedge() == N) {
-          // backedge
-          RPONodes.insert(RPONodes.cbegin(), CU);
-        }
-      }
-    }
-  }
-  assert(StartNode && EndNode);
-  RPONodes.insert(RPONodes.cbegin(), StartNode);
-  RPONodes.insert(RPONodes.cend(), EndNode);
+  auto* StartNode = *Schedule.rpo_node_begin();
+  auto* EndNode = *(--Schedule.rpo_node_end());
 
-  for(auto* N : RPONodes) {
+  for(auto* N : Schedule.rpo_nodes()) {
     switch(N->getOp()) {
     case IrOpcode::Start:
     case IrOpcode::End:
@@ -413,10 +464,6 @@ void CFGBuilder::ConnectBlock(Node* CtrlNode) {
 
 class PostOrderNodePlacement {
   GraphSchedule& Schedule;
-  std::vector<Node*> PONodes;
-
-  std::map<Node*, std::stack<Node*>> MemEffectChain;
-  void MemoryReordering();
 
   template<class SetT>
   BasicBlock* GetCommonDominator(const SetT& BBs);
@@ -424,71 +471,11 @@ class PostOrderNodePlacement {
   BasicBlock* FindLoopInvariantPos(Node* N, BasicBlock* BB);
 
 public:
-  PostOrderNodePlacement(GraphSchedule& schedule);
+  PostOrderNodePlacement(GraphSchedule& schedule)
+    : Schedule(schedule) {}
 
   void Compute();
 };
-
-void PostOrderNodePlacement::MemoryReordering() {
-  for(auto NI = PONodes.cbegin(); NI != PONodes.cend();) {
-    auto* N = const_cast<Node*>(*NI);
-    if(MemEffectChain.count(N)) {
-      auto& Stack = MemEffectChain[N];
-      size_t Offset = Stack.size();
-      while(!Stack.empty()) {
-        auto* Load = Stack.top();
-        NI = PONodes.insert(NI, Load);
-        Stack.pop();
-      }
-      MemEffectChain.erase(N);
-
-      std::advance(NI, Offset);
-      if(N->getOp() == IrOpcode::Phi) {
-        // remove it
-        NI = PONodes.erase(NI);
-      } else {
-        ++NI;
-      }
-    } else {
-      ++NI;
-    }
-  }
-}
-
-PostOrderNodePlacement::PostOrderNodePlacement(GraphSchedule& schedule)
-  : Schedule(schedule) {
-  // re-order and filter nodes
-  auto& SG = Schedule.getSubGraph();
-  for(auto* CurNode : SG.nodes()) {
-    // PHI for memory side effects
-    if(CurNode->getOp() == IrOpcode::Phi &&
-       CurNode->getNumEffectInput() &&
-       !CurNode->getNumValueInput()) {
-      // we need to enqueue this Phi as 'marker'
-      // and remove it later
-      PONodes.push_back(CurNode);
-      continue;
-    }
-
-    if(CurNode->getOp() == IrOpcode::MemLoad) {
-      // FIXME: handle the case where load from uninitialized memory
-      assert(CurNode->getNumEffectInput() == 1);
-      auto* MemMut = CurNode->getEffectInput(0);
-      assert(MemMut->getOp() == IrOpcode::MemStore ||
-             MemMut->getOp() == IrOpcode::Phi);
-      MemEffectChain[MemMut].push(CurNode);
-      continue;
-    }
-
-    if(Schedule.IsNodeScheduled(CurNode)) continue;
-    if(NodeProperties<IrOpcode::VirtConstantValues>(CurNode))
-      continue;
-
-    PONodes.push_back(CurNode);
-  }
-
-  MemoryReordering();
-}
 
 template<class SetT> BasicBlock*
 PostOrderNodePlacement::GetCommonDominator(const SetT& BBs) {
@@ -560,11 +547,15 @@ BasicBlock* PostOrderNodePlacement::FindLoopInvariantPos(Node* CurNode,
 }
 
 void PostOrderNodePlacement::Compute() {
-  for(auto* CurNode : PONodes) {
+  for(auto* CurNode : Schedule.po_nodes()) {
+    if(Schedule.IsNodeScheduled(CurNode)) continue;
+    if(NodeProperties<IrOpcode::VirtConstantValues>(CurNode))
+      continue;
+
     // consider all the value users first
     std::unordered_set<BasicBlock*> UserBBs;
     std::unordered_set<Node*> UserNodes;
-    auto collectUsages = [&,this](Node* UN) {
+    auto collectUsages = [&,this](Node* UN, Use::Kind UseKind) {
       assert(Schedule.IsNodeScheduled(UN) &&
              "User not scheduled?");
       UserNodes.insert(UN);
@@ -574,7 +565,7 @@ void PostOrderNodePlacement::Compute() {
         // don't need to dominate Phi block,
         // use the branch block instead
         NodeProperties<IrOpcode::Phi> PNP(UN);
-        auto* CN = PNP.MapCtrlNode(CurNode, Use::K_VALUE);
+        auto* CN = PNP.MapCtrlNode(CurNode, UseKind);
         assert(CN && "failed to map input to control node");
         BB = Schedule.MapBlock(CN);
       } else {
@@ -585,10 +576,10 @@ void PostOrderNodePlacement::Compute() {
     };
 
     for(auto* VU : CurNode->value_users()) {
-      collectUsages(VU);
+      collectUsages(VU, Use::K_VALUE);
     }
     for(auto* EU : CurNode->effect_users()) {
-      collectUsages(EU);
+      collectUsages(EU, Use::K_EFFECT);
     }
 
     if(!UserBBs.empty()) {

@@ -23,8 +23,11 @@ class GraphSchedule {
   std::list<std::unique_ptr<BasicBlock>> Blocks;
   std::vector<BasicBlock*> RPOBlocks;
   std::unordered_map<Node*, BasicBlock*> Node2Block;
+  std::vector<Node*> RPONodes;
 
   struct RPOVisitor;
+  struct RPONodesVisitor;
+  void SortRPONodes();
 
   class DominatorNode {
     BasicBlock* ThisBlock;
@@ -138,10 +141,26 @@ class GraphSchedule {
 public:
   GraphSchedule(Graph& graph, const SubGraph& subgraph)
     : G(graph), SG(subgraph),
-      StateMarker(G, 3) {}
+      StateMarker(G, 3) {
+    SortRPONodes();
+  }
 
   const SubGraph& getSubGraph() const { return SG; }
   SubGraph& getSubGraph() { return SG; }
+
+  using rpo_node_iterator = typename decltype(RPONodes)::iterator;
+  rpo_node_iterator rpo_node_begin() { return RPONodes.begin(); }
+  rpo_node_iterator rpo_node_end() { return RPONodes.end(); }
+  llvm::iterator_range<rpo_node_iterator> rpo_nodes() {
+    return llvm::make_range(rpo_node_begin(), rpo_node_end());
+  }
+  using po_node_iterator
+    = typename decltype(RPONodes)::reverse_iterator;
+  po_node_iterator po_begin() { return RPONodes.rbegin(); }
+  po_node_iterator po_end() { return RPONodes.rend(); }
+  llvm::iterator_range<po_node_iterator> po_nodes() {
+    return llvm::make_range(po_begin(), po_end());
+  }
 
   using block_iterator = typename decltype(Blocks)::iterator;
   using const_block_iterator = typename decltype(Blocks)::const_iterator;

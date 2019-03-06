@@ -158,7 +158,7 @@ TEST(CodeGenUnitTest, GraphScheduleCFGNestedLoop) {
   }
 }
 
-TEST(CodeGenTest, GraphScheduleValueNodePlacement) {
+TEST(CodeGenUnitTest, GraphScheduleValueNodePlacement) {
   {
     Graph G;
     auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
@@ -276,6 +276,120 @@ TEST(CodeGenTest, GraphScheduleValueNodePlacement) {
     }
     {
       std::ofstream OF("TestGraphScheduleValueNodePlacement2.after.dom.dot");
+      FuncSchedule->dumpDomTreeGraphviz(OF);
+    }
+  }
+}
+
+TEST(CodeGenUnitTest, GraphScheduleMemNodePlacement) {
+  {
+    Graph G;
+    auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
+                 .FuncName("func_schedule_mem_node_placement1")
+                 .Build();
+    auto* Const0 = NodeBuilder<IrOpcode::ConstantInt>(&G, 0).Build();
+    auto* Const1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 1).Build();
+    auto* Const2 = NodeBuilder<IrOpcode::ConstantInt>(&G, 2).Build();
+    auto* Const3 = NodeBuilder<IrOpcode::ConstantInt>(&G, 3).Build();
+    auto* Const4 = NodeBuilder<IrOpcode::ConstantInt>(&G, 4).Build();
+    auto* Const5 = NodeBuilder<IrOpcode::ConstantInt>(&G, 5).Build();
+
+    auto* AllocaFoo = NodeBuilder<IrOpcode::Alloca>(&G)
+                      .Size(Const5).Build();
+    auto* AllocaBar = NodeBuilder<IrOpcode::Alloca>(&G)
+                      .Size(Const5).Build();
+    auto* StoreFoo1 = NodeBuilder<IrOpcode::MemStore>(&G)
+                      .BaseAddr(AllocaFoo).Offset(Const1)
+                      .Src(Const0).Build();
+    auto* StoreBar1 = NodeBuilder<IrOpcode::MemStore>(&G)
+                      .BaseAddr(AllocaBar).Offset(Const1)
+                      .Src(Const0).Build();
+
+    // Branch
+    auto* Branch = NodeBuilder<IrOpcode::If>(&G)
+                   .Condition(Const1).Build();
+    Branch->appendControlInput(Func);
+
+    // True
+    auto* TrueBr = NodeBuilder<IrOpcode::VirtIfBranches>(&G, true)
+                   .IfStmt(Branch).Build();
+    auto* LoadFoo1 = NodeBuilder<IrOpcode::MemLoad>(&G)
+                     .BaseAddr(AllocaFoo).Offset(Const2)
+                     .Build();
+    LoadFoo1->appendEffectInput(StoreFoo1);
+    auto* SumTrue = NodeBuilder<IrOpcode::BinAdd>(&G)
+                    .LHS(LoadFoo1).RHS(Const5).Build();
+    auto* StoreFoo2 = NodeBuilder<IrOpcode::MemStore>(&G)
+                      .BaseAddr(AllocaFoo).Offset(Const3)
+                      .Src(Const4).Build();
+    StoreFoo2->appendEffectInput(LoadFoo1);
+
+    // False
+    auto* FalseBr = NodeBuilder<IrOpcode::VirtIfBranches>(&G, false)
+                    .IfStmt(Branch).Build();
+    auto* LoadBar1 = NodeBuilder<IrOpcode::MemLoad>(&G)
+                     .BaseAddr(AllocaBar).Offset(Const2)
+                     .Build();
+    LoadBar1->appendEffectInput(StoreBar1);
+    auto* SumFalse = NodeBuilder<IrOpcode::BinAdd>(&G)
+                     .LHS(LoadBar1).RHS(Const5).Build();
+    auto* StoreBar2 = NodeBuilder<IrOpcode::MemStore>(&G)
+                      .BaseAddr(AllocaBar).Offset(Const2)
+                      .Src(Const5).Build();
+    StoreBar2->appendEffectInput(LoadBar1);
+
+    // Merge
+    auto* Merge = NodeBuilder<IrOpcode::Merge>(&G)
+                  .AddCtrlInput(TrueBr).AddCtrlInput(FalseBr)
+                  .Build();
+    auto* ValuePHI = NodeBuilder<IrOpcode::Phi>(&G)
+                     .AddValueInput(SumTrue).AddValueInput(SumFalse)
+                     .SetCtrlMerge(Merge)
+                     .Build();
+    auto* EffectPHIFoo = NodeBuilder<IrOpcode::Phi>(&G)
+                         .AddEffectInput(StoreFoo2).AddEffectInput(StoreFoo1)
+                         .SetCtrlMerge(Merge)
+                         .Build();
+    auto* EffectPHIBar = NodeBuilder<IrOpcode::Phi>(&G)
+                         .AddEffectInput(StoreBar1).AddEffectInput(StoreBar2)
+                         .SetCtrlMerge(Merge)
+                         .Build();
+
+    // Follow
+    auto* StoreFoo3 = NodeBuilder<IrOpcode::MemStore>(&G)
+                      .BaseAddr(AllocaFoo).Offset(Const3)
+                      .Src(Const4).Build();
+    StoreFoo3->appendEffectInput(EffectPHIFoo);
+    auto* StoreBar3 = NodeBuilder<IrOpcode::MemStore>(&G)
+                      .BaseAddr(AllocaBar).Offset(Const4)
+                      .Src(Const5).Build();
+    StoreBar3->appendEffectInput(EffectPHIBar);
+
+    // End
+    auto* Return = NodeBuilder<IrOpcode::Return>(&G, ValuePHI)
+                   .Build();
+    Return->appendControlInput(Merge);
+    auto* End = NodeBuilder<IrOpcode::End>(&G, Func)
+                .AddTerminator(Return)
+                .AddEffectDep(StoreFoo3).AddEffectDep(StoreBar3)
+                .Build();
+    SubGraph FuncSG(End);
+    G.AddSubRegion(FuncSG);
+    {
+      std::ofstream OF("TestGraphScheduleMemNodePlacement1.dot");
+      G.dumpGraphviz(OF);
+    }
+
+    GraphScheduler Scheduler(G);
+    Scheduler.ComputeScheduledGraph();
+    EXPECT_EQ(Scheduler.schedule_size(), 1);
+    auto* FuncSchedule = *Scheduler.schedule_begin();
+    {
+      std::ofstream OF("TestGraphScheduleMemNodePlacement1.after.dot");
+      FuncSchedule->dumpGraphviz(OF);
+    }
+    {
+      std::ofstream OF("TestGraphScheduleMemNodePlacement1.after.dom.dot");
       FuncSchedule->dumpDomTreeGraphviz(OF);
     }
   }
