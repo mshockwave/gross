@@ -45,6 +45,8 @@ std::ostream& IrOpcode::Print(const Graph& G, std::ostream& OS, Node* N) {
   CASE(DLX##OC, STR(DLX##OC))  \
   CASE(DLX##OC##I, STR(DLX##OC##I))
 #define DLX_COMMON(OC) CASE(DLX##OC, STR(DLX##OC))
+// FIXME: we really want to print DLXOffset w/ BB or function it represents
+#define DLX_CONST(OC) DLX_COMMON(OC)
 #define VIRT_OP(OC) CASE(Virt##OC, STR(Virt##OC))
 #include "gross/Graph/DLXOpcodes.def"
   default:

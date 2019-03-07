@@ -15,6 +15,7 @@ NODE_PROPERTIES(VirtDLXOps) {
     case IrOpcode::DLX##OC##I:
 #define DLX_COMMON(OC)  \
     case IrOpcode::DLX##OC:
+#define DLX_CONST(OC) DLX_COMMON(OC)
 #include "gross/Graph/DLXOpcodes.def"
       return true;
     default:

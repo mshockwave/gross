@@ -138,6 +138,9 @@ class GraphSchedule {
   // for Graphviz printing
   struct block_prop_writer;
 
+  // DLXOffset node -> BasicBlock
+  NodeBiMap<BasicBlock*> BlockOffsets;
+
 public:
   GraphSchedule(Graph& graph, const SubGraph& subgraph)
     : G(graph), SG(subgraph),
@@ -218,6 +221,15 @@ public:
   BasicBlock* MapBlock(Node* N) {
     if(!Node2Block.count(N)) return nullptr;
     return Node2Block.at(N);
+  }
+
+  Node* MapBlockOffset(BasicBlock* BB) {
+    if(!BlockOffsets.find_node(BB)) {
+      auto* N = new Node(IrOpcode::DLXOffset, {});
+      G.InsertNode(N);
+      BlockOffsets.insert({N, BB});
+    }
+    return BlockOffsets.find_node(BB);
   }
 
   // wrapper for printing DomTree and LoopTree

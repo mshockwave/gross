@@ -91,35 +91,64 @@ TEST(GRPeepholeUnitTest, ConstReductionTest) {
 }
 
 TEST(GRPeepholeUnitTest, RelationReductionTest) {
-  Graph G;
-  auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
-               .FuncName("func_relation_reduce")
-               .Build();
-  auto* Const1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 87)
-                 .Build();
-  auto* Const2 = NodeBuilder<IrOpcode::ConstantInt>(&G, 94)
-                 .Build();
-  auto* RHSVal = NodeBuilder<IrOpcode::BinLe>(&G)
-                 .LHS(Const1).RHS(Const2)
-                 .Build();
-  auto* Return = NodeBuilder<IrOpcode::Return>(&G, RHSVal)
-                 .Build();
-  auto* End = NodeBuilder<IrOpcode::End>(&G, Func)
-              .AddTerminator(Return)
-              .Build();
-  SubGraph FuncSG(End);
-  G.AddSubRegion(FuncSG);
   {
-    std::ofstream OF("TestPHRelationReduce.dot");
-    G.dumpGraphviz(OF);
-  }
+    Graph G;
+    auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
+                 .FuncName("func_const_relation_reduce")
+                 .Build();
+    auto* Const1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 87)
+                   .Build();
+    auto* Const2 = NodeBuilder<IrOpcode::ConstantInt>(&G, 94)
+                   .Build();
+    auto* RHSVal = NodeBuilder<IrOpcode::BinLe>(&G)
+                   .LHS(Const1).RHS(Const2)
+                   .Build();
+    auto* Return = NodeBuilder<IrOpcode::Return>(&G, RHSVal)
+                   .Build();
+    auto* End = NodeBuilder<IrOpcode::End>(&G, Func)
+                .AddTerminator(Return)
+                .Build();
+    SubGraph FuncSG(End);
+    G.AddSubRegion(FuncSG);
+    {
+      std::ofstream OF("TestPHConstRelationReduce.dot");
+      G.dumpGraphviz(OF);
+    }
 
-  GraphReducer::RunWithEditor<PeepholeReducer>(G);
-  {
-    std::ofstream OF("TestPHRelationReduce.after.dot");
-    G.dumpGraphviz(OF);
+    GraphReducer::RunWithEditor<PeepholeReducer>(G);
+    {
+      std::ofstream OF("TestPHConstRelationReduce.after.dot");
+      G.dumpGraphviz(OF);
+    }
+    NodeProperties<IrOpcode::Return> RNP(Return);
+    EXPECT_EQ(NodeProperties<IrOpcode::ConstantInt>(RNP.ReturnVal())
+              .as<int32_t>(G), 1);
   }
-  NodeProperties<IrOpcode::Return> RNP(Return);
-  EXPECT_EQ(NodeProperties<IrOpcode::ConstantInt>(RNP.ReturnVal())
-            .as<int32_t>(G), 1);
+  {
+    Graph G;
+    auto* Arg = NodeBuilder<IrOpcode::Argument>(&G, "a").Build();
+    auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
+                 .FuncName("func_relation_reduce")
+                 .AddParameter(Arg)
+                 .Build();
+    auto* Const1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 87)
+                   .Build();
+    auto* RHSVal = NodeBuilder<IrOpcode::BinLe>(&G)
+                   .LHS(Const1).RHS(Arg)
+                   .Build();
+    auto* Return = NodeBuilder<IrOpcode::Return>(&G, RHSVal)
+                   .Build();
+    auto* End = NodeBuilder<IrOpcode::End>(&G, Func)
+                .AddTerminator(Return)
+                .Build();
+    SubGraph FuncSG(End);
+    G.AddSubRegion(FuncSG);
+    GraphReducer::RunWithEditor<PeepholeReducer>(G);
+
+    NodeProperties<IrOpcode::Return> RNP(Return);
+    ASSERT_EQ(RNP.ReturnVal()->getOp(), IrOpcode::BinLe);
+    NodeProperties<IrOpcode::VirtBinOps> BNP(RNP.ReturnVal());
+    EXPECT_EQ(BNP.RHS()->getOp(), IrOpcode::ConstantInt);
+    EXPECT_EQ(BNP.LHS()->getOp(), IrOpcode::BinSub);
+  }
 }

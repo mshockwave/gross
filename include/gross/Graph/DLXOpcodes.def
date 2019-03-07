@@ -11,6 +11,13 @@
 
 VIRT_OP(DLXOps)         // All the OC starts with DLX
 
+/// Constant Nodes
+#ifndef DLX_CONST
+#define DLX_CONST(OC)
+#endif
+DLX_CONST(Offset)
+#undef DLX_CONST
+
 /// Arithmetic Operations
 #ifndef DLX_ARITH_OP
 #define DLX_ARITH_OP(OC)

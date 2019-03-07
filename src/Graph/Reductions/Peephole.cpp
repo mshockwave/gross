@@ -49,6 +49,7 @@ GraphReduction PeepholeReducer::ReduceArithmetic(Node* N) {
 
 GraphReduction PeepholeReducer::ReduceRelation(Node* N) {
   NodeProperties<IrOpcode::VirtBinOps> NP(N);
+  assert(NP);
   // constant reduction
   if(NP.LHS()->getOp() == IrOpcode::ConstantInt &&
      NP.RHS()->getOp() == IrOpcode::ConstantInt) {
@@ -75,6 +76,20 @@ GraphReduction PeepholeReducer::ReduceRelation(Node* N) {
       return NoChange();
     }
 #undef REL_CASE
+  } else if(NP.RHS()->getOp() != IrOpcode::ConstantInt ||
+            NodeProperties<IrOpcode::ConstantInt>(NP.RHS())
+            .as<int32_t>(G) != 0) {
+    // always put zero at RHS
+    auto* OldLHS = NP.LHS();
+    auto* OldRHS = NP.RHS();
+    auto* NewLHS = NodeBuilder<IrOpcode::BinSub>(&G)
+                   .LHS(OldLHS).RHS(OldRHS)
+                   .Build();
+    auto* Zero = NodeBuilder<IrOpcode::ConstantInt>(&G, 0)
+                 .Build();
+    N->ReplaceUseOfWith(OldLHS, NewLHS, Use::K_VALUE);
+    N->ReplaceUseOfWith(OldRHS, Zero, Use::K_VALUE);
+    return Replace(N);
   }
   return NoChange();
 }

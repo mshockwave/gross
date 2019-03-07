@@ -24,6 +24,7 @@ enum ID : unsigned {
   DLX##OC,  \
   DLX##OC##I,
 #define DLX_COMMON(OC) DLX##OC,
+#define DLX_CONST(OC) DLX_COMMON(OC)
 #include "DLXOpcodes.def"
 
   /// Virtual opcodes: abtraction nodes for several
