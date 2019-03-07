@@ -502,8 +502,6 @@ PostOrderNodePlacement::GetCommonDominator(const SetT& BBs) {
   return nullptr;
 }
 
-// For now, implement the simplest version which only handles nodes without
-// any effect/special control dependencies
 BasicBlock* PostOrderNodePlacement::FindLoopInvariantPos(Node* CurNode,
                                                          BasicBlock* OrigBB) {
   auto* SafeBB = OrigBB;
@@ -528,6 +526,14 @@ BasicBlock* PostOrderNodePlacement::FindLoopInvariantPos(Node* CurNode,
       }
     }
   }
+  for(auto* IN : CurNode->effect_inputs()) {
+    if(Schedule.IsNodeScheduled(IN)) {
+      if(auto* InputBB = Schedule.MapBlock(IN)) {
+        InputBBs.insert(InputBB);
+      }
+    }
+  }
+
   auto isSafe = [this,&InputBBs](BasicBlock* BB) -> bool {
     for(auto* InputBB : InputBBs) {
       if(!Schedule.Dominate(InputBB, BB)) return false;
@@ -586,7 +592,7 @@ void PostOrderNodePlacement::Compute() {
       auto* DomBB = GetCommonDominator(UserBBs);
       assert(DomBB);
       // Don't put node in a loop
-      DomBB = FindLoopInvariantPos(CurNode, DomBB);
+      //DomBB = FindLoopInvariantPos(CurNode, DomBB);
 
       // search from top to bottom within the block,
       // insert right before a value user if any. Otherwise

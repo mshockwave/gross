@@ -65,13 +65,15 @@ private:
   // first Node is always the control op of this block
   std::list<Node*> NodeSequence;
   std::unordered_map<Node*, SeqNodeId> NodeIds;
+  Node* LastInsertedNode;
 
   std::vector<BasicBlock*> Predecessors;
   std::vector<BasicBlock*> Successors;
 
 public:
   BasicBlock(const Id& BBId = Id::Create(0U))
-    : BlockId(BBId) {}
+    : BlockId(BBId),
+      LastInsertedNode(nullptr) {}
 
   const Id& getId() const { return BlockId; }
 
@@ -123,14 +125,15 @@ public:
   }
 
   void AddNode(const_node_iterator Pos, Node* N) {
-    if(NodeSequence.empty()) {
+    if(!LastInsertedNode) {
       NodeIds.insert({N, SeqNodeId::Create(0U)});
     } else {
-      auto* PrevNodeId = getNodeId(NodeSequence.back());
+      auto* PrevNodeId = getNodeId(LastInsertedNode);
       assert(PrevNodeId);
       NodeIds.insert({N, SeqNodeId::AdvanceFrom(*PrevNodeId)});
     }
     NodeSequence.insert(Pos, N);
+    LastInsertedNode = N;
   }
   bool AddNodeBefore(Node* Before, Node* N) {
     auto NodeIt = gross::find_if(const_nodes(),

@@ -393,4 +393,95 @@ TEST(CodeGenUnitTest, GraphScheduleMemNodePlacement) {
       FuncSchedule->dumpDomTreeGraphviz(OF);
     }
   }
+  {
+    Graph G;
+    auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
+                 .FuncName("func_schedule_mem_node_placement2")
+                 .Build();
+    auto* Const0 = NodeBuilder<IrOpcode::ConstantInt>(&G, 0).Build();
+    auto* Const1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 1).Build();
+    auto* Const2 = NodeBuilder<IrOpcode::ConstantInt>(&G, 2).Build();
+    auto* Const3 = NodeBuilder<IrOpcode::ConstantInt>(&G, 3).Build();
+    auto* Const4 = NodeBuilder<IrOpcode::ConstantInt>(&G, 4).Build();
+    auto* Const5 = NodeBuilder<IrOpcode::ConstantInt>(&G, 5).Build();
+
+    auto* AllocaFoo = NodeBuilder<IrOpcode::Alloca>(&G)
+                      .Size(Const5).Build();
+    auto* AllocaBar = NodeBuilder<IrOpcode::Alloca>(&G)
+                      .Size(Const5).Build();
+    auto* StoreFoo1 = NodeBuilder<IrOpcode::MemStore>(&G)
+                      .BaseAddr(AllocaFoo).Offset(Const1)
+                      .Src(Const0).Build();
+    auto* StoreBar1 = NodeBuilder<IrOpcode::MemStore>(&G)
+                      .BaseAddr(AllocaBar).Offset(Const1)
+                      .Src(Const0).Build();
+
+    // Loop
+    auto* Loop = NodeBuilder<IrOpcode::Loop>(&G, Func)
+                 .Condition(Const1).Build();
+    auto* StoreFoo2 = NodeBuilder<IrOpcode::MemStore>(&G)
+                      .BaseAddr(AllocaFoo).Offset(Const2)
+                      .Src(Const1).Build();
+    StoreFoo2->appendEffectInput(StoreFoo1);
+    auto* LoadFoo2 = NodeBuilder<IrOpcode::MemLoad>(&G)
+                     .BaseAddr(AllocaFoo).Offset(Const2)
+                     .Build();
+    LoadFoo2->appendEffectInput(StoreFoo2);
+    auto* StoreBar2 = NodeBuilder<IrOpcode::MemStore>(&G)
+                      .BaseAddr(AllocaBar).Offset(Const2)
+                      .Src(LoadFoo2).Build();
+    StoreBar2->appendEffectInput(StoreBar1);
+    auto* PHIFoo = NodeBuilder<IrOpcode::Phi>(&G)
+                   .AddEffectInput(StoreFoo1).AddEffectInput(LoadFoo2)
+                   .SetCtrlMerge(Loop).Build();
+    auto* PHIBar = NodeBuilder<IrOpcode::Phi>(&G)
+                   .AddEffectInput(StoreBar1).AddEffectInput(StoreBar2)
+                   .SetCtrlMerge(Loop).Build();
+    StoreFoo2->ReplaceUseOfWith(StoreFoo1, PHIFoo, Use::K_EFFECT);
+    StoreBar2->ReplaceUseOfWith(StoreBar1, PHIBar, Use::K_EFFECT);
+
+    // End
+    auto* LoadFoo3 = NodeBuilder<IrOpcode::MemLoad>(&G)
+                     .BaseAddr(AllocaFoo).Offset(Const3)
+                     .Build();
+    LoadFoo3->appendEffectInput(PHIFoo);
+    auto* LoadBar2 = NodeBuilder<IrOpcode::MemLoad>(&G)
+                     .BaseAddr(AllocaBar).Offset(Const4)
+                     .Build();
+    LoadBar2->appendEffectInput(PHIBar);
+    auto* Sum = NodeBuilder<IrOpcode::BinAdd>(&G)
+                .LHS(LoadFoo3).RHS(LoadBar2)
+                .Build();
+    auto* Return = NodeBuilder<IrOpcode::Return>(&G, Sum)
+                   .Build();
+
+    NodeProperties<IrOpcode::Loop> LNP(Loop);
+    NodeProperties<IrOpcode::If> BNP(LNP.Branch());
+    Return->appendControlInput(BNP.FalseBranch());
+    auto* End = NodeBuilder<IrOpcode::End>(&G, Func)
+                .AddTerminator(Return)
+                // FIXME: do we still want to make End effect depends on
+                // MemStores?
+                //.AddEffectDep(StoreFoo2).AddEffectDep(StoreBar2)
+                .Build();
+    SubGraph FuncSG(End);
+    G.AddSubRegion(FuncSG);
+    {
+      std::ofstream OF("TestGraphScheduleMemNodePlacement2.dot");
+      G.dumpGraphviz(OF);
+    }
+
+    GraphScheduler Scheduler(G);
+    Scheduler.ComputeScheduledGraph();
+    EXPECT_EQ(Scheduler.schedule_size(), 1);
+    auto* FuncSchedule = *Scheduler.schedule_begin();
+    {
+      std::ofstream OF("TestGraphScheduleMemNodePlacement2.after.dot");
+      FuncSchedule->dumpGraphviz(OF);
+    }
+    {
+      std::ofstream OF("TestGraphScheduleMemNodePlacement2.after.dom.dot");
+      FuncSchedule->dumpDomTreeGraphviz(OF);
+    }
+  }
 }
