@@ -9,6 +9,15 @@ PreMachineLowering::PreMachineLowering(GraphEditor::Interface* editor)
   : GraphEditor(editor),
     G(Editor->GetGraph()){}
 
+// propagate all the effect/control inputs
+Node* PreMachineLowering::PropagateEffects(Node* OldNode, Node* NewNode) {
+  for(auto* EI : OldNode->effect_inputs())
+    NewNode->appendEffectInput(EI);
+  for(auto* CI : OldNode->control_inputs())
+    NewNode->appendControlInput(CI);
+  return NewNode;
+}
+
 GraphReduction PreMachineLowering::SelectArithmetic(Node* N) {
   NodeProperties<IrOpcode::VirtBinOps> NP(N);
   auto* LHSVal = NP.LHS();
@@ -91,7 +100,7 @@ GraphReduction PreMachineLowering::SelectMemOperations(Node* N) {
                 .BaseAddr(BaseAddr).Offset(Offset)
                 .Build();
     }
-    return Replace(NewNode);
+    return Replace(PropagateEffects(N, NewNode));
   } else if(N->getOp() == IrOpcode::MemStore) {
     NodeProperties<IrOpcode::MemStore> StNP(N);
     Node* NewNode;
@@ -106,7 +115,7 @@ GraphReduction PreMachineLowering::SelectMemOperations(Node* N) {
                 .Src(StNP.SrcVal())
                 .Build();
     }
-    return Replace(NewNode);
+    return Replace(PropagateEffects(N, NewNode));
   } else {
     gross_unreachable("Unsupported Opcode");
     return NoChange();

@@ -6,6 +6,8 @@ namespace gross {
 class PreMachineLowering : public GraphEditor {
   Graph& G;
 
+  static Node* PropagateEffects(Node* Old, Node* New);
+
   GraphReduction SelectArithmetic(Node* N);
   GraphReduction SelectMemOperations(Node* N);
 
