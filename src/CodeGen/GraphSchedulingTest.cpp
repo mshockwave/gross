@@ -460,9 +460,6 @@ TEST(CodeGenUnitTest, GraphScheduleMemNodePlacement) {
     Return->appendControlInput(BNP.FalseBranch());
     auto* End = NodeBuilder<IrOpcode::End>(&G, Func)
                 .AddTerminator(Return)
-                // FIXME: do we still want to make End effect depends on
-                // MemStores?
-                //.AddEffectDep(StoreFoo2).AddEffectDep(StoreBar2)
                 .Build();
     SubGraph FuncSG(End);
     G.AddSubRegion(FuncSG);

@@ -180,8 +180,14 @@ bool Parser::ParseFuncDecl() {
   NodeBuilder<IrOpcode::End> EB(&G, FuncNode);
   EB.AddTerminator(getLastCtrlPoint());
   // must 'wait' after all side effects terminate
+  // if there is no consumers
+  auto MAE = LastMemAccess.end();
   for(auto& P : LastModified) {
-    EB.AddEffectDep(P.second);
+    auto* LastMod = P.second;
+    // for non-memory access, if there is no consumers,
+    // well, then it's dead code
+    if(LastMemAccess.find(LastMod) == MAE)
+      EB.AddEffectDep(LastMod);
   }
   auto* EndNode = EB.Build();
 

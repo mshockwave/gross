@@ -12,7 +12,6 @@ add_library(GrossGraphReductions OBJECT
 if(GROSS_ENABLE_UNIT_TESTS)
   set(_TEST_SOURCE_FILES
       ValuePromotionTest.cpp
-      MemoryLegalizeTest.cpp
       CSETest.cpp
       PeepholeTest.cpp
       )
