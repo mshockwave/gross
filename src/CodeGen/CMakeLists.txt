@@ -1,5 +1,6 @@
 
 set(_SOURCE_FILES
+    BasicBlock.cpp
     PreMachineLowering.cpp
     GraphScheduling.cpp
     PostMachineLowering.cpp

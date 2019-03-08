@@ -2,7 +2,6 @@
 #define GROSS_CODEGEN_BASICBLOCK_H
 #include "gross/Graph/Node.h"
 #include "gross/Support/iterator_range.h"
-#include "gross/Support/STLExtras.h"
 #include <list>
 #include <utility>
 #include <unordered_map>
@@ -17,6 +16,11 @@ struct BasicBlock {
     }
     bool operator!=(const DerivedT& Other) const {
       return !(Other == *this);
+    }
+
+    template<class T = uint32_t>
+    T get() const {
+      return static_cast<T>(IdVal);
     }
 
     template<class IntegralT>
@@ -65,7 +69,7 @@ private:
   // first Node is always the control op of this block
   std::list<Node*> NodeSequence;
   std::unordered_map<Node*, SeqNodeId> NodeIds;
-  Node* LastInsertedNode;
+  SeqNodeId LastNodeId;
 
   std::vector<BasicBlock*> Predecessors;
   std::vector<BasicBlock*> Successors;
@@ -73,7 +77,7 @@ private:
 public:
   BasicBlock(const Id& BBId = Id::Create(0U))
     : BlockId(BBId),
-      LastInsertedNode(nullptr) {}
+      LastNodeId(SeqNodeId::Create(0U)) {}
 
   const Id& getId() const { return BlockId; }
 
@@ -96,8 +100,13 @@ public:
   }
   size_t succ_size() const { return Successors.size(); }
 
+  bool HasPredBlock(BasicBlock* BB);
   void AddPredBlock(BasicBlock* BB) { Predecessors.push_back(BB); }
+  bool RemovePredBlock(BasicBlock* BB);
+
+  bool HasSuccBlock(BasicBlock* BB);
   void AddSuccBlock(BasicBlock* BB) { Successors.push_back(BB); }
+  bool RemoveSuccBlock(BasicBlock* BB);
 
   // build a std::pair<BasicBlock*,BasicBlock*> that represents
   // { source BB, dest BB }
@@ -117,37 +126,17 @@ public:
     return llvm::make_range(node_cbegin(), node_cend());
   }
 
-  SeqNodeId* getNodeId(Node* N) const {
-    if(NodeIds.count(N))
-      return const_cast<SeqNodeId*>(&NodeIds.at(N));
-    else
-      return nullptr;
-  }
+  SeqNodeId* getNodeId(Node* N) const;
 
-  void AddNode(const_node_iterator Pos, Node* N) {
-    if(!LastInsertedNode) {
-      NodeIds.insert({N, SeqNodeId::Create(0U)});
-    } else {
-      auto* PrevNodeId = getNodeId(LastInsertedNode);
-      assert(PrevNodeId);
-      NodeIds.insert({N, SeqNodeId::AdvanceFrom(*PrevNodeId)});
-    }
-    NodeSequence.insert(Pos, N);
-    LastInsertedNode = N;
-  }
-  bool AddNodeBefore(Node* Before, Node* N) {
-    auto NodeIt = gross::find_if(const_nodes(),
-                                 [=](const Node* Target) -> bool {
-                                   return const_cast<Node*>(Target) == Before;
-                                 });
-    if(NodeIt == node_cend()) return false;
-    AddNode(NodeIt, N);
-    return true;
-  }
-
+  void AddNode(const_node_iterator Pos, Node* N);
+  bool AddNodeBefore(Node* Before, Node* N);
   void AddNode(Node* N) {
     AddNode(node_cend(), N);
   }
+
+  std::pair<bool, node_iterator> RemoveNode(Node* N);
+
+  void ReplaceNode(Node* Old, Node* New);
 };
 
 struct BasicBlock::EdgeBuilder {

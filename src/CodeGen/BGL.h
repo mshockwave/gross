@@ -25,12 +25,7 @@ struct graph_traits<gross::GraphSchedule> {
   }
 
   /// VertexListGraphConcept
-  using vertex_iterator
-    = boost::transform_iterator<gross::unique_ptr_unwrapper<gross::BasicBlock>,
-                                typename gross::GraphSchedule::block_iterator,
-                                gross::BasicBlock*, // Refrence type
-                                gross::BasicBlock* // Value type
-                                >;
+  using vertex_iterator = typename gross::GraphSchedule::rpo_iterator;
   using vertices_size_type = size_t;
 
   /// EdgeListGraphConcept
@@ -57,13 +52,7 @@ inline
 std::pair<typename boost::graph_traits<gross::GraphSchedule>::vertex_iterator,
           typename boost::graph_traits<gross::GraphSchedule>::vertex_iterator>
 vertices(gross::GraphSchedule& g) {
-  using vertex_it_t
-    = typename boost::graph_traits<gross::GraphSchedule>::vertex_iterator;
-  gross::unique_ptr_unwrapper<gross::BasicBlock> functor;
-  return std::make_pair(
-    vertex_it_t(g.block_begin(), functor),
-    vertex_it_t(g.block_end(), functor)
-  );
+  return std::make_pair(g.rpo_begin(), g.rpo_end());
 }
 inline
 std::pair<typename boost::graph_traits<gross::GraphSchedule>::vertex_iterator,

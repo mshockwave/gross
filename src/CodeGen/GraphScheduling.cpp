@@ -18,7 +18,7 @@ struct GraphSchedule::RPONodesVisitor
   : public boost::default_dfs_visitor {
   struct PostEntity {
     Node *StartNode, *EndNode;
-    std::unordered_set<Node*> LoopStartPoints;
+    std::unordered_set<Node*> BranchStarts;
 
     PostEntity() : StartNode(nullptr), EndNode(nullptr) {}
   };
@@ -31,23 +31,16 @@ struct GraphSchedule::RPONodesVisitor
     case IrOpcode::End:
       PE.EndNode = N;
       return;
+    case IrOpcode::If:
     case IrOpcode::Loop:
       return;
-    case IrOpcode::If: {
-      if(N->getControlInput(0)->getOp() == IrOpcode::Loop)
-        return;
-      else
-        break;
-    }
     case IrOpcode::IfTrue:
     case IrOpcode::IfFalse: {
       NodeProperties<IrOpcode::VirtIfBranches> BNP(N);
       auto* Br = BNP.BranchPoint();
-      if(Br->getControlInput(0)->getOp() == IrOpcode::Loop) {
-        if(!VisitedLoopBranches.count(Br)) {
-          VisitedLoopBranches.insert(Br);
-          PE.LoopStartPoints.insert(N);
-        }
+      if(!VisitedBranchPoints.count(Br)) {
+        VisitedBranchPoints.insert(Br);
+        PE.BranchStarts.insert(N);
       }
       break;
     }
@@ -63,7 +56,7 @@ struct GraphSchedule::RPONodesVisitor
 private:
   std::vector<Node*>& Trace;
   PostEntity& PE;
-  std::set<Node*> VisitedLoopBranches;
+  std::set<Node*> VisitedBranchPoints;
 };
 
 void GraphSchedule::SortRPONodes() {
@@ -76,15 +69,18 @@ void GraphSchedule::SortRPONodes() {
 
   for(auto NI = RPONodes.cbegin(); NI != RPONodes.cend();) {
     auto* N = const_cast<Node*>(*NI);
-    if(PE.LoopStartPoints.count(N)) {
+    if(PE.BranchStarts.count(N)) {
       NodeProperties<IrOpcode::VirtIfBranches> BNP(N);
       assert(BNP);
       auto* Br = BNP.BranchPoint();
-      auto* Loop = Br->getControlInput(0);
-      assert(Loop->getOp() == IrOpcode::Loop);
       NI = RPONodes.insert(NI, Br);
-      NI = RPONodes.insert(NI, Loop);
-      std::advance(NI, 3);
+      auto* PrevCtrl = Br->getControlInput(0);
+      if(PrevCtrl->getOp() == IrOpcode::Loop) {
+        NI = RPONodes.insert(NI, PrevCtrl);
+        std::advance(NI, 3);
+      } else {
+        std::advance(NI, 2);
+      }
     } else {
       ++NI;
     }
@@ -321,8 +317,6 @@ public:
     for(auto* N : ControlNodes) {
       ConnectBlock(N);
     }
-
-    Schedule.SortRPO();
   }
 };
 
@@ -480,8 +474,8 @@ public:
 template<class SetT> BasicBlock*
 PostOrderNodePlacement::GetCommonDominator(const SetT& BBs) {
   // find the BB with smallest RPO index
-  auto BI = Schedule.rpo_rbegin(),
-       BIE = Schedule.rpo_rend();
+  auto BI = Schedule.po_begin(),
+       BIE = Schedule.po_end();
   size_t Counter = 0U, BBSize = BBs.size();
   for(; BI != BIE; ++BI) {
     if(BBs.count(*BI)) ++Counter;
@@ -830,27 +824,6 @@ struct GraphSchedule::TreeHandle {
 private:
   GraphSchedule& pImpl;
 };
-
-struct GraphSchedule::RPOVisitor
-  : public boost::default_dfs_visitor {
-  void finish_vertex(BasicBlock* BB, const GraphSchedule& G) {
-    Trace.insert(Trace.cbegin(), BB);
-  }
-
-  RPOVisitor() = delete;
-  RPOVisitor(std::vector<BasicBlock*>& trace) : Trace(trace) {}
-
-private:
-  std::vector<BasicBlock*>& Trace;
-};
-
-void GraphSchedule::SortRPO() {
-  RPOBlocks.clear();
-  RPOVisitor Vis(RPOBlocks);
-  std::unordered_map<BasicBlock*,boost::default_color_type> ColorStorage;
-  StubColorMap<decltype(ColorStorage), BasicBlock> ColorMap(ColorStorage);
-  boost::depth_first_search(*this, Vis, std::move(ColorMap));
-}
 
 std::ostream& GraphSchedule::printBlock(std::ostream& OS, BasicBlock* BB) {
   BB->getId().print(OS << "BB");

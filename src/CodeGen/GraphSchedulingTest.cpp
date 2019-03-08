@@ -356,6 +356,7 @@ TEST(CodeGenUnitTest, GraphScheduleMemNodePlacement) {
                          .Build();
 
     // Follow
+    // FIXME: These two will scheduled after Return node
     auto* StoreFoo3 = NodeBuilder<IrOpcode::MemStore>(&G)
                       .BaseAddr(AllocaFoo).Offset(Const3)
                       .Src(Const4).Build();

@@ -20,12 +20,11 @@ class GraphSchedule {
   SubGraph SG;
 
   // owner of basic blocks
-  std::list<std::unique_ptr<BasicBlock>> Blocks;
-  std::vector<BasicBlock*> RPOBlocks;
+  // must be in RPO order
+  std::vector<std::unique_ptr<BasicBlock>> Blocks;
   std::unordered_map<Node*, BasicBlock*> Node2Block;
   std::vector<Node*> RPONodes;
 
-  struct RPOVisitor;
   struct RPONodesVisitor;
   void SortRPONodes();
 
@@ -148,6 +147,9 @@ public:
     SortRPONodes();
   }
 
+  const Graph& getGraph() const { return G; }
+  Graph& getGraph() { return G; }
+
   const SubGraph& getSubGraph() const { return SG; }
   SubGraph& getSubGraph() { return SG; }
 
@@ -159,36 +161,60 @@ public:
   }
   using po_node_iterator
     = typename decltype(RPONodes)::reverse_iterator;
-  po_node_iterator po_begin() { return RPONodes.rbegin(); }
-  po_node_iterator po_end() { return RPONodes.rend(); }
+  po_node_iterator po_node_begin() { return RPONodes.rbegin(); }
+  po_node_iterator po_node_end() { return RPONodes.rend(); }
   llvm::iterator_range<po_node_iterator> po_nodes() {
-    return llvm::make_range(po_begin(), po_end());
+    return llvm::make_range(po_node_begin(), po_node_end());
   }
 
   using block_iterator = typename decltype(Blocks)::iterator;
   using const_block_iterator = typename decltype(Blocks)::const_iterator;
+  using reverse_block_iterator
+    = typename decltype(Blocks)::reverse_iterator;
   block_iterator block_begin() { return Blocks.begin(); }
   const_block_iterator block_cbegin() const { return Blocks.cbegin(); }
+  reverse_block_iterator block_rbegin() { return Blocks.rbegin(); }
   block_iterator block_end() { return Blocks.end(); }
   const_block_iterator block_cend() const { return Blocks.cend(); }
+  reverse_block_iterator block_rend() { return Blocks.rend(); }
   llvm::iterator_range<block_iterator> blocks() {
     return llvm::make_range(block_begin(), block_end());
   }
   size_t block_size() const { return Blocks.size(); }
 
-  void SortRPO();
-  using rpo_iterator = typename decltype(RPOBlocks)::iterator;
-  rpo_iterator rpo_begin() { return RPOBlocks.begin(); }
-  rpo_iterator rpo_end() { return RPOBlocks.end(); }
+  using rpo_iterator
+    = boost::transform_iterator<gross::unique_ptr_unwrapper<BasicBlock>,
+                                block_iterator,
+                                BasicBlock*, // Refrence type
+                                BasicBlock* // Value type
+                                >;
+  rpo_iterator rpo_begin() {
+    gross::unique_ptr_unwrapper<BasicBlock> functor;
+    return rpo_iterator(block_begin(), functor);
+  }
+  rpo_iterator rpo_end() {
+    gross::unique_ptr_unwrapper<BasicBlock> functor;
+    return rpo_iterator(block_end(), functor);
+  }
   llvm::iterator_range<rpo_iterator> rpo_blocks() {
     return llvm::make_range(rpo_begin(), rpo_end());
   }
-  using rpo_reverse_iterator
-    = typename decltype(RPOBlocks)::reverse_iterator;
-  rpo_reverse_iterator rpo_rbegin() { return RPOBlocks.rbegin(); }
-  rpo_reverse_iterator rpo_rend() { return RPOBlocks.rend(); }
-  llvm::iterator_range<rpo_reverse_iterator> po_blocks() {
-    return llvm::make_range(rpo_rbegin(), rpo_rend());
+  using po_iterator
+    = boost::transform_iterator<gross::unique_ptr_unwrapper<BasicBlock>,
+                                reverse_block_iterator,
+                                BasicBlock*, // Refrence type
+                                BasicBlock* // Value type
+                                >;
+  po_iterator po_begin() {
+    gross::unique_ptr_unwrapper<BasicBlock> functor;
+    return po_iterator(block_rbegin(), functor);
+  }
+  po_iterator po_end() {
+    gross::unique_ptr_unwrapper<BasicBlock> functor;
+    return po_iterator(block_rend(), functor);
+  }
+  llvm::iterator_range<po_iterator> po_blocks() {
+    return llvm::make_range(po_begin(), po_end());
   }
 
   // { FromBB, ToBB }
