@@ -15,6 +15,7 @@ TEST(CodeGenUnitTest, PostLoweringNormalCtrlStructures) {
     auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
                  .FuncName("func_post_lowering_normal_ctrl")
                  .Build();
+    auto* Zero = NodeBuilder<IrOpcode::ConstantInt>(&G, 0).Build();
     auto* Const1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 1).Build();
     auto* Const2 = NodeBuilder<IrOpcode::ConstantInt>(&G, 2).Build();
     auto* Const3 = NodeBuilder<IrOpcode::ConstantInt>(&G, 3).Build();
@@ -24,9 +25,13 @@ TEST(CodeGenUnitTest, PostLoweringNormalCtrlStructures) {
                  .LHS(Const1).RHS(Const2).Build();
     auto* Mul1 = NodeBuilder<IrOpcode::BinMul>(&G)
                  .LHS(Sum1).RHS(Const3).Build();
+    auto* Cond1 = NodeBuilder<IrOpcode::BinLt>(&G)
+                  .LHS(Const1).RHS(Zero).Build();
+    auto* Cond2 = NodeBuilder<IrOpcode::BinGt>(&G)
+                  .LHS(Const1).RHS(Zero).Build();
 
     auto* Branch = NodeBuilder<IrOpcode::If>(&G)
-                   .Condition(Const1).Build();
+                   .Condition(Cond1).Build();
     Branch->appendControlInput(Func);
     auto* TrueBr = NodeBuilder<IrOpcode::VirtIfBranches>(&G, true)
                    .IfStmt(Branch).Build();
@@ -36,7 +41,7 @@ TEST(CodeGenUnitTest, PostLoweringNormalCtrlStructures) {
     Return1->appendControlInput(FalseBr);
 
     auto* Branch2 = NodeBuilder<IrOpcode::If>(&G)
-                    .Condition(Const1).Build();
+                    .Condition(Cond2).Build();
     Branch2->appendControlInput(TrueBr);
     auto* TrueBr2 = NodeBuilder<IrOpcode::VirtIfBranches>(&G, true)
                     .IfStmt(Branch2).Build();

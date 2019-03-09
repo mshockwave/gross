@@ -826,29 +826,51 @@ private:
 };
 
 std::ostream& GraphSchedule::printBlock(std::ostream& OS, BasicBlock* BB) {
+  auto printInputNode = [this,&OS,BB](Node* Input) {
+    if(auto* DestBB = MapBlock(Input)) {
+      if(DestBB != BB) {
+        DestBB->getId().print(OS);
+        OS << "/";
+      }
+      assert(DestBB->getNodeId(Input));
+      DestBB->getNodeId(Input)->print(OS);
+    }
+  };
+
   BB->getId().print(OS << "BB");
   OS << " :\n";
   for(auto* N : BB->nodes()) {
     assert(BB->getNodeId(N));
     BB->getNodeId(N)->print(OS);
     OS << " = ";
+
+    // special handle for EffectPhi
+    if(N->getOp() == IrOpcode::Phi &&
+       !N->getNumValueInput() && N->getNumEffectInput()) {
+      OS << "EffectPhi ";
+      for(auto* EI : N->effect_inputs()) {
+        OS << " ";
+        printInputNode(EI);
+      }
+      OS << "\n";
+      continue;
+    }
+
     IrOpcode::Print(G, OS, N);
     for(auto* VI : N->value_inputs()) {
-      // ignore non-value inputs here
       OS << " ";
       if(VI->getOp() == IrOpcode::ConstantInt) {
         OS << "#"
            << NodeProperties<IrOpcode::ConstantInt>(VI)
               .as<int32_t>(G);
-      } else if(auto* DestBB = MapBlock(VI)) {
-        if(DestBB != BB) {
-          DestBB->getId().print(OS);
-          OS << "/";
+      } else if(VI->getOp() == IrOpcode::DLXOffset) {
+        if(BasicBlock** OffsetBB = BlockOffsets.find_value(VI)) {
+          OS << "&lt;";
+          (*OffsetBB)->getId().print(OS);
+          OS << "&gt;";
         }
-        assert(DestBB->getNodeId(VI));
-        DestBB->getNodeId(VI)->print(OS);
       } else {
-        continue;
+        printInputNode(VI);
       }
     }
     OS << "\n";

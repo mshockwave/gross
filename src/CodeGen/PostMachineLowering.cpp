@@ -33,15 +33,17 @@ void PostMachineLowering::ControlFlowLowering() {
     auto BBRPOIdx = BB->getRPOIndex();
     for(auto* N : BB->nodes()) {
       if(N->getOp() != IrOpcode::If) continue;
+      auto* Zero = NodeBuilder<IrOpcode::ConstantInt>(&G, 0)
+                   .Build();
       // retreive branch targets
       NodeProperties<IrOpcode::If> BNP(N);
       auto* FalseBB = Schedule.MapBlock(BNP.FalseBranch());
       auto* TrueBB = Schedule.MapBlock(BNP.TrueBranch());
       assert(TrueBB && FalseBB);
       auto* TargetBB = (TrueBB->getRPOIndex() == BBRPOIdx + 1)?
-                        TrueBB :
+                        FalseBB :
                         (FalseBB->getRPOIndex() == BBRPOIdx + 1)?
-                        FalseBB : nullptr;
+                        TrueBB : nullptr;
       assert(TargetBB && "no adjacent block?");
       auto* TargetOffset = Schedule.MapBlockOffset(TargetBB);
 
@@ -51,14 +53,13 @@ void PostMachineLowering::ControlFlowLowering() {
       if(Predicate->getOp() == IrOpcode::ConstantInt) {
         // FIXME: rarely happens, one should optimize control
         // flow in middle-end
-        auto* Zero = NodeBuilder<IrOpcode::ConstantInt>(&G, 0)
-                     .Build();
         Predicate = NodeBuilder<IrOpcode::BinNe>(&G)
                     .LHS(Predicate).RHS(Zero)
                     .Build();
       }
       NodeProperties<IrOpcode::VirtBinOps> NP(Predicate);
       assert(NP);
+      assert(NP.RHS() == Zero && "predicate RHS not zero?");
       auto NewOC = mapRelOp(Predicate->getOp());
       if(TargetBB == FalseBB) NewOC = mapRelOp(NewOC);
       auto* NewBr = NodeBuilder<IrOpcode::VirtDLXBinOps>(&G, NewOC)
