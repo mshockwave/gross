@@ -9,6 +9,8 @@
 
 namespace gross {
 struct BasicBlock {
+  friend class GraphSchedule;
+
   template<class DerivedT>
   struct IdBase {
     bool operator==(const DerivedT& Other) const {
@@ -80,6 +82,8 @@ public:
       LastNodeId(SeqNodeId::Create(0U)) {}
 
   const Id& getId() const { return BlockId; }
+  // Id is RPO order index
+  size_t getRPOIndex() const { return getId().get<size_t>(); }
 
   Node* getCtrlNode() const { return NodeSequence.empty()?
                                      nullptr : NodeSequence.front(); }
@@ -128,6 +132,11 @@ public:
 
   SeqNodeId* getNodeId(Node* N) const;
 
+private:
+  // Since GraphSchedule is the one managing other BB properties
+  // (e.g. Node <-> BB mapping) we want GraphSchedule be the only
+  // interface to manage nodes in BB. Thus putting the rest APIs
+  // as private.
   void AddNode(const_node_iterator Pos, Node* N);
   bool AddNodeBefore(Node* Before, Node* N);
   void AddNode(Node* N) {

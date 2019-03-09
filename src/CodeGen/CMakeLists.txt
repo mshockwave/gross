@@ -14,6 +14,7 @@ if(GROSS_ENABLE_UNIT_TESTS)
   set(_TEST_SOURCE_FILES
       GraphSchedulingTest.cpp
       PreMachineLoweringTest.cpp
+      PostMachineLoweringTest.cpp
       )
 
   add_executable(GrossCodeGenTest

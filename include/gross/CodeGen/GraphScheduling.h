@@ -244,6 +244,22 @@ public:
     Node2Block[N] = BB;
   }
 
+  std::pair<bool, typename BasicBlock::node_iterator>
+  RemoveNode(BasicBlock* BB, Node* N) {
+    auto Ret = BB->RemoveNode(N);
+    if(Ret.first) {
+      Node2Block.erase(N);
+    }
+    return Ret;
+  }
+
+  void ReplaceNode(BasicBlock* BB, Node* Old, Node* New) {
+    BB->ReplaceNode(Old, New);
+    if(Node2Block.count(Old))
+      Node2Block.erase(Old);
+    Node2Block[New] = BB;
+  }
+
   BasicBlock* MapBlock(Node* N) {
     if(!Node2Block.count(N)) return nullptr;
     return Node2Block.at(N);

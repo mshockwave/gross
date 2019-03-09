@@ -7,7 +7,7 @@ class PostMachineLowering {
   GraphSchedule& Schedule;
   Graph& G;
 
-  void BranchesLowering();
+  void ControlFlowLowering();
 
   void FunctionCallLowering();
 
