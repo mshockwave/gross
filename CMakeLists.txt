@@ -29,6 +29,14 @@ endif()
 # Boost
 include_directories(third_party/boost/1.68.0/include)
 
+# CLI option library
+set(CXXOPTS_BUILD_EXAMPLES OFF CACHE BOOL "Build CXXOpts examples")
+if(GROSS_ENABLE_UNIT_TESTS)
+  message(STATUS "Adding cxxopts tests...")
+  set(CXXOPTS_BUILD_TESTS ON CACHE BOOL "Build CXXOpts tests")
+endif()
+add_subdirectory(third_party/cxxopts)
+
 add_subdirectory(src)
 
 if(GROSS_ENABLE_UNIT_TESTS)
