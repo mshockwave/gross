@@ -1,47 +1,121 @@
 #include "gross/Graph/Reductions/CSE.h"
 #include "gross/Graph/Node.h"
 #include "gross/Graph/NodeUtils.h"
+#include <utility>
 #include <vector>
 
 using namespace gross;
 
-GraphReduction CSEReducer::Reduce(Node* N) {
-  return ReduceTrivialValues(N);
-}
+typename CSEReducer::node_hash_type
+CSEReducer::GetNodeHash(Node* N) {
+  // only process arithmetic node here
+  assert(!N->getNumEffectInput() &&
+         !N->getNumControlInput());
 
-static bool onlyGlobalValDeps(Node* N) {
-  // recusive search using simple BFS
-  std::vector<Node*> BFSQueue;
-  BFSQueue.push_back(N);
-  while(!BFSQueue.empty()) {
-    auto* Top = BFSQueue.front();
-    BFSQueue.erase(BFSQueue.cbegin());
-    // can't have control/effect dep
-    if(Top->getNumControlInput() ||
-       Top->getNumEffectInput()) return false;
-    // global values, stop
-    if(NodeProperties<IrOpcode::VirtGlobalValues>(Top))
-      continue;
-    // push value inputs
-    for(auto* V : Top->value_inputs())
-      BFSQueue.push_back(V);
+  size_t seed = 0U;
+  boost::hash_combine(
+    seed, std::hash<unsigned>{}(static_cast<unsigned>(N->getOp()))
+  );
+
+  NodeProperties<IrOpcode::VirtBinOps> BNP(N);
+  std::hash<Node*> Hasher;
+  if(BNP && BNP.IsCommutative()) {
+    // sort hash value first
+    size_t Hashes[2] = { Hasher(BNP.LHS()), Hasher(BNP.RHS()) };
+    if(Hashes[0] > Hashes[1]) {
+      boost::hash_combine(seed, Hashes[1]);
+      boost::hash_combine(seed, Hashes[0]);
+    } else {
+      boost::hash_combine(seed, Hashes[0]);
+      boost::hash_combine(seed, Hashes[1]);
+    }
+    return seed;
+  } else {
+    // order of inputs matter
+    for(auto* VI : N->value_inputs()) {
+      auto HashVal = Hasher(VI);
+      boost::hash_combine(seed, HashVal);
+    }
+    return seed;
   }
-  return true;
 }
 
-GraphReduction CSEReducer::ReduceTrivialValues(Node* N) {
-  if(NodeProperties<IrOpcode::VirtGlobalValues>(N))
+CSEReducer::CSEReducer(GraphEditor::Interface* editor)
+  : GraphEditor(editor),
+    G(Editor->GetGraph()) {}
+
+void CSEReducer::RevisitNodes(unsigned OC, Node* Except) {
+  auto& Nodes = NodeOpMap[OC];
+  for(auto* N : Nodes) {
+    if(N == Except) continue;
+    Revisit(N);
+  }
+}
+
+GraphReduction CSEReducer::ReduceArithmetic(Node* N) {
+  if(N->getNumEffectInput() ||
+     N->getNumControlInput())
     return NoChange();
 
-  // Case 1. has only value dependency on global value(e.g. ConstInt/Str)
-  auto TI = TrivialVals.find(NodeHandle{N});
-  if(TI != TrivialVals.end()) {
-    auto* ReplaceNode = TI->NodePtr;
-    if(N == ReplaceNode) return NoChange();
+  auto OC = static_cast<unsigned>(N->getOp());
+  if(!NodeOpMap[OC].count(N))
+    NodeOpMap[OC].insert(N);
 
-    return Replace(ReplaceNode);
-  } else if(onlyGlobalValDeps(N)) {
-    TrivialVals.insert(NodeHandle{N});
+  auto NewHash = GetNodeHash(N);
+  if(auto* NewNode = NodeHashMap.find_node(NewHash)) {
+    if(NewNode != N) {
+      // replace with new node
+      NodeHashMap.erase(N);
+      NodeOpMap[OC].erase(N);
+      RevisitNodes(OC, N);
+      return Replace(NewNode);
+    }
+  }
+
+  if(auto* OldHash = NodeHashMap.find_value(N)) {
+    if(NewHash != *OldHash) {
+      RevisitNodes(OC, N);
+    } else {
+      // no hash update
+      return NoChange();
+    }
+  }
+  NodeHashMap.insert({N, NewHash}, true);
+  return NoChange();
+}
+
+GraphReduction CSEReducer::ReduceMemoryLoad(Node* N) {
+  if(N->getNumEffectInput() != 1) return NoChange();
+  auto* LastStore = N->getEffectInput(0);
+  NodeProperties<IrOpcode::VirtMemOps> RefNP(N);
+
+  std::vector<Node*> Worklist;
+  for(auto* EU : LastStore->effect_users()) {
+    assert(EU->getOp() == IrOpcode::MemLoad);
+    if(EU == N) continue;
+    NodeProperties<IrOpcode::VirtMemOps> MNP(EU);
+    assert(MNP.BaseAddr() == RefNP.BaseAddr());
+    // FIXME: need to handle arithmetic equivilance
+    // (e.g. commutative)
+    if(MNP.Offset() == RefNP.Offset())
+      Worklist.push_back(EU);
+  }
+  for(auto* Orig : Worklist) {
+    Replace(Orig, N);
   }
   return NoChange();
 }
+
+GraphReduction CSEReducer::Reduce(Node* N) {
+  switch(N->getOp()) {
+#define COMMON_OP(OC) \
+  case IrOpcode::OC:
+#include "gross/Graph/Opcodes.def"
+    return ReduceArithmetic(N);
+  case IrOpcode::MemLoad:
+    return ReduceMemoryLoad(N);
+  default:
+    return NoChange();
+  }
+}
+

@@ -282,14 +282,6 @@ public:
   void ReplaceWith(Node* Replacement, Use::Kind UseKind = Use::K_NONE);
 };
 
-/// For hashing scenario where we also need to
-/// encode input/uses information
-struct NodeHandle {
-  Node* NodePtr;
-
-  bool operator==(const NodeHandle& RHS) const;
-};
-
 template<typename ValueT>
 class NodeBiMap {
   std::unordered_map<Node*, ValueT> Node2Value;
@@ -325,29 +317,20 @@ public:
     return true;
   }
 
+  void erase(Node* N) {
+    if(Node2Value.count(N)) {
+      auto Val = Node2Value.at(N);
+      Node2Value.erase(N);
+      Value2Node.erase(Val);
+    }
+  }
+
   size_t size() const { return Value2Node.size(); }
 };
 
 } // end namespace gross
 
 namespace std {
-template<>
-struct hash<gross::NodeHandle> {
-  using argument_type = gross::NodeHandle;
-  using result_type = size_t;
-  result_type operator()(argument_type const& NH) const noexcept {
-    auto* N = NH.NodePtr;
-    result_type seed = 0U;
-    // Opcode
-    boost::hash_combine(seed, static_cast<unsigned>(N->getOp()));
-    // inputs
-    // TODO: communative operators' operands
-    for(auto* I : N->inputs())
-      boost::hash_combine(seed, I);
-    return seed;
-  }
-};
-
 template<>
 struct hash<gross::Use> {
   using argument_type = gross::Use;

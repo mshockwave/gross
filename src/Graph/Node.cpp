@@ -219,8 +219,3 @@ void Node::ReplaceWith(Node* Replacement, Use::Kind UseKind) {
   }
   }
 }
-
-bool NodeHandle::operator==(const NodeHandle& RHS) const {
-  std::hash<NodeHandle> Hasher;
-  return Hasher(*this) == Hasher(RHS);
-}

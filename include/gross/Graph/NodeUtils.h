@@ -474,6 +474,19 @@ NODE_PROPERTIES(VirtBinOps) {
     }
   }
 
+  bool IsCommutative() const {
+    if(!NodePtr) return false;
+    switch(NodePtr->getOp()) {
+    case IrOpcode::BinAdd:
+    case IrOpcode::BinMul:
+    case IrOpcode::BinEq:
+    case IrOpcode::BinNe:
+      return true;
+    default:
+      return false;
+    }
+  }
+
   Node* LHS() const {
     if(NodePtr->getNumValueInput() > 0)
       return NodePtr->getValueInput(0);
