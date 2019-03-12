@@ -10,3 +10,29 @@ individual phases: Pre and PostMachineLowering. Primary reason to do so is becau
    3. **RPONodePlacement** _(TBD)_ solves the problems in previous phase. Since all the inputs of a given node have been scheduled.
 3. **PostMachineLowering** phase lowers rest of the control-flow-sensitive nodes. For example: jumps, function calls and function prologue/epilogues. Also, this phase removes all the PHIs that only have effect inputs/output(i.e. EffectPhi)
 4. **RegisterAllocator** phase assign physical registers to instructions. Currently we adopt linear scan register allocation.
+
+# ABI
+The origin DLX architecture doesn't give a concrete ABI definition. It only specified the following special registers:
+ - **R0** is always zero value.
+ - **R28** is used as frame pointer.
+ - **R29** is used as stack pointer.
+ - **R30** is used to access global variables.
+ - **R31** is the link register.
+
+I add another two special registers: **R26** and **R27** as 'scratch' registers. They're usually used in register-spilling code (By reserving independent registers, register allocator will be easier to implement). They can not be used as general-purpose value registers.
+
+Also, I define my own calling convention in the following section.
+
+## Calling Convention
+I use a classic RISC-style calling convention design. Where paramters and 
+result are passed by registers. Here is the detail procedure calling flow:
+1. Save any caller-saved registers. In this case, they're `R28`(frame pointer, `R31`(link register), `R2`,`R3`,`R4`, and `R5`(parameter registers).
+2. Parameters are stored in `R2`,`R3`,`R4`, and `R5`. If there are more parameters, push the rest to the stack.
+3. Execute `BSR`, which will save return address to `R31` and jump to target procedure.
+4. Save the current stack position to frame pointer(`R28`).
+5. Reserve stack slots for local variable and start the procedure.
+6. If unspecified, rest of the general-purpose registers are callee-saved. Callee need to save it (to stack) before first use (write).
+7. Store return value in `R1`.
+8. Before exiting, restore frame pointer(`R28`) value back to stack pointer(`R29`).
+9. Execute `RET R31` to go back to caller procedure.
+10. Restore caller-saved registers.

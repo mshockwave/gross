@@ -132,6 +132,8 @@ public:
 
   SeqNodeId* getNodeId(Node* N) const;
 
+  size_t getNodeIndex(Node* N) const;
+
 private:
   // Since GraphSchedule is the one managing other BB properties
   // (e.g. Node <-> BB mapping) we want GraphSchedule be the only

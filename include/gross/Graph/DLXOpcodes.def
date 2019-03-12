@@ -11,13 +11,6 @@
 
 VIRT_OP(DLXOps)         // All the OC starts with DLX
 
-/// Constant Nodes
-#ifndef DLX_CONST
-#define DLX_CONST(OC)
-#endif
-DLX_CONST(Offset)
-#undef DLX_CONST
-
 /// Arithmetic Operations
 #ifndef DLX_ARITH_OP
 #define DLX_ARITH_OP(OC)
@@ -66,6 +59,46 @@ DLX_CTRL_OP(Blr)
 DLX_CTRL_OP(Jlr)
 DLX_CTRL_OP(Ret)
 #undef DLX_CTRL_OP
+
+/// Constant Nodes
+#ifndef DLX_CONST
+#define DLX_CONST(OC)
+#endif
+DLX_CONST(Offset)
+// registers
+DLX_CONST(r0)
+DLX_CONST(r1)
+DLX_CONST(r2)
+DLX_CONST(r3)
+DLX_CONST(r4)
+DLX_CONST(r5)
+DLX_CONST(r6)
+DLX_CONST(r7)
+DLX_CONST(r8)
+DLX_CONST(r9)
+DLX_CONST(r10)
+DLX_CONST(r11)
+DLX_CONST(r12)
+DLX_CONST(r13)
+DLX_CONST(r14)
+DLX_CONST(r15)
+DLX_CONST(r16)
+DLX_CONST(r17)
+DLX_CONST(r18)
+DLX_CONST(r19)
+DLX_CONST(r20)
+DLX_CONST(r21)
+DLX_CONST(r22)
+DLX_CONST(r23)
+DLX_CONST(r24)
+DLX_CONST(r25)
+DLX_CONST(r26)
+DLX_CONST(r27)
+DLX_CONST(r28)
+DLX_CONST(r29)
+DLX_CONST(r30)
+DLX_CONST(r31)
+#undef DLX_CONST
 
 /// Builtins
 #ifndef DLX_BUILTIN

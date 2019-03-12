@@ -10,6 +10,16 @@ BasicBlock::SeqNodeId* BasicBlock::getNodeId(Node* N) const {
     return nullptr;
 }
 
+size_t BasicBlock::getNodeIndex(Node* N) const {
+  auto Idx = 0U;
+  for(auto I = NodeSequence.begin(), E = NodeSequence.end(); I != E;
+      ++I, ++Idx) {
+    if(N == *I) return Idx;
+  }
+  gross_unreachable("Node is not in BB?");
+  return 0;
+}
+
 bool BasicBlock::HasPredBlock(BasicBlock* BB) {
   return gross::find(Predecessors, BB) != Predecessors.end();
 }
