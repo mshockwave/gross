@@ -26,13 +26,30 @@ Also, I define my own calling convention in the following section.
 ## Calling Convention
 I use a classic RISC-style calling convention design. Where paramters and 
 result are passed by registers. Here is the detail procedure calling flow:
-1. Save any caller-saved registers. In this case, they're `R28`(frame pointer, `R31`(link register), `R2`,`R3`,`R4`, and `R5`(parameter registers).
+1. Save any caller-saved registers. In this case, they're `R28`(frame pointer), `R31`(link register), `R2`,`R3`,`R4`, `R5`(parameter registers), and all the other general-purpose registers except `R6`, `R7`, `R8`, and `R9`.
 2. Parameters are stored in `R2`,`R3`,`R4`, and `R5`. If there are more parameters, push the rest to the stack.
 3. Execute `BSR`, which will save return address to `R31` and jump to target procedure.
 4. Save the current stack position to frame pointer(`R28`).
 5. Reserve stack slots for local variable and start the procedure.
-6. If unspecified, rest of the general-purpose registers are callee-saved. Callee need to save it (to stack) before first use (write).
+6. Procedure need to save value of `R6`, `R7`, `R8`, and `R9` (i.e. callee-saved registers).
 7. Store return value in `R1`.
-8. Before exiting, restore frame pointer(`R28`) value back to stack pointer(`R29`).
-9. Execute `RET R31` to go back to caller procedure.
+8. Before exiting:
+   1. Restore all the callee-saved registers.
+   2. Restore frame pointer(`R28`) value back to stack pointer(`R29`).
+9.  Execute `RET R31` to go back to caller procedure.
 10. Restore caller-saved registers.
+
+Here is the summary of all register usages:
+
+|  Register |                            Description                           |
+|:---------:|:----------------------------------------------------------------:|
+|     R0    | Zero.                                                            |
+|     R1    | Return value.                                                    |
+|  R2 ~ R5  | First four parameters.                                           |
+|  R6 ~ R9  | Callee-saved general-purpose registers.                          |
+| R10 ~ R25 | Caller-saved general-purpose registers.                          |
+|  R26, R27 | Scratch registers, can not be used as general-purpose registers. |
+|    R28    | Frame pointer.                                                   |
+|    R29    | Stack pointer.                                                   |
+|    R30    | Global variables pointer.                                        |
+|    R31    | Link register.                                                   |
