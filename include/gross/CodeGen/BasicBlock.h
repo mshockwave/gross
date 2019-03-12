@@ -119,15 +119,22 @@ public:
   // Node iterators
   using node_iterator = typename decltype(NodeSequence)::iterator;
   using const_node_iterator = typename decltype(NodeSequence)::const_iterator;
+  using reverse_node_iterator
+    = typename decltype(NodeSequence)::reverse_iterator;
   node_iterator node_begin() { return NodeSequence.begin(); }
   node_iterator node_end() { return NodeSequence.end(); }
   const_node_iterator node_cbegin() { return NodeSequence.cbegin(); }
   const_node_iterator node_cend() { return NodeSequence.cend(); }
+  reverse_node_iterator node_rbegin() { return NodeSequence.rbegin(); }
+  reverse_node_iterator node_rend() { return NodeSequence.rend(); }
   llvm::iterator_range<node_iterator> nodes() {
     return llvm::make_range(node_begin(), node_end());
   }
   llvm::iterator_range<const_node_iterator> const_nodes() {
     return llvm::make_range(node_cbegin(), node_cend());
+  }
+  llvm::iterator_range<reverse_node_iterator> reverse_nodes() {
+    return llvm::make_range(node_rbegin(), node_rend());
   }
 
   SeqNodeId* getNodeId(Node* N) const;

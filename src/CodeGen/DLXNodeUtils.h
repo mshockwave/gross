@@ -53,6 +53,22 @@ NODE_PROPERTIES(VirtDLXBinOps) {
   }
 };
 
+NODE_PROPERTIES(VirtDLXTerminate) {
+  NodeProperties(Node* N)
+    : NODE_PROP_BASE(VirtDLXTerminate, N) {}
+  operator bool() const {
+    if(!NodePtr) return false;
+    switch(NodePtr->getOp()) {
+#define DLX_CTRL_OP(OC) \
+    case IrOpcode::DLX##OC:
+#include "gross/Graph/DLXOpcodes.def"
+      return true;
+    default:
+      return false;
+    }
+  }
+};
+
 template<>
 struct NodeBuilder<IrOpcode::VirtDLXBinOps> {
   NodeBuilder(Graph* graph, IrOpcode::ID Op, bool Imm = false)

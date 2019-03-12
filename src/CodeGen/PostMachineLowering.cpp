@@ -98,6 +98,14 @@ void PostMachineLowering::ControlFlowLowering() {
 
 void PostMachineLowering::FunctionCallLowering() {
   // TODO
+  // 1. Insert VirtDLXCallsiteBegin
+  // 2. Insert VirtDLXPassParam for every actual parameter
+  // =======Before Call==========
+  // 3. Replace Call with BSR/JSR
+  // ========After Call==========
+  // 4. Insert ADDI #0, R1 and replace all usages of original
+  //    function return value with that.
+  // 5. Insert VirtDLXCallsiteEnd
 }
 
 void PostMachineLowering::Trimming() {

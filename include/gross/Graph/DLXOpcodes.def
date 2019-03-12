@@ -59,6 +59,8 @@ DLX_CTRL_OP(Blr)
 DLX_CTRL_OP(Jlr)
 DLX_CTRL_OP(Ret)
 #undef DLX_CTRL_OP
+// all the DLX control ops
+VIRT_OP(DLXTerminate)
 
 /// Constant Nodes
 #ifndef DLX_CONST
@@ -99,6 +101,13 @@ DLX_CONST(r29)
 DLX_CONST(r30)
 DLX_CONST(r31)
 #undef DLX_CONST
+
+/// Procedure call related
+// callsite markers
+VIRT_OP(DLXCallsiteBegin)
+VIRT_OP(DLXCallsiteEnd)
+// parameter passing marker
+VIRT_OP(DLXPassParam)
 
 /// Builtins
 #ifndef DLX_BUILTIN
