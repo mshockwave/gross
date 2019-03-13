@@ -30,7 +30,7 @@ result are passed by registers. Here is the detail procedure calling flow:
 2. Parameters are stored in `R2`,`R3`,`R4`, and `R5`. If there are more parameters, push the rest to the stack.
 3. Execute `BSR`, which will save return address to `R31` and jump to target procedure.
 4. Save the current stack position to frame pointer(`R28`).
-5. Reserve stack slots for local variable and start the procedure.
+5. Reserve stack slots for local variables and/or register spilling slots.
 6. Procedure need to save value of `R6`, `R7`, `R8`, and `R9` (i.e. callee-saved registers).
 7. Store return value in `R1`.
 8. Before exiting:
@@ -53,3 +53,24 @@ Here is the summary of all register usages:
 |    R29    | Stack pointer.                                                   |
 |    R30    | Global variables pointer.                                        |
 |    R31    | Link register.                                                   |
+
+Here is the memory layout (address range from high to low):
+
+|             Stack Slots                |
+|----------------------------------------|
+|  Parameter N (N > 4)                   | 
+|  Parameter N + 1 (N > 4)               | 
+|------------ FP Points Here ------------| 
+|  Local Var1                            | 
+|  Local Var2                            | 
+|  Register Spill Slot1                  | 
+|  Register Spill Slot2                  | 
+|  Callee-Saved Register1                | 
+|  Callee-Saved Register2                | 
+|  ....General Purpose Stack Space...    |
+|------------ SP Points Here ------------| 
+|  Caller-Saved Registers1               | 
+|  Caller-Saved Registers2               | 
+|  Parameter M (M > 4)                   | 
+|  Parameter M + 1 (M > 4)               | 
+|----- Start of another stack frame -----| 
