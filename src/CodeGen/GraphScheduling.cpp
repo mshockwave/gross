@@ -89,6 +89,20 @@ void GraphSchedule::SortRPONodes() {
   RPONodes.push_back(PE.EndNode);
 }
 
+size_t GraphSchedule::getNumLocalAllocas() {
+  size_t Sum = 0U;
+  auto NI = rpo_node_begin();
+  ++NI; // skip start node
+  for(auto NE = rpo_node_end(); NI != NE; ++NI) {
+    auto* N = *NI;
+    if(N->getOp() == IrOpcode::Alloca)
+      Sum++;
+    else
+      break;
+  }
+  return Sum;
+}
+
 BasicBlock* GraphSchedule::NewBasicBlock() {
   BasicBlock* BB;
   if(Blocks.empty())
@@ -321,8 +335,8 @@ public:
 };
 
 void CFGBuilder::BlockPlacement() {
-  auto* StartNode = *Schedule.rpo_node_begin();
-  auto* EndNode = *(--Schedule.rpo_node_end());
+  auto* StartNode = Schedule.getStartNode();
+  auto* EndNode = Schedule.getEndNode();
 
   for(auto* N : Schedule.rpo_nodes()) {
     switch(N->getOp()) {

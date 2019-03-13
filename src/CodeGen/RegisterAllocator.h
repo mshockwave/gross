@@ -1,5 +1,6 @@
 #ifndef GROSS_CODEGEN_REGISTERALLOCATOR_H
 #define GROSS_CODEGEN_REGISTERALLOCATOR_H
+#include "DLXNodeUtils.h"
 #include "gross/CodeGen/GraphScheduling.h"
 #include <array>
 #include <unordered_map>
@@ -7,6 +8,9 @@
 #include <vector>
 
 namespace gross {
+// Forward declarations
+struct StackUtils;
+
 class LinearScanRegisterAllocator {
   // register profiles
   static constexpr size_t NumRegister = 32;
@@ -19,6 +23,7 @@ class LinearScanRegisterAllocator {
 
   GraphSchedule& Schedule;
   Graph& G;
+  StackUtils SUtils;
 
   // RPO ordered users
   std::unordered_map<Node*, std::vector<Node*>> OrderedUsers;
@@ -107,7 +112,9 @@ class LinearScanRegisterAllocator {
   void Recycle(Node* N);
 
   void InsertSpillCodes();
-  // apply register nodes to Graph
+
+  void PostRALowering();
+
   void CommitRegisterNodes();
 
 public:

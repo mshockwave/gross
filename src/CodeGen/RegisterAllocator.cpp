@@ -1,5 +1,4 @@
 #include "RegisterAllocator.h"
-#include "DLXNodeUtils.h"
 #include "gross/Graph/NodeUtils.h"
 #include <algorithm>
 
@@ -8,7 +7,8 @@ using namespace gross;
 LinearScanRegisterAllocator::
 LinearScanRegisterAllocator(GraphSchedule& schedule)
   : Schedule(schedule),
-    G(Schedule.getGraph()) {
+    G(Schedule.getGraph()),
+    SUtils(Schedule) {
   RegUsages.fill(nullptr);
 
   // Reserved registers
@@ -215,11 +215,66 @@ void LinearScanRegisterAllocator::Recycle(Node* N) {
 }
 
 void LinearScanRegisterAllocator::InsertSpillCodes() {
+  if(SpillSlots.empty()) return;
+
+  // reserve spill slots
+  auto* Reservation = SUtils.ReserveSlots(SpillSlots.size());
+  // TODO: insert it
+  (void) Reservation;
+
+  auto* Fp = SUtils.FramePointer();
+  // nodes that will assigned to R27
+  std::vector<Node*> ScratchCandidates;
+  std::vector<Node*> ValUsrs;
+  for(auto& AS : Assignment) {
+    auto& Loc = AS.second;
+    if(Loc.IsRegister) continue;
+
+    auto* DefNode = AS.first;
+    auto* DefBB = Schedule.MapBlock(DefNode);
+    assert(DefBB);
+    // collect before used by Store!
+    ValUsrs.assign(DefNode->value_users().begin(),
+                   DefNode->value_users().end());
+
+    auto* SlotOffset = SUtils.NonLocalSlotOffset(Loc.Index);
+    // no need to generate store for PHI
+    if(DefNode->getOp() != IrOpcode::Phi) {
+      auto* Store = NodeBuilder<IrOpcode::DLXStW>(&G)
+                    .BaseAddr(Fp).Offset(SlotOffset)
+                    .Src(DefNode).Build();
+      Schedule.AddNodeAfter(DefBB, DefNode, Store);
+    }
+
+    for(auto* VU : ValUsrs) {
+      // no need to re-load on PHI nodes
+      if(VU->getOp() == IrOpcode::Phi) continue;
+      auto* BB = Schedule.MapBlock(VU);
+      assert(BB);
+      auto* Load = NodeBuilder<IrOpcode::DLXLdW>(&G)
+                   .BaseAddr(Fp).Offset(SlotOffset)
+                   .Build();
+      Schedule.AddNodeBefore(BB, VU, Load);
+      VU->ReplaceUseOfWith(DefNode, Load, Use::K_VALUE);
+      ScratchCandidates.push_back(Load);
+    }
+  }
+
+  for(auto* SC : ScratchCandidates) {
+    Assignment[SC] = Location::Register(27);
+  }
+}
+
+void LinearScanRegisterAllocator::PostRALowering() {
   // TODO
+  // 1. Remove PHI nodes
+  // 2. Lowering function call virtual nodes
 }
 
 void LinearScanRegisterAllocator::CommitRegisterNodes() {
   // TODO
+  // Transform to three-address instructions and replace
+  // inputs with assigned registers
 }
 
 inline bool hasValueUsers(Node* N) {
@@ -272,4 +327,6 @@ void LinearScanRegisterAllocator::Allocate() {
   InsertSpillCodes();
 
   CommitRegisterNodes();
+
+  PostRALowering();
 }

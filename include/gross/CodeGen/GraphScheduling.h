@@ -153,6 +153,11 @@ public:
   const SubGraph& getSubGraph() const { return SG; }
   SubGraph& getSubGraph() { return SG; }
 
+  Node* getStartNode() const { return RPONodes.front(); }
+  Node* getEndNode() const { return RPONodes.back(); }
+
+  size_t getNumLocalAllocas();
+
   using rpo_node_iterator = typename decltype(RPONodes)::iterator;
   rpo_node_iterator rpo_node_begin() { return RPONodes.begin(); }
   rpo_node_iterator rpo_node_end() { return RPONodes.end(); }
@@ -235,8 +240,12 @@ public:
     Node2Block[N] = BB;
   }
   void AddNodeBefore(BasicBlock* BB, Node* Pos, Node* N) {
-    BB->AddNodeBefore(Pos, N);
-    Node2Block[N] = BB;
+    if(BB->AddNodeBefore(Pos, N))
+      Node2Block[N] = BB;
+  }
+  void AddNodeAfter(BasicBlock* BB, Node* Pos, Node* N) {
+    if(BB->AddNodeAfter(Pos, N))
+      Node2Block[N] = BB;
   }
   void AddNode(BasicBlock* BB, typename BasicBlock::const_node_iterator Pos,
                Node* N) {

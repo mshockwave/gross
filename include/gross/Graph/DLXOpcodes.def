@@ -119,6 +119,8 @@ DLX_BUILTIN(Wrh)
 DLX_BUILTIN(Wrl)
 #undef DLX_BUILTIN
 
+VIRT_OP(DLXTriOps)
+
 #undef VIRT_OP
 
 #ifdef DLX_COMMON

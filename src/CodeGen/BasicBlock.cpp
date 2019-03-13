@@ -63,6 +63,16 @@ bool BasicBlock::AddNodeBefore(Node* Before, Node* N) {
   return true;
 }
 
+bool BasicBlock::AddNodeAfter(Node* After, Node* N) {
+  auto NodeIt = gross::find_if(const_nodes(),
+                               [=](const Node* Target) -> bool {
+                                 return const_cast<Node*>(Target) == After;
+                               });
+  if(NodeIt == node_cend()) return false;
+  AddNode(++NodeIt, N);
+  return true;
+}
+
 std::pair<bool, typename BasicBlock::node_iterator>
 BasicBlock::RemoveNode(Node* N) {
   auto NodeIt = gross::find_if(const_nodes(),

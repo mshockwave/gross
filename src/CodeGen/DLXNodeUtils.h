@@ -1,8 +1,13 @@
 #ifndef GROSS_CODEGEN_DLXNODEUTILS_H
 #define GROSS_CODEGEN_DLXNODEUTILS_H
 #include "gross/Graph/NodeUtilsBase.h"
+#include <array>
+#include <vector>
 
 namespace gross {
+// Forward declarations
+class GraphSchedule;
+
 NODE_PROPERTIES(VirtDLXOps) {
   NodeProperties(Node* N)
     : NODE_PROP_BASE(VirtDLXOps, N) {}
@@ -189,6 +194,59 @@ struct NodeBuilder<IrOpcode::DLXStX>
 
 private:
   Node* SrcNode;
+};
+
+template<>
+struct NodeBuilder<IrOpcode::VirtDLXTriOps> {
+  NodeBuilder(Graph* graph, IrOpcode::ID Op)
+    : G(graph), OC(Op) {
+    Vals.fill(nullptr);
+  }
+
+  template<size_t Idx>
+  NodeBuilder& SetVal(Node* N) {
+    static_assert(Idx < 3, "index out of bound");
+    Vals[Idx] = N;
+    return *this;
+  }
+
+  Node* Build() {
+    auto* N = new Node(OC,
+                       {Vals[0], Vals[1], Vals[2]});
+    for(auto* V: Vals)
+      V->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+
+private:
+  Graph* G;
+  IrOpcode::ID OC;
+  std::array<Node*, 3> Vals;
+};
+
+struct StackUtils {
+  static constexpr IrOpcode::ID SpReg = IrOpcode::DLXr29;
+  static constexpr IrOpcode::ID FpReg = IrOpcode::DLXr28;
+
+  StackUtils(GraphSchedule& schedule);
+
+  Node* FramePointer() const { return Fp; }
+  Node* StackPointer() const { return Sp; }
+
+  void ReserveSlots(size_t Num, std::vector<Node*>& Result);
+
+  // reserve multiple slots without
+  // zero initialized each slot
+  Node* ReserveSlots(size_t Num);
+
+  // slot beyond local var slots
+  Node* NonLocalSlotOffset(size_t Idx);
+
+private:
+  GraphSchedule& Schedule;
+  Graph& G;
+  Node *Fp, *Sp;
 };
 } // end namespace gross
 #endif

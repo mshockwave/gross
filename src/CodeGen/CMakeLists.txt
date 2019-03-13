@@ -1,6 +1,7 @@
 
 set(_SOURCE_FILES
     BasicBlock.cpp
+    DLXNodeUtils.cpp
     PreMachineLowering.cpp
     GraphScheduling.cpp
     PostMachineLowering.cpp
