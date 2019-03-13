@@ -29,6 +29,38 @@ LinearScanRegisterAllocator(GraphSchedule& schedule)
   // TODO: function parameters
 }
 
+// 'move' every input values to a new value
+void LinearScanRegisterAllocator::LegalizePhiInputs(Node* PN) {
+  assert(PN->getNumValueInput() == 2);
+  const std::array<Node*, 2> Inputs
+    = { PN->getValueInput(0), PN->getValueInput(1) };
+  auto* PNBB = Schedule.MapBlock(PN);
+  assert(PNBB);
+  auto PredBI = PNBB->pred_begin();
+  const std::array<BasicBlock*, 2> InputBBs
+    = { *PredBI, *(++PredBI) };
+  auto* Zero = NodeBuilder<IrOpcode::ConstantInt>(&G, 0).Build();
+
+  for(auto i = 0; i < 2; ++i) {
+    auto* BB = InputBBs[i];
+    auto* Val = Inputs[i];
+    auto* Move
+      = NodeBuilder<IrOpcode::VirtDLXBinOps>(&G, IrOpcode::DLXAddI, true)
+        .LHS(Val).RHS(Zero).Build();
+    PN->ReplaceUseOfWith(Val, Move, Use::K_VALUE);
+    // insert at the end of BB
+    for(auto NI = BB->node_rbegin(), NE = BB->node_rend();
+        NI != NE; ++NI) {
+      if(NodeProperties<IrOpcode::VirtDLXTerminate>(*NI))
+        continue;
+      if(NI == BB->node_rbegin())
+        Schedule.AddNode(BB, Move);
+      else
+        Schedule.AddNodeBefore(BB, *(--NI), Move);
+    }
+  }
+}
+
 std::vector<Node*>& LinearScanRegisterAllocator::getOrderedUsers(Node* N) {
   struct InstrOrderFunctor {
     explicit InstrOrderFunctor(GraphSchedule& schedule)
@@ -60,8 +92,20 @@ private:
 
   if(!OrderedUsers.count(N)){
     // cache miss
-    std::vector<Node*> ValUsrs(N->value_users().begin(),
-                               N->value_users().end());
+    // extend the live range with PHI!
+    std::vector<Node*> ValQueue(N->value_users().begin(),
+                                N->value_users().end());
+    std::vector<Node*> ValUsrs;
+    while(!ValQueue.empty()) {
+      auto* Top = ValQueue.front();
+      ValQueue.erase(ValQueue.cbegin());
+      ValUsrs.push_back(Top);
+      if(Top->getOp() == IrOpcode::Phi) {
+        for(auto* PU : Top->value_users())
+          ValQueue.push_back(PU);
+      }
+    }
+
     std::sort(ValUsrs.begin(), ValUsrs.end(),
               InstrOrderFunctor(Schedule));
     OrderedUsers.insert({N, std::move(ValUsrs)});
@@ -77,94 +121,53 @@ Node* LinearScanRegisterAllocator::CreateSpillSlotWrite(size_t SlotNum) {
   return nullptr;
 }
 
-bool LinearScanRegisterAllocator::AssignPHIRegister(Node* N) {
-  assert(N->getNumValueInput() == 2);
-  const std::array<Node*, 2> ValInputs
-    = { N->getValueInput(0), N->getValueInput(1) };
-  assert(Assignment.count(ValInputs[0]) || Assignment.count(ValInputs[1]) &&
-         "none of the input has assigned?");
-
-  size_t TargetReg = 0U;
-  uint8_t ReuseFrom = 0;
-  if(LiveRangeEnd(ValInputs[0]) == N ||
-     LiveRangeEnd(ValInputs[1]) == N) {
-    // if PHI is the last user for either of the input value,
-    // assign to that register
-    if(LiveRangeEnd(ValInputs[0]) == N &&
-       Assignment.count(ValInputs[0]) &&
-       Assignment.at(ValInputs[0]).IsRegister) {
-      TargetReg = Assignment.at(ValInputs[0]).Index;
-      ReuseFrom = 1;
-    } else if(LiveRangeEnd(ValInputs[1]) == N &&
-              Assignment.count(ValInputs[1]) &&
-              Assignment.at(ValInputs[1]).IsRegister) {
-      TargetReg = Assignment.at(ValInputs[0]).Index;
-      ReuseFrom = 2;
-    }
-  }
-  if(!TargetReg) {
-    // we really need a register
-    TargetReg = FindGeneralRegister();
-  }
-  if(!TargetReg) return false;
-
-  auto* CurBB = Schedule.MapBlock(N);
-  assert(CurBB);
-  auto FindLastInsertPos = [&](BasicBlock* BB) -> Node* {
-    for(auto NI = BB->node_rbegin(), NE = BB->node_rend();
-        NI != NE; ++NI) {
-      if(NodeProperties<IrOpcode::VirtDLXTerminate>(*NI))
-        continue;
-      return *(--NI);
-    }
-    gross_unreachable("can't find insert position?");
-    return nullptr;
-  };
-  for(auto i = 0; i < 2; ++i) {
-    if(Assignment.count(ValInputs[i])) {
-      auto& Loc = Assignment.at(ValInputs[i]);
-      auto* BB = *CurBB->pred_begin();
-      if(i) {
-        auto BI = CurBB->pred_begin();
-        BB = *(++BI);
-      }
-      if(Loc.IsRegister && Loc.Index != TargetReg) {
-        // insert register copy
-        // find the last insert position in that block
-        CreateRegisterCopy(FindLastInsertPos(BB),
-                           Loc.Index, TargetReg);
-      } else if(!Loc.IsRegister) {
-        CreateSpill2Register(FindLastInsertPos(BB),
-                             Loc.Index, TargetReg);
-      }
-    }
-  }
-
-  RegUsages[TargetReg] = N;
-  assert(!Assignment.count(N));
-  Assignment[N] = Location::Register(TargetReg);
-  return true;
-}
-
 bool LinearScanRegisterAllocator::AssignRegister(Node* N) {
-  if(N->getOp() == IrOpcode::Phi)
-    return AssignPHIRegister(N);
+  Node* PHIUsr = nullptr;
+  for(auto* VU : N->value_users()) {
+    if(VU->getOp() == IrOpcode::Phi) {
+      PHIUsr = VU;
+      break;
+    }
+  }
+  if(PHIUsr && Assignment.count(PHIUsr)) {
+    auto& Loc = Assignment[PHIUsr];
+    if(!Loc.IsRegister) return false;
+    RegUsages[Loc.Index] = N;
+    assert(!Assignment.count(N));
+    Assignment[N] = Loc;
+    return true;
+  }
 
   if(auto Reg = FindGeneralRegister()) {
     RegUsages[Reg] = N;
     assert(!Assignment.count(N));
     Assignment[N] = Location::Register(Reg);
+
+    if(PHIUsr) {
+      assert(!Assignment.count(PHIUsr));
+      Assignment[PHIUsr] = Location::Register(Reg);
+    }
     return true;
   }
   return false;
 }
 
-void LinearScanRegisterAllocator::SpillPHI(Node* N) {
-}
-
 void LinearScanRegisterAllocator::Spill(Node* N) {
-  if(N->getOp() == IrOpcode::Phi)
-    return SpillPHI(N);
+  Node* PHIUsr = nullptr;
+  for(auto* VU : N->value_users()) {
+    if(VU->getOp() == IrOpcode::Phi) {
+      PHIUsr = VU;
+      break;
+    }
+  }
+  if(PHIUsr && Assignment.count(PHIUsr)) {
+    auto& Loc = Assignment[PHIUsr];
+    assert(!Loc.IsRegister);
+    SpillSlots[Loc.Index] = N;
+    assert(!Assignment.count(N));
+    Assignment[N] = Loc;
+    return;
+  }
 
   bool Found = false;
   size_t Idx = 0U;
@@ -181,6 +184,11 @@ void LinearScanRegisterAllocator::Spill(Node* N) {
   }
   assert(!Assignment.count(N));
   Assignment[N] = Location::StackSlot(Idx);
+
+  if(PHIUsr) {
+    assert(!Assignment.count(PHIUsr));
+    Assignment[PHIUsr] = Location::StackSlot(Idx);
+  }
 }
 
 void LinearScanRegisterAllocator::Recycle(Node* N) {
@@ -210,10 +218,6 @@ void LinearScanRegisterAllocator::InsertSpillCodes() {
   // TODO
 }
 
-void LinearScanRegisterAllocator::InsertRegisterCopies() {
-  // TODO
-}
-
 void LinearScanRegisterAllocator::CommitRegisterNodes() {
   // TODO
 }
@@ -224,13 +228,34 @@ inline bool hasValueUsers(Node* N) {
 }
 
 void LinearScanRegisterAllocator::Allocate() {
-  for(auto* CurNode : Schedule.rpo_nodes()) {
-    // 1. if no register, spill
-    // 2. assign register otherwise
-    // 3. recycle any expired register
-    // TODO: handle callsite
+  // 1. insert 'move' for every PHI input values
+  // 2. if no register, spill
+  // 3. assign register otherwise
+  // 4. recycle any expired register
+  // TODO: handle callsite
 
+  std::vector<Node*> PHINodes;
+  for(auto* N : Schedule.rpo_nodes()) {
+    if(N->getOp() == IrOpcode::Phi &&
+       N->getNumValueInput() && !N->getNumEffectInput())
+      PHINodes.push_back(N);
+  }
+  for(auto* PN : PHINodes)
+    LegalizePhiInputs(PN);
+
+  for(auto* CurNode : Schedule.rpo_nodes()) {
     if(hasValueUsers(CurNode)) {
+      // PHI should be handled after either of its
+      // inputs values
+      if(CurNode->getOp() == IrOpcode::Phi) {
+        assert(Assignment.count(CurNode));
+        auto& Loc = Assignment.at(CurNode);
+        if(Loc.IsRegister) {
+          RegUsages[Loc.Index] = CurNode;
+        } else {
+          SpillSlots[Loc.Index] = CurNode;
+        }
+      }
       // need a register to store value
       if(!Assignment.count(CurNode)) {
         if(!AssignRegister(CurNode)) {
@@ -243,8 +268,6 @@ void LinearScanRegisterAllocator::Allocate() {
     // recycle expired register and/or spill slot
     Recycle(CurNode);
   }
-
-  InsertRegisterCopies();
 
   InsertSpillCodes();
 

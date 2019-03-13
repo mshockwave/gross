@@ -38,13 +38,6 @@ class LinearScanRegisterAllocator {
   std::array<Node*, NumRegister> RegUsages;
   std::vector<Node*> SpillSlots;
 
-  size_t NumAvailableRegs() const {
-    size_t Sum = 0U;
-    for(auto* N : RegUsages) {
-      if(!N) Sum++;
-    }
-    return Sum;
-  }
   bool IsReserved(Node* N) const {
     return N && N->getOp() == IrOpcode::ConstantInt;
   }
@@ -53,6 +46,7 @@ class LinearScanRegisterAllocator {
     return IsReserved(RegUsages[RegNum]);
   }
 
+  // DEPREACATED
   struct RegCopy {
     size_t From;
     bool IsFromReg;
@@ -60,13 +54,6 @@ class LinearScanRegisterAllocator {
     size_t ToReg;
     Node* InsertPos;
   };
-  std::vector<RegCopy> RegisterCopies;
-  void CreateRegisterCopy(Node* Before, size_t From, size_t To) {
-    RegisterCopies.push_back({From, true, To, Before});
-  }
-  void CreateSpill2Register(Node* Before, size_t Slot, size_t Reg) {
-    RegisterCopies.push_back({Slot, false, Reg, Before});
-  }
 
   Node* CreateSpillSlotRead(size_t SlotNum);
   Node* CreateSpillSlotWrite(size_t SlotNum);
@@ -113,14 +100,13 @@ class LinearScanRegisterAllocator {
     return 0;
   }
 
+  void LegalizePhiInputs(Node* N);
+
   bool AssignRegister(Node* N);
-  bool AssignPHIRegister(Node* N);
   void Spill(Node* N);
-  void SpillPHI(Node* N);
   void Recycle(Node* N);
 
   void InsertSpillCodes();
-  void InsertRegisterCopies();
   // apply register nodes to Graph
   void CommitRegisterNodes();
 
