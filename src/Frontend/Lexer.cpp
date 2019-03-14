@@ -63,6 +63,8 @@ Lexer::Token Lexer::getNextToken() {
       CurToken = TOK_END_DO;
     else if(Buffer == "return")
       CurToken = TOK_RETURN;
+    else if(Buffer == "call")
+      CurToken = TOK_CALL;
     else
       CurToken = TOK_IDENT;
 

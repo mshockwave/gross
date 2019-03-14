@@ -35,6 +35,8 @@ std::ostream& IrOpcode::Print(const Graph& G, std::ostream& OS, Node* N) {
     break;
   }
   CASE(Argument, STR(Argument))
+  // FIXME: print callee name as well
+  CASE(Call, STR(Call))
 #define COMMON_OP(OC) CASE(OC, STR(OC))
 #define CONTROL_OP(OC) CASE(OC, STR(OC))
 #define MEMORY_OP(OC) CASE(OC, STR(OC))

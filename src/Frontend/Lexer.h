@@ -75,7 +75,8 @@ public:
     TOK_WHILE,
     TOK_DO,
     TOK_END_DO,
-    TOK_RETURN
+    TOK_RETURN,
+    TOK_CALL
   };
 
   Lexer(std::istream &IS);

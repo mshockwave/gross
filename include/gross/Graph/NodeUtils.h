@@ -130,6 +130,18 @@ NODE_PROPERTIES(Start) {
     return NodeProperties<IrOpcode::ConstantStr>(NameNode)
            .str(G);
   }
+
+  Node* EndNode() const {
+    for(auto* CU : NodePtr->users())
+      if(CU->getOp() == IrOpcode::End) return CU;
+    return nullptr;
+  }
+
+  Node* FuncStub(Graph& G) const {
+    auto* End = EndNode();
+    assert(End);
+    return G.FuncStubPool.find_node(SubGraph(End));
+  }
 };
 
 NODE_PROPERTIES(VirtSrcDesigAccess) {
@@ -618,6 +630,32 @@ struct NodeBuilder<IrOpcode::FunctionStub> {
 private:
   Graph* G;
   SubGraph SG;
+};
+
+template<>
+struct NodeBuilder<IrOpcode::Call> {
+  NodeBuilder(Graph* graph, Node* Stub)
+    : G(graph),
+      FuncStub(Stub) {}
+
+  NodeBuilder& AddParam(Node* N) {
+    Params.push_back(N);
+    return *this;
+  }
+
+  Node* Build() {
+    Params.insert(Params.cbegin(), FuncStub);
+    auto* N = new Node(IrOpcode::Call, Params);
+    for(auto* P : Params)
+      P->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+
+private:
+  Graph* G;
+  Node* FuncStub;
+  std::vector<Node*> Params;
 };
 
 template<>

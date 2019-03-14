@@ -108,7 +108,7 @@ bool Parser::ParseFuncDecl() {
     Log::E() << "Expect identifier for function\n";
     return false;
   }
-  const auto& FName = TokBuffer();
+  auto FName = TokBuffer();
   NodeBuilder<IrOpcode::VirtFuncPrototype> FB(&G);
   FB.FuncName(FName);
 

@@ -350,3 +350,45 @@ TEST(ParserUnitTest, TestComplexWhileStmt) {
     G.dumpGraphviz(OF);
   }
 }
+
+TEST(ParserUnitTest, TestFuncCall) {
+  std::stringstream SS;
+  {
+    // function call w/o parameter
+    SS << "function foo; {\n"
+       << "  return 1 + 2\n"
+       << "};\n"
+       << "call foo()";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    SetMockContext(P,G);
+
+    ASSERT_TRUE(P.ParseFuncDecl());
+
+    EXPECT_TRUE(P.ParseFuncCall());
+
+    std::ofstream OF("TestFuncCall1.dot");
+    G.dumpGraphviz(OF);
+  }
+  SS.clear();
+  {
+    // function call w/ parameter
+    SS << "function foo(a,b); {\n"
+       << "  return a + b\n"
+       << "};\n"
+       << "call foo(1+2, 5)";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    SetMockContext(P,G);
+
+    ASSERT_TRUE(P.ParseFuncDecl());
+
+    EXPECT_TRUE(P.ParseFuncCall());
+
+    std::ofstream OF("TestFuncCall2.dot");
+    G.dumpGraphviz(OF);
+  }
+  SS.clear();
+}

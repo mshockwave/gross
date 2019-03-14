@@ -165,6 +165,7 @@ public:
   Node* ParseIfStmt();
   Node* ParseWhileStmt();
   Node* ParseReturnStmt();
+  Node* ParseFuncCall();
 
   bool ParseFuncDecl();
 };

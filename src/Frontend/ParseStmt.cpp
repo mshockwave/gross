@@ -52,17 +52,6 @@ Node* Parser::ParseAssignment() {
                      .Dest(DesigNode).Src(ExprNode)
                      .Build();
   assert(AssignNode && "fail to build SrcAssignStmt node");
-#if 0
-  // no effect dependency, then depend on the last control point
-  // TODO: function call
-  if(!DesigNode->getNumEffectInput()) {
-    AssignNode->appendControlInput(getLastCtrlPoint());
-  } else {
-    // see if this node is control depending on LastControlPoint
-    if(FindNearestCtrlPoint(AssignNode) != getLastCtrlPoint())
-      AssignNode->appendControlInput(getLastCtrlPoint());
-  }
-#endif
 
   // update last modified map
   LastModified[DNP.decl()] = AssignNode;
@@ -331,10 +320,46 @@ Node* Parser::ParseReturnStmt() {
   return RetNode;
 }
 
+Node* Parser::ParseFuncCall() {
+  auto Tok = NextTok();
+  if(Tok != Lexer::TOK_IDENT) {
+    Log::E() << "Expecting a function identifier\n";
+    return nullptr;
+  }
+
+  auto IdentName = TokBuffer();
+  SymbolLookup Lookup(*this, IdentName);
+  Node* Func = (*Lookup).first;
+  if(!Func || Func->getOp() != IrOpcode::Start) {
+    Log::E() << "Symbol \'" << IdentName << "\' not declared "
+             << "or not function\n";
+    return nullptr;
+  }
+  auto* FuncStub = NodeProperties<IrOpcode::Start>(Func).FuncStub(G);
+  assert(FuncStub && "can not find associated FuncStub node");
+  NodeBuilder<IrOpcode::Call> CallBuilder(&G, FuncStub);
+
+  Tok = NextTok();
+  if(Tok == Lexer::TOK_L_PARAN) {
+    // has parameters
+    Tok = NextTok();
+    while(Tok != Lexer::TOK_R_PARAN) {
+      auto* Param = ParseExpr();
+      if(!Param) return nullptr;
+      CallBuilder.AddParam(Param);
+      Tok = CurTok();
+      if(Tok == Lexer::TOK_COMMA)
+        Tok = NextTok();
+    }
+  }
+
+  // TODO: side-effects on global vars
+  return CallBuilder.Build();
+}
+
 bool Parser::ParseStatements(std::vector<Node*>& Stmts) {
   while(true) {
     auto Tok = CurTok();
-    // TODO: funcCall
     switch(Tok) {
     case Lexer::TOK_IF: {
       auto* Stmt = ParseIfStmt();
@@ -356,6 +381,12 @@ bool Parser::ParseStatements(std::vector<Node*>& Stmts) {
     }
     case Lexer::TOK_WHILE: {
       auto* Stmt = ParseWhileStmt();
+      if(Stmt) Stmts.push_back(Stmt);
+      else return false;
+      break;
+    }
+    case Lexer::TOK_CALL: {
+      auto* Stmt = ParseFuncCall();
       if(Stmt) Stmts.push_back(Stmt);
       else return false;
       break;
