@@ -29,6 +29,18 @@ NODE_PROPERTIES(VirtDLXOps) {
   }
 };
 
+NODE_PROPERTIES(VirtDLXRegisters) {
+  NodeProperties(Node* N)
+    : NODE_PROP_BASE(VirtDLXRegisters, N) {}
+
+  operator bool() const {
+    if(!NodePtr) return false;
+    auto OC = NodePtr->getOp();
+    return OC >= IrOpcode::DLXr0 &&
+           OC <= IrOpcode::DLXr31;
+  }
+};
+
 NODE_PROPERTIES(VirtDLXBinOps) {
   NodeProperties(Node* N)
     : NODE_PROP_BASE(VirtDLXBinOps, N) {}

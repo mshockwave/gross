@@ -877,6 +877,10 @@ std::ostream& GraphSchedule::printBlock(std::ostream& OS, BasicBlock* BB) {
         OS << "#"
            << NodeProperties<IrOpcode::ConstantInt>(VI)
               .as<int32_t>(G);
+      } else if(NodeProperties<IrOpcode::VirtDLXRegisters>(VI)) {
+        //IrOpcode::Print(G, OS, VI);
+        auto Offset = static_cast<unsigned>(VI->getOp() - IrOpcode::DLXr0);
+        OS << "r" << Offset;
       } else if(VI->getOp() == IrOpcode::DLXOffset) {
         if(BasicBlock** OffsetBB = BlockOffsets.find_value(VI)) {
           OS << "&lt;";

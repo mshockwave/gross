@@ -283,6 +283,10 @@ public:
     return BlockOffsets.find_node(BB);
   }
 
+  BasicBlock* getEntryBlock() {
+    return MapBlock(getStartNode());
+  }
+
   // wrapper for printing DomTree and LoopTree
   template<class ProxyT>
   class TreeHandle;

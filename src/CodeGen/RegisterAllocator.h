@@ -3,6 +3,7 @@
 #include "DLXNodeUtils.h"
 #include "gross/CodeGen/GraphScheduling.h"
 #include <array>
+#include <bitset>
 #include <unordered_map>
 #include <map>
 #include <vector>
@@ -11,19 +12,46 @@ namespace gross {
 // Forward declarations
 struct StackUtils;
 
-class LinearScanRegisterAllocator {
-  // register profiles
-  static constexpr size_t NumRegister = 32;
-  static constexpr size_t FirstCallerSaved = 10;
-  static constexpr size_t LastCallerSaved = 25;
-  static constexpr size_t FirstCalleeSaved = 6;
-  static constexpr size_t LastCalleeSaved = 9;
-  static constexpr size_t FirstParameter = 2;
-  static constexpr size_t LastParameter = 5;
+template<class Target>
+struct LinearScanRegisterAllocator {
+  using target_type = Target;
+
+  struct Location {
+    bool IsRegister;
+    // register number if IsRegister is true
+    // stack slot number otherwise
+    size_t Index;
+
+    static Location Register(size_t Idx) {
+      return Location{true, Idx};
+    }
+    static Location StackSlot(size_t Idx) {
+      return Location{false, Idx};
+    }
+  };
+
+private:
+  static constexpr size_t NumRegister
+    = Target::RegisterFile::size();
+  static constexpr size_t FirstCallerSaved
+    = Target::RegisterFile::FirstCallerSaved;
+  static constexpr size_t LastCallerSaved
+    = Target::RegisterFile::LastCallerSaved;
+  static constexpr size_t FirstCalleeSaved
+    = Target::RegisterFile::FirstCalleeSaved;
+  static constexpr size_t LastCalleeSaved
+    = Target::RegisterFile::LastCalleeSaved;
+  static constexpr size_t FirstParameter
+    = Target::RegisterFile::FirstParameter;
+  static constexpr size_t LastParameter
+    = Target::RegisterFile::LastParameter;
 
   GraphSchedule& Schedule;
   Graph& G;
   StackUtils SUtils;
+
+  // one more entry for the (stupid) trailing nullptr
+  const std::array<Node*, NumRegister + 1> RegNodes;
 
   // RPO ordered users
   std::unordered_map<Node*, std::vector<Node*>> OrderedUsers;
@@ -43,6 +71,11 @@ class LinearScanRegisterAllocator {
   std::array<Node*, NumRegister> RegUsages;
   std::vector<Node*> SpillSlots;
 
+  // VirtDLXCallsiteBegin node -> active registers at this moment
+  std::unordered_map<Node*, std::bitset<NumRegister>> CallerSaved;
+  // Callee-saved registers that have ever clobbered in this function
+  std::bitset<NumRegister> CalleeSaved;
+
   bool IsReserved(Node* N) const {
     return N && N->getOp() == IrOpcode::ConstantInt;
   }
@@ -51,31 +84,6 @@ class LinearScanRegisterAllocator {
     return IsReserved(RegUsages[RegNum]);
   }
 
-  // DEPREACATED
-  struct RegCopy {
-    size_t From;
-    bool IsFromReg;
-
-    size_t ToReg;
-    Node* InsertPos;
-  };
-
-  Node* CreateSpillSlotRead(size_t SlotNum);
-  Node* CreateSpillSlotWrite(size_t SlotNum);
-
-  struct Location {
-    bool IsRegister;
-    // register number if IsRegister is true
-    // stack slot number otherwise
-    size_t Index;
-
-    static Location Register(size_t Idx) {
-      return Location{true, Idx};
-    }
-    static Location StackSlot(size_t Idx) {
-      return Location{false, Idx};
-    }
-  };
   // value node -> register number or stack slot
   std::map<Node*, Location> Assignment;
 
@@ -121,6 +129,14 @@ public:
   LinearScanRegisterAllocator(GraphSchedule&);
 
   void Allocate();
+
+  const Location& GetAllocation(Node* N) const {
+    assert(Assignment.count(N));
+    return Assignment.at(N);
+  }
 };
+
+// template specialize stub
+void __SupportedLinearScanRATargets(GraphSchedule&);
 } // end namespace gross
 #endif

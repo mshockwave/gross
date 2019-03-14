@@ -1,14 +1,21 @@
+#include "Targets.h"
 #include "RegisterAllocator.h"
 #include "gross/Graph/NodeUtils.h"
 #include <algorithm>
 
 using namespace gross;
 
-LinearScanRegisterAllocator::
+
+template<class T> LinearScanRegisterAllocator<T>::
 LinearScanRegisterAllocator(GraphSchedule& schedule)
   : Schedule(schedule),
     G(Schedule.getGraph()),
-    SUtils(Schedule) {
+    SUtils(Schedule),
+    RegNodes({
+#define DLX_REG(OC)  \
+      NodeBuilder<IrOpcode::DLX##OC>(&G).Build(),
+#include "gross/Graph/DLXOpcodes.def"
+    nullptr}) {
   RegUsages.fill(nullptr);
 
   // Reserved registers
@@ -17,7 +24,7 @@ LinearScanRegisterAllocator(GraphSchedule& schedule)
              .Build();
   const std::array<size_t, 12> ReservedRegs = {
     0, // constant zero
-    1, // return value
+    T::ReturnStorage, // return value
     26, 27, // scratch registers
     28, // frame pointer
     29, // stack pointer
@@ -30,7 +37,8 @@ LinearScanRegisterAllocator(GraphSchedule& schedule)
 }
 
 // 'move' every input values to a new value
-void LinearScanRegisterAllocator::LegalizePhiInputs(Node* PN) {
+template<class T>
+void LinearScanRegisterAllocator<T>::LegalizePhiInputs(Node* PN) {
   assert(PN->getNumValueInput() == 2);
   const std::array<Node*, 2> Inputs
     = { PN->getValueInput(0), PN->getValueInput(1) };
@@ -61,7 +69,8 @@ void LinearScanRegisterAllocator::LegalizePhiInputs(Node* PN) {
   }
 }
 
-std::vector<Node*>& LinearScanRegisterAllocator::getOrderedUsers(Node* N) {
+template<class T>
+std::vector<Node*>& LinearScanRegisterAllocator<T>::getOrderedUsers(Node* N) {
   struct InstrOrderFunctor {
     explicit InstrOrderFunctor(GraphSchedule& schedule)
       : Schedule(schedule) {}
@@ -73,8 +82,8 @@ std::vector<Node*>& LinearScanRegisterAllocator::getOrderedUsers(Node* N) {
       auto* BB2 = Schedule.MapBlock(N2);
       assert(BB1 && BB2 && "Node not in any block?");
 
-      auto BBId1 = BB1->getId().get<uint32_t>(),
-           BBId2 = BB2->getId().get<uint32_t>();
+      auto BBId1 = BB1->getId().template get<uint32_t>(),
+           BBId2 = BB2->getId().template get<uint32_t>();
       if(BBId1 != BBId2) {
         return BBId1 < BBId2;
       } else {
@@ -113,15 +122,8 @@ private:
   return OrderedUsers.at(N);
 }
 
-Node* LinearScanRegisterAllocator::CreateSpillSlotRead(size_t SlotNum) {
-  return nullptr;
-}
-
-Node* LinearScanRegisterAllocator::CreateSpillSlotWrite(size_t SlotNum) {
-  return nullptr;
-}
-
-bool LinearScanRegisterAllocator::AssignRegister(Node* N) {
+template<class T>
+bool LinearScanRegisterAllocator<T>::AssignRegister(Node* N) {
   Node* PHIUsr = nullptr;
   for(auto* VU : N->value_users()) {
     if(VU->getOp() == IrOpcode::Phi) {
@@ -142,6 +144,8 @@ bool LinearScanRegisterAllocator::AssignRegister(Node* N) {
     RegUsages[Reg] = N;
     assert(!Assignment.count(N));
     Assignment[N] = Location::Register(Reg);
+    if(Reg >= FirstCalleeSaved && Reg <= LastCalleeSaved)
+      CalleeSaved[Reg] = true;
 
     if(PHIUsr) {
       assert(!Assignment.count(PHIUsr));
@@ -152,7 +156,8 @@ bool LinearScanRegisterAllocator::AssignRegister(Node* N) {
   return false;
 }
 
-void LinearScanRegisterAllocator::Spill(Node* N) {
+template<class T>
+void LinearScanRegisterAllocator<T>::Spill(Node* N) {
   Node* PHIUsr = nullptr;
   for(auto* VU : N->value_users()) {
     if(VU->getOp() == IrOpcode::Phi) {
@@ -191,7 +196,8 @@ void LinearScanRegisterAllocator::Spill(Node* N) {
   }
 }
 
-void LinearScanRegisterAllocator::Recycle(Node* N) {
+template<class T>
+void LinearScanRegisterAllocator<T>::Recycle(Node* N) {
   // recycle register
   for(size_t I = 0U, Size = RegUsages.size(); I < Size; ++I) {
     auto* RegUsr = RegUsages[I];
@@ -214,13 +220,21 @@ void LinearScanRegisterAllocator::Recycle(Node* N) {
   }
 }
 
-void LinearScanRegisterAllocator::InsertSpillCodes() {
+template<class T>
+void LinearScanRegisterAllocator<T>::InsertSpillCodes() {
   if(SpillSlots.empty()) return;
 
   // reserve spill slots
   auto* Reservation = SUtils.ReserveSlots(SpillSlots.size());
-  // TODO: insert it
-  (void) Reservation;
+  auto* EntryBlock = Schedule.getEntryBlock();
+  for(auto NI = EntryBlock->node_cbegin(), NE = EntryBlock->node_cend();
+      NI != NE; ++NI) {
+    auto* N = const_cast<Node*>(*NI);
+    if(N->getOp() == IrOpcode::Start ||
+       N->getOp() == IrOpcode::Alloca) continue;
+    Schedule.AddNode(EntryBlock, NI, Reservation);
+    break;
+  }
 
   auto* Fp = SUtils.FramePointer();
   // nodes that will assigned to R27
@@ -265,16 +279,67 @@ void LinearScanRegisterAllocator::InsertSpillCodes() {
   }
 }
 
-void LinearScanRegisterAllocator::PostRALowering() {
-  // TODO
-  // 1. Remove PHI nodes
-  // 2. Lowering function call virtual nodes
+template<class T>
+void LinearScanRegisterAllocator<T>::PostRALowering() {
+  // 1. Insert callee-saved/restore routines
+  //    (TODO: always save SP first!)
+  // 2. Remove PHI nodes
+  // 3. Lowering function call virtual nodes
+  //    (e.g. caller-saved/restore routines)
+
+  // Remove PHI nodes
+  std::vector<Node*> PHIs;
+  for(auto* N : Schedule.rpo_nodes()) {
+    if(N->getOp() == IrOpcode::Phi)
+      PHIs.push_back(N);
+  }
+  for(auto* PN : PHIs) {
+    auto* BB = Schedule.MapBlock(PN);
+    assert(BB);
+    Schedule.RemoveNode(BB, PN);
+  }
 }
 
-void LinearScanRegisterAllocator::CommitRegisterNodes() {
-  // TODO
+template<class T>
+void LinearScanRegisterAllocator<T>::CommitRegisterNodes() {
   // Transform to three-address instructions and replace
   // inputs with assigned registers
+
+  for(auto* CurNode : Schedule.rpo_nodes()) {
+    switch(CurNode->getOp()) {
+#define DLX_ARITH_OP(OC)  \
+    case IrOpcode::DLX##OC: \
+    case IrOpcode::DLX##OC##I:
+#include "gross/Graph/DLXOpcodes.def"
+    {
+      assert(CurNode->getNumValueInput() == 2);
+      std::array<Node*, 3> NewOperands;
+      // result
+      assert(Assignment.count(CurNode));
+      auto& ResultLoc = Assignment[CurNode];
+      assert(ResultLoc.IsRegister && "still not in register?");
+      NewOperands[0] = RegNodes[ResultLoc.Index];
+      // inputs
+      for(auto i = 0; i < 2; ++i) {
+        auto* VI = CurNode->getValueInput(i);
+        if(VI->getOp() == IrOpcode::ConstantInt) {
+          NewOperands[i + 1] = VI;
+        } else {
+          assert(Assignment.count(VI));
+          auto& Loc = Assignment[VI];
+          assert(Loc.IsRegister && "still not in register?");
+          NewOperands[i + 1] = RegNodes[Loc.Index];
+        }
+      }
+
+      CurNode->setValueInput(0, NewOperands[0]);
+      CurNode->setValueInput(1, NewOperands[1]);
+      CurNode->appendValueInput(NewOperands[2]);
+      break;
+    }
+    default: break;
+    }
+  }
 }
 
 inline bool hasValueUsers(Node* N) {
@@ -282,7 +347,8 @@ inline bool hasValueUsers(Node* N) {
   return ValUsrs.begin() != ValUsrs.end();
 }
 
-void LinearScanRegisterAllocator::Allocate() {
+template<class T>
+void LinearScanRegisterAllocator<T>::Allocate() {
   // 1. insert 'move' for every PHI input values
   // 2. if no register, spill
   // 3. assign register otherwise
@@ -292,13 +358,34 @@ void LinearScanRegisterAllocator::Allocate() {
   std::vector<Node*> PHINodes;
   for(auto* N : Schedule.rpo_nodes()) {
     if(N->getOp() == IrOpcode::Phi &&
-       N->getNumValueInput() && !N->getNumEffectInput())
+       N->getNumValueInput() && !N->getNumEffectInput()) {
       PHINodes.push_back(N);
+    }
   }
   for(auto* PN : PHINodes)
     LegalizePhiInputs(PN);
 
   for(auto* CurNode : Schedule.rpo_nodes()) {
+    // recycle expired register and/or spill slot
+    Recycle(CurNode);
+
+    if(CurNode->getOp() == IrOpcode::VirtDLXCallsiteBegin) {
+      // record the current active registers needs to be saved
+      std::bitset<NumRegister> ActiveRegs;
+      // stack pointer and link register always need to be saved
+      // TODO: don't use literal register number
+      ActiveRegs[28] = true;
+      ActiveRegs[31] = true;
+      for(auto i = FirstCallerSaved; i <= LastCallerSaved; ++i) {
+        if(RegUsages[i]) ActiveRegs[i] = true;
+      }
+      for(auto i = FirstParameter; i <= LastParameter; ++i) {
+        if(RegUsages[i]) ActiveRegs[i] = true;
+      }
+      CallerSaved[CurNode] = std::move(ActiveRegs);
+      continue;
+    }
+
     if(hasValueUsers(CurNode)) {
       // PHI should be handled after either of its
       // inputs values
@@ -319,14 +406,18 @@ void LinearScanRegisterAllocator::Allocate() {
         }
       }
     }
-
-    // recycle expired register and/or spill slot
-    Recycle(CurNode);
   }
 
   InsertSpillCodes();
 
-  CommitRegisterNodes();
-
   PostRALowering();
+
+  CommitRegisterNodes();
 }
+
+namespace gross {
+void __SupportedLinearScanRATargets(GraphSchedule& Schedule) {
+  LinearScanRegisterAllocator<DLXTargetTraits> DLX(Schedule);
+  LinearScanRegisterAllocator<CompactDLXTargetTraits> DLXLite(Schedule);
+}
+} // end namespace gross
