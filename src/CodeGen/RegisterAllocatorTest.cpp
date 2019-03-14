@@ -8,7 +8,7 @@
 
 using namespace gross;
 
-TEST(CodeGenUnitTest, ValueAllocationRATest) {
+TEST(CodeGenUnitTest, BasicValueAllocationRATest) {
   {
     // simple straight line code
     Graph G;
@@ -138,4 +138,58 @@ TEST(CodeGenUnitTest, ValueAllocationRATest) {
       FuncSchedule->dumpGraphviz(OF);
     }
   }
+  {
+    Graph G;
+    auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
+                 .FuncName("func_ra_simple_loop")
+                 .Build();
+    auto* Const1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 1).Build();
+    auto* Const2 = NodeBuilder<IrOpcode::ConstantInt>(&G, 2).Build();
+    auto* Const3 = NodeBuilder<IrOpcode::ConstantInt>(&G, 3).Build();
+    auto* Const4 = NodeBuilder<IrOpcode::ConstantInt>(&G, 4).Build();
+    auto* Sum1 = NodeBuilder<IrOpcode::VirtDLXBinOps>(&G, IrOpcode::DLXAddI)
+                 .LHS(Const3).RHS(Const4).Build();
+    auto* Sum2 = NodeBuilder<IrOpcode::VirtDLXBinOps>(&G, IrOpcode::DLXAddI)
+                 .LHS(Sum1).RHS(Const2).Build();
+
+    auto* Loop = NodeBuilder<IrOpcode::Loop>(&G, Func)
+                 .Condition(Const1).Build();
+    auto* PHINode = NodeBuilder<IrOpcode::Phi>(&G)
+                    .AddValueInput(Sum1).AddValueInput(Sum2)
+                    .SetCtrlMerge(Loop)
+                    .Build();
+    Sum2->ReplaceUseOfWith(Sum1, PHINode, Use::K_VALUE);
+    auto* Br = NodeProperties<IrOpcode::Loop>(Loop).Branch();
+    auto* Return1 = NodeBuilder<IrOpcode::Return>(&G, PHINode).Build();
+    Return1->appendControlInput(NodeProperties<IrOpcode::If>(Br).FalseBranch());
+    auto* End = NodeBuilder<IrOpcode::End>(&G, Func)
+                .AddTerminator(Return1)
+                .Build();
+
+    SubGraph FuncSG(End);
+    G.AddSubRegion(FuncSG);
+    {
+      std::ofstream OF("TestRASimpleLoop.dot");
+      G.dumpGraphviz(OF);
+    }
+
+    GraphScheduler Scheduler(G);
+    Scheduler.ComputeScheduledGraph();
+    EXPECT_EQ(Scheduler.schedule_size(), 1);
+    auto* FuncSchedule = *Scheduler.schedule_begin();
+    {
+      std::ofstream OF("TestRASimpleLoop.cfg.dot");
+      FuncSchedule->dumpGraphviz(OF);
+    }
+
+    LinearScanRegisterAllocator<CompactDLXTargetTraits> RA(*FuncSchedule);
+    RA.Allocate();
+    {
+      std::ofstream OF("TestRASimpleLoop.cfg.ra.dot");
+      FuncSchedule->dumpGraphviz(OF);
+    }
+  }
+}
+
+TEST(CodeGenUnitTest, AdvancedValueAllocationRATest) {
 }
