@@ -5,6 +5,7 @@
 #include "gross/CodeGen/GraphScheduling.h"
 #include "gross/Graph/Node.h"
 #include "gross/Graph/NodeUtils.h"
+#include "DLXNodeUtils.h"
 #include <unordered_set>
 #include <set>
 #include <functional>

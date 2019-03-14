@@ -16,6 +16,7 @@ if(GROSS_ENABLE_UNIT_TESTS)
       GraphSchedulingTest.cpp
       PreMachineLoweringTest.cpp
       PostMachineLoweringTest.cpp
+      RegisterAllocatorTest.cpp
       )
 
   add_executable(GrossCodeGenTest

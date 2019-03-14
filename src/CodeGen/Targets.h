@@ -30,11 +30,11 @@ struct DLXTargetTraits::RegisterFile {
 
 struct CompactDLXTargetTraits : public DLXTargetTraits {
   struct RegisterFile : public DLXTargetTraits::RegisterFile {
-    static constexpr size_t FirstCallerSaved = 8;
-    static constexpr size_t LastCallerSaved = 9;
+    static constexpr size_t FirstCallerSaved = 7;
+    static constexpr size_t LastCallerSaved = 7;
 
     static constexpr size_t FirstCalleeSaved = 6;
-    static constexpr size_t LastCalleeSaved = 7;
+    static constexpr size_t LastCalleeSaved = 6;
   };
 };
 } // namespace gross

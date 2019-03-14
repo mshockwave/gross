@@ -1,5 +1,5 @@
-#include "Targets.h"
 #include "RegisterAllocator.h"
+#include "Targets.h"
 #include "gross/Graph/NodeUtils.h"
 #include <algorithm>
 
@@ -258,6 +258,8 @@ void LinearScanRegisterAllocator<T>::InsertSpillCodes() {
                     .BaseAddr(Fp).Offset(SlotOffset)
                     .Src(DefNode).Build();
       Schedule.AddNodeAfter(DefBB, DefNode, Store);
+      // also store to scratch
+      ScratchCandidates.push_back(DefNode);
     }
 
     for(auto* VU : ValUsrs) {
@@ -365,44 +367,48 @@ void LinearScanRegisterAllocator<T>::Allocate() {
   for(auto* PN : PHINodes)
     LegalizePhiInputs(PN);
 
-  for(auto* CurNode : Schedule.rpo_nodes()) {
-    // recycle expired register and/or spill slot
-    Recycle(CurNode);
+  for(auto* BB : Schedule.rpo_blocks()) {
+    for(auto* CurNode : BB->nodes()) {
+      // recycle expired register and/or spill slot
+      Recycle(CurNode);
 
-    if(CurNode->getOp() == IrOpcode::VirtDLXCallsiteBegin) {
-      // record the current active registers needs to be saved
-      std::bitset<NumRegister> ActiveRegs;
-      // stack pointer and link register always need to be saved
-      // TODO: don't use literal register number
-      ActiveRegs[28] = true;
-      ActiveRegs[31] = true;
-      for(auto i = FirstCallerSaved; i <= LastCallerSaved; ++i) {
-        if(RegUsages[i]) ActiveRegs[i] = true;
-      }
-      for(auto i = FirstParameter; i <= LastParameter; ++i) {
-        if(RegUsages[i]) ActiveRegs[i] = true;
-      }
-      CallerSaved[CurNode] = std::move(ActiveRegs);
-      continue;
-    }
-
-    if(hasValueUsers(CurNode)) {
-      // PHI should be handled after either of its
-      // inputs values
-      if(CurNode->getOp() == IrOpcode::Phi) {
-        assert(Assignment.count(CurNode));
-        auto& Loc = Assignment.at(CurNode);
-        if(Loc.IsRegister) {
-          RegUsages[Loc.Index] = CurNode;
-        } else {
-          SpillSlots[Loc.Index] = CurNode;
+      if(CurNode->getOp() == IrOpcode::VirtDLXCallsiteBegin) {
+        // record the current active registers needs to be saved
+        std::bitset<NumRegister> ActiveRegs;
+        // stack pointer and link register always need to be saved
+        // TODO: don't use literal register number
+        ActiveRegs[28] = true;
+        ActiveRegs[31] = true;
+        for(auto i = FirstCallerSaved; i <= LastCallerSaved; ++i) {
+          if(RegUsages[i]) ActiveRegs[i] = true;
         }
+        for(auto i = FirstParameter; i <= LastParameter; ++i) {
+          if(RegUsages[i]) ActiveRegs[i] = true;
+        }
+        CallerSaved[CurNode] = std::move(ActiveRegs);
+        continue;
       }
-      // need a register to store value
-      if(!Assignment.count(CurNode)) {
-        if(!AssignRegister(CurNode)) {
-          // no register, spill
-          Spill(CurNode);
+
+      // FIXME: also exclude DLX constants/globals
+      if(hasValueUsers(CurNode) &&
+         !NodeProperties<IrOpcode::VirtGlobalValues>(CurNode)) {
+        // PHI should be handled after either of its
+        // inputs values
+        if(CurNode->getOp() == IrOpcode::Phi) {
+          assert(Assignment.count(CurNode));
+          auto& Loc = Assignment.at(CurNode);
+          if(Loc.IsRegister) {
+            RegUsages[Loc.Index] = CurNode;
+          } else {
+            SpillSlots[Loc.Index] = CurNode;
+          }
+        }
+        // need a register to store value
+        if(!Assignment.count(CurNode)) {
+          if(!AssignRegister(CurNode)) {
+            // no register, spill
+            Spill(CurNode);
+          }
         }
       }
     }
@@ -418,6 +424,11 @@ void LinearScanRegisterAllocator<T>::Allocate() {
 namespace gross {
 void __SupportedLinearScanRATargets(GraphSchedule& Schedule) {
   LinearScanRegisterAllocator<DLXTargetTraits> DLX(Schedule);
+  DLX.Allocate();
+  (void) DLX.GetAllocation(nullptr);
+
   LinearScanRegisterAllocator<CompactDLXTargetTraits> DLXLite(Schedule);
+  DLXLite.Allocate();
+  (void) DLXLite.GetAllocation(nullptr);
 }
 } // end namespace gross
