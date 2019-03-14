@@ -61,10 +61,12 @@ void LinearScanRegisterAllocator<T>::LegalizePhiInputs(Node* PN) {
         NI != NE; ++NI) {
       if(NodeProperties<IrOpcode::VirtDLXTerminate>(*NI))
         continue;
-      if(NI == BB->node_rbegin())
+      if(NI == BB->node_rbegin()) {
         Schedule.AddNode(BB, Move);
-      else
+      } else {
         Schedule.AddNodeBefore(BB, *(--NI), Move);
+      }
+      break;
     }
   }
 }
@@ -291,9 +293,11 @@ void LinearScanRegisterAllocator<T>::PostRALowering() {
 
   // Remove PHI nodes
   std::vector<Node*> PHIs;
-  for(auto* N : Schedule.rpo_nodes()) {
-    if(N->getOp() == IrOpcode::Phi)
-      PHIs.push_back(N);
+  for(auto* BB : Schedule.rpo_blocks()) {
+    for(auto* N : BB->nodes()) {
+      if(N->getOp() == IrOpcode::Phi)
+        PHIs.push_back(N);
+    }
   }
   for(auto* PN : PHIs) {
     auto* BB = Schedule.MapBlock(PN);
@@ -307,39 +311,41 @@ void LinearScanRegisterAllocator<T>::CommitRegisterNodes() {
   // Transform to three-address instructions and replace
   // inputs with assigned registers
 
-  for(auto* CurNode : Schedule.rpo_nodes()) {
-    switch(CurNode->getOp()) {
+  for(auto* CurBB : Schedule.rpo_blocks()) {
+    for(auto* CurNode : CurBB->nodes()) {
+      switch(CurNode->getOp()) {
 #define DLX_ARITH_OP(OC)  \
-    case IrOpcode::DLX##OC: \
-    case IrOpcode::DLX##OC##I:
+      case IrOpcode::DLX##OC: \
+      case IrOpcode::DLX##OC##I:
 #include "gross/Graph/DLXOpcodes.def"
-    {
-      assert(CurNode->getNumValueInput() == 2);
-      std::array<Node*, 3> NewOperands;
-      // result
-      assert(Assignment.count(CurNode));
-      auto& ResultLoc = Assignment[CurNode];
-      assert(ResultLoc.IsRegister && "still not in register?");
-      NewOperands[0] = RegNodes[ResultLoc.Index];
-      // inputs
-      for(auto i = 0; i < 2; ++i) {
-        auto* VI = CurNode->getValueInput(i);
-        if(VI->getOp() == IrOpcode::ConstantInt) {
-          NewOperands[i + 1] = VI;
-        } else {
-          assert(Assignment.count(VI));
-          auto& Loc = Assignment[VI];
-          assert(Loc.IsRegister && "still not in register?");
-          NewOperands[i + 1] = RegNodes[Loc.Index];
+      {
+        assert(CurNode->getNumValueInput() == 2);
+        std::array<Node*, 3> NewOperands;
+        // result
+        assert(Assignment.count(CurNode));
+        auto& ResultLoc = Assignment[CurNode];
+        assert(ResultLoc.IsRegister && "still not in register?");
+        NewOperands[0] = RegNodes[ResultLoc.Index];
+        // inputs
+        for(auto i = 0; i < 2; ++i) {
+          auto* VI = CurNode->getValueInput(i);
+          if(VI->getOp() == IrOpcode::ConstantInt) {
+            NewOperands[i + 1] = VI;
+          } else {
+            assert(Assignment.count(VI));
+            auto& Loc = Assignment[VI];
+            assert(Loc.IsRegister && "still not in register?");
+            NewOperands[i + 1] = RegNodes[Loc.Index];
+          }
         }
-      }
 
-      CurNode->setValueInput(0, NewOperands[0]);
-      CurNode->setValueInput(1, NewOperands[1]);
-      CurNode->appendValueInput(NewOperands[2]);
-      break;
-    }
-    default: break;
+        CurNode->setValueInput(0, NewOperands[0]);
+        CurNode->setValueInput(1, NewOperands[1]);
+        CurNode->appendValueInput(NewOperands[2]);
+        break;
+      }
+      default: break;
+      }
     }
   }
 }
@@ -358,10 +364,12 @@ void LinearScanRegisterAllocator<T>::Allocate() {
   // TODO: handle callsite
 
   std::vector<Node*> PHINodes;
-  for(auto* N : Schedule.rpo_nodes()) {
-    if(N->getOp() == IrOpcode::Phi &&
-       N->getNumValueInput() && !N->getNumEffectInput()) {
-      PHINodes.push_back(N);
+  for(auto* BB : Schedule.rpo_blocks()) {
+    for(auto* N : BB->nodes()) {
+      if(N->getOp() == IrOpcode::Phi &&
+         N->getNumValueInput() && !N->getNumEffectInput()) {
+        PHINodes.push_back(N);
+      }
     }
   }
   for(auto* PN : PHINodes)
