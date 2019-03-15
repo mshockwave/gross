@@ -30,7 +30,19 @@ bool Parser::Parse(bool StepLexer) {
   std::vector<Node*> GlobalVars;
   if(!ParseVarDeclTop(&GlobalVars)) return false;
   for(auto* GV : GlobalVars) {
-    G.MarkGlobalVar(GV);
+    if(GV->getOp() == IrOpcode::SrcVarDecl) {
+      // transform into array decl for the sake of
+      // lowering to memory load/store later
+      NodeProperties<IrOpcode::VirtSrcDecl> DNP(GV);
+      auto* NewDecl = NodeBuilder<IrOpcode::SrcArrayDecl>(&G)
+                      .SetSymbolName(DNP.ident_name(G))
+                      .AddConstDim(1).Build();
+      CurSymTable()[DNP.ident_name(G)] = NewDecl;
+      GV->ReplaceWith(NewDecl);
+      G.MarkGlobalVar(NewDecl);
+    } else {
+      G.MarkGlobalVar(GV);
+    }
   }
   for(Tok = CurTok();
       Tok == Lexer::TOK_FUNCTION || Tok == Lexer::TOK_PROCEDURE;

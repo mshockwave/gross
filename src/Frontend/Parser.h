@@ -154,6 +154,7 @@ public:
   Node* ParseDesignator();
   Node* ParseArrayAccessDesignator(Node* Decl, Node* Effect,
                                    const std::string& IdentName = "");
+  Node* ParseGlobalVarAccessDesignator(Node* Decl, Node* Effect);
 
   Node* ParseTerm();
   Node* ParseFactor();

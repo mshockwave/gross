@@ -1,6 +1,7 @@
 #ifndef GROSS_GRAPH_NODE_UTILS_H
 #define GROSS_GRAPH_NODE_UTILS_H
 #include "gross/Graph/NodeUtilsBase.h"
+#include "gross/Graph/Attribute.h"
 #include "gross/Support/STLExtras.h"
 #include "gross/Support/type_traits.h"
 #include "gross/Support/iterator_range.h"
@@ -57,6 +58,19 @@ NODE_PROPERTIES(FunctionStub) {
       return *StartIt;
     else
       return nullptr;
+  }
+
+  template<Attr AT>
+  bool hasAttribute(const Graph& G, Node* Func = nullptr) {
+    if(!Func)
+      Func = getFunctionStart(G);
+    assert(Func);
+    auto& Attrs = G.Attributes;
+    if(!Attrs.count(Func)) return false;
+    for(auto& AttrPtr : Attrs.at(Func)) {
+      if(AttrPtr->Kind() == AT) return true;
+    }
+    return false;
   }
 };
 

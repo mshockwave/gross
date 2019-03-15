@@ -357,8 +357,25 @@ Node* Parser::ParseFuncCall() {
     return nullptr;
   }
 
-  // TODO: side-effects on global vars
-  return CallBuilder.Build();
+  auto* CallNode = CallBuilder.Build();
+  NodeProperties<IrOpcode::FunctionStub> StubNP(FuncStub);
+  if(StubNP.hasAttribute<Attr::NoMem>(G, Func)) {
+    return CallNode;
+  }
+  if(StubNP.hasAttribute<Attr::WriteMem>(G, Func)) {
+    // clobber all the global memory
+    for(auto* GVDecl : G.global_vars()) {
+      LastModified[GVDecl] = CallNode;
+    }
+  }
+  if(StubNP.hasAttribute<Attr::ReadMem>(G, Func)) {
+    // affect all the global memory
+    for(auto* GVDecl : G.global_vars()) {
+      LastMemAccess[GVDecl].insert(CallNode);
+    }
+  }
+
+  return CallNode;
 }
 
 bool Parser::ParseStatements(std::vector<Node*>& Stmts) {

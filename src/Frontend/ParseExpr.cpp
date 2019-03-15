@@ -31,7 +31,10 @@ Node* Parser::ParseDesignator() {
   if(NextTok() == Lexer::TOK_L_BRACKET) {
     return ParseArrayAccessDesignator(Decl, EffectNode, IdentName);
   }
-
+  // global scalar access
+  if(G.IsGlobalVar(Decl)) {
+    return ParseGlobalVarAccessDesignator(Decl, EffectNode);
+  }
   // scalar access
   return NodeBuilder<IrOpcode::SrcVarAccess>(&G)
          .Decl(Decl).Effect(EffectNode)
@@ -76,9 +79,21 @@ Node* Parser::ParseArrayAccessDesignator(Node* DeclNode, Node* Effect,
   return AANode;
 }
 
-Node* Parser::ParseFactor() {
-  // TODO: funcCall rule
+Node* Parser::ParseGlobalVarAccessDesignator(Node* DeclNode, Node* Effect) {
+  assert(NodeProperties<IrOpcode::SrcArrayDecl>(DeclNode));
+  auto* AANode = NodeBuilder<IrOpcode::SrcArrayAccess>(&G)
+                 .Decl(DeclNode)
+                 .Effect(Effect)
+                 .AppendAccessDim(
+                   NodeBuilder<IrOpcode::ConstantInt>(&G, 0).Build()
+                  ).Build();
+  if(Effect)
+    LastMemAccess[Effect].insert(AANode);
 
+  return AANode;
+}
+
+Node* Parser::ParseFactor() {
   Node* FN = nullptr;
   switch(CurTok()) {
   case Lexer::TOK_NUMBER: {
@@ -100,6 +115,10 @@ Node* Parser::ParseFactor() {
   }
   case Lexer::TOK_IDENT: {
     FN = ParseDesignator();
+    break;
+  }
+  case Lexer::TOK_CALL: {
+    FN = ParseFuncCall();
     break;
   }
   default:

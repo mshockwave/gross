@@ -136,6 +136,12 @@ public:
   void MarkGlobalVar(Node* N);
   bool IsGlobalVar(Node* N) const { return GlobalVariables.count(N); }
   void ReplaceGlobalVar(Node* Old, Node* New);
+  using global_var_iterator = typename decltype(GlobalVariables)::iterator;
+  global_var_iterator global_var_begin() { return GlobalVariables.begin(); }
+  global_var_iterator global_var_end() { return GlobalVariables.end(); }
+  llvm::iterator_range<global_var_iterator> global_vars() {
+    return llvm::make_range(global_var_begin(), global_var_end());
+  }
 
   void AddSubRegion(const SubGraph& SubG);
   void AddSubRegion(SubGraph&& SubG);
