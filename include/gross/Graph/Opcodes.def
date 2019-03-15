@@ -90,8 +90,8 @@ VIRT_OP(FuncPrototype)  // Start + Argument(s)
 SRC_OP(VarDecl)
 SRC_OP(VarAccess)
 SRC_OP(ArrayDecl)
+SRC_OP(InitialArray)    // the initial state of a SrcArrayDecl
 SRC_OP(ArrayAccess)
-SRC_OP(WhileStmt)
 SRC_OP(AssignStmt)
 #undef SRC_OP
 VIRT_OP(SrcDecl)        // SrcVarDecl | SrcArrayDecl

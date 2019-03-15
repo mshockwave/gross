@@ -154,10 +154,16 @@ public:
   table_iterator find(const K& key) {
     return BaseTy::CurEntry()->find(key);
   }
+  size_t count(const K& key) {
+    return BaseTy::CurEntry()->count(key);
+  }
   // insert new entry in current table:
   // copy from parent then modify
   V& operator[](const K& key) {
     return (*BaseTy::CurEntryMutable())[key];
+  }
+  V& at(const K& key) {
+    return (*BaseTy::CurEntryMutable()).at(key);
   }
 
   template<

@@ -214,7 +214,7 @@ bool Parser::ParseFuncDecl() {
     }
   }
   if(!FuncAttrBuilder.hasAttr<Attr::ReadMem>() &&
-     !FuncAttrBuilder.hasAttr<Attr::ReadMem>()) {
+     !FuncAttrBuilder.hasAttr<Attr::WriteMem>()) {
     FuncAttrBuilder.Add<Attr::NoMem>();
   }
   if(!FuncAttrBuilder.empty()) FuncAttrBuilder.Attach(FuncNode);

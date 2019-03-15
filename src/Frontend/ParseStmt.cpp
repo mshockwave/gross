@@ -351,6 +351,7 @@ Node* Parser::ParseFuncCall() {
       if(Tok == Lexer::TOK_COMMA)
         Tok = NextTok();
     }
+    Tok = NextTok();
   }
   if(CallBuilder.arg_size() != Func->getNumEffectInput()) {
     Log::E() << "Mismatched amount of actual parameters\n";
@@ -365,13 +366,31 @@ Node* Parser::ParseFuncCall() {
   if(StubNP.hasAttribute<Attr::WriteMem>(G, Func)) {
     // clobber all the global memory
     for(auto* GVDecl : G.global_vars()) {
+      if(LastModified.count(GVDecl)) {
+        auto* PrevStore = LastModified.at(GVDecl);
+        auto& MemReads = LastMemAccess[PrevStore];
+        if(!MemReads.empty()) {
+          for(auto* MemRead : MemReads) {
+            CallNode->appendEffectInput(MemRead);
+          }
+        } else {
+          CallNode->appendEffectInput(PrevStore);
+        }
+      }
       LastModified[GVDecl] = CallNode;
     }
   }
   if(StubNP.hasAttribute<Attr::ReadMem>(G, Func)) {
     // affect all the global memory
     for(auto* GVDecl : G.global_vars()) {
-      LastMemAccess[GVDecl].insert(CallNode);
+      if(LastModified.count(GVDecl)) {
+        auto* PrevStore = LastModified.at(GVDecl);
+        if(!StubNP.hasAttribute<Attr::WriteMem>(G, Func)) {
+          // effect depend only if this call only reads memory
+          CallNode->appendEffectInput(PrevStore);
+        }
+        LastMemAccess[PrevStore].insert(CallNode);
+      }
     }
   }
 

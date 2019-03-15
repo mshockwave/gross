@@ -743,6 +743,25 @@ private:
   std::vector<Node*> Dims;
 };
 
+template<>
+struct NodeBuilder<IrOpcode::SrcInitialArray> {
+  NodeBuilder(Graph *graph, Node* Decl)
+    : G(graph),
+      ArrayDecl(Decl) {}
+
+  Node* Build() {
+    auto* N = new Node(IrOpcode::SrcInitialArray,
+                       {ArrayDecl});
+    ArrayDecl->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+
+private:
+  Graph *G;
+  Node* ArrayDecl;
+};
+
 namespace _details {
 // (Simple)Binary Ops
 template<IrOpcode::ID OC,

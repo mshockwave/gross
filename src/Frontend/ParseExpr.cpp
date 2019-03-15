@@ -50,6 +50,12 @@ Node* Parser::ParseArrayAccessDesignator(Node* DeclNode, Node* Effect,
     return nullptr;
   }
 
+  if(!Effect) {
+    // create initial state
+    Effect = NodeBuilder<IrOpcode::SrcInitialArray>(&G, DeclNode).Build();
+    LastModified[DeclNode] = Effect;
+  }
+
   NodeBuilder<IrOpcode::SrcArrayAccess> AAB(&G);
   AAB.Decl(DeclNode)
      .Effect(Effect);
@@ -73,22 +79,26 @@ Node* Parser::ParseArrayAccessDesignator(Node* DeclNode, Node* Effect,
   }
 
   auto* AANode = AAB.Build();
-  if(Effect)
-    LastMemAccess[Effect].insert(AANode);
+  LastMemAccess[Effect].insert(AANode);
 
   return AANode;
 }
 
 Node* Parser::ParseGlobalVarAccessDesignator(Node* DeclNode, Node* Effect) {
   assert(NodeProperties<IrOpcode::SrcArrayDecl>(DeclNode));
+  if(!Effect) {
+    // create initial state
+    Effect = NodeBuilder<IrOpcode::SrcInitialArray>(&G, DeclNode).Build();
+    LastModified[DeclNode] = Effect;
+  }
+
   auto* AANode = NodeBuilder<IrOpcode::SrcArrayAccess>(&G)
                  .Decl(DeclNode)
                  .Effect(Effect)
                  .AppendAccessDim(
                    NodeBuilder<IrOpcode::ConstantInt>(&G, 0).Build()
                   ).Build();
-  if(Effect)
-    LastMemAccess[Effect].insert(AANode);
+  LastMemAccess[Effect].insert(AANode);
 
   return AANode;
 }
