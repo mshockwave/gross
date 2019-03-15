@@ -1,6 +1,7 @@
 #include "gross/Support/Log.h"
 #include "gross/Graph/Graph.h"
 #include "gross/Graph/NodeUtils.h"
+#include "gross/Graph/AttributeBuilder.h"
 #include "Parser.h"
 
 using namespace gross;
@@ -177,6 +178,47 @@ bool Parser::ParseFuncDecl() {
   (void) NextTok();
   std::vector<Node*> FuncBodyStmts;
   if(!ParseStatements(FuncBodyStmts)) return false;
+  AttributeBuilder FuncAttrBuilder(G);
+  for(auto* N : FuncBodyStmts) {
+    // to see if any of the node access global vars
+    switch(N->getOp()) {
+    case IrOpcode::SrcAssignStmt: {
+      NodeProperties<IrOpcode::SrcAssignStmt> NP(N);
+      NodeProperties<IrOpcode::VirtSrcDesigAccess> ANP(NP.dest());
+      assert(ANP);
+      if(G.IsGlobalVar(ANP.decl()) &&
+         !FuncAttrBuilder.hasAttr<Attr::WriteMem>()) {
+        FuncAttrBuilder.Add<Attr::WriteMem>();
+      }
+      break;
+    }
+    case IrOpcode::SrcVarAccess:
+    case IrOpcode::SrcArrayAccess: {
+      bool Found = false;
+      for(auto* VU : N->value_users()) {
+        if(VU->getOp() != IrOpcode::SrcAssignStmt) {
+          Found = true;
+          break;
+        }
+      }
+      if(Found) {
+        NodeProperties<IrOpcode::VirtSrcDesigAccess> ANP(N);
+        if(G.IsGlobalVar(ANP.decl()) &&
+           !FuncAttrBuilder.hasAttr<Attr::ReadMem>()) {
+          FuncAttrBuilder.Add<Attr::WriteMem>();
+        }
+      }
+      break;
+    }
+    default: continue;
+    }
+  }
+  if(!FuncAttrBuilder.hasAttr<Attr::ReadMem>() &&
+     !FuncAttrBuilder.hasAttr<Attr::ReadMem>()) {
+    FuncAttrBuilder.Add<Attr::NoMem>();
+  }
+  if(!FuncAttrBuilder.empty()) FuncAttrBuilder.Attach(FuncNode);
+
   NodeBuilder<IrOpcode::End> EB(&G, FuncNode);
   EB.AddTerminator(getLastCtrlPoint());
   // must 'wait' after all side effects terminate

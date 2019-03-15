@@ -65,6 +65,9 @@ struct hash<gross::SubGraph> {
 } //end namespace std
 
 namespace gross {
+// Forward declarations
+struct AttributeBuilder;
+
 // Owner of nodes
 class Graph {
   template<IrOpcode::ID Op>
@@ -72,6 +75,7 @@ class Graph {
   template<IrOpcode::ID Op>
   friend struct NodeProperties;
   friend class NodeMarkerBase;
+  friend struct AttributeBuilder;
 
   std::vector<std::unique_ptr<Node>> Nodes;
 
@@ -87,7 +91,9 @@ class Graph {
   NodeBiMap<SubGraph> FuncStubPool;
 
   // attribute storage (owner of attribute implements)
-  std::unordered_map<Node*, std::unique_ptr<AttributeConcept>> Attributes;
+  // Node where attribute attached -> list of Attribute implement
+  using AttributeList = std::list<std::unique_ptr<AttributeConcept>>;
+  std::unordered_map<Node*, AttributeList> Attributes;
   std::unordered_set<Node*> GlobalVariables;
 
   // recording state of NodeMarkers

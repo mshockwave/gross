@@ -5,7 +5,8 @@
 namespace gross {
 enum class Attr {
   NoMem,
-  Clobber
+  ReadMem,
+  WriteMem
 };
 
 // Forward declaration
@@ -27,8 +28,6 @@ struct AttributeConcept {
   virtual Attr Kind() const = 0;
 
   virtual ~AttributeConcept() {}
-protected:
-  Node* AttachedNode;
 };
 
 // default implementation
@@ -47,8 +46,14 @@ ATTRIBUTE_IMPL(NoMem) {
   Attr Kind() const override { return Attr::NoMem; }
 };
 
-ATTRIBUTE_IMPL(Clobber) {
-  Attr Kind() const override { return Attr::Clobber; }
+// Both Read/WriteMem implies some really coarse grain
+// global memory access mode. It won't tell which
+// global memory does it access.
+ATTRIBUTE_IMPL(ReadMem) {
+  Attr Kind() const override { return Attr::ReadMem; }
+};
+ATTRIBUTE_IMPL(WriteMem) {
+  Attr Kind() const override { return Attr::WriteMem; }
 };
 
 #undef ATTRIBUTE_IMPL
