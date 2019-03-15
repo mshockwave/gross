@@ -391,4 +391,20 @@ TEST(ParserUnitTest, TestFuncCall) {
     G.dumpGraphviz(OF);
   }
   SS.clear();
+  {
+    // function call w/ mismatched parameter
+    SS << "function foo(a,b); {\n"
+       << "  return a + b\n"
+       << "};\n"
+       << "call foo(1+2)";
+    Graph G;
+    Parser P(SS, G);
+    (void) P.getLexer().getNextToken();
+    SetMockContext(P,G);
+
+    ASSERT_TRUE(P.ParseFuncDecl());
+
+    EXPECT_FALSE(P.ParseFuncCall());
+  }
+  SS.clear();
 }

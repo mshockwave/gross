@@ -27,7 +27,11 @@ bool Parser::Parse(bool StepLexer) {
   auto* FuncNode = FB.Build();
   CurSymTable().insert({"main", FuncNode});
 
-  if(!ParseVarDeclTop()) return false;
+  std::vector<Node*> GlobalVars;
+  if(!ParseVarDeclTop(&GlobalVars)) return false;
+  for(auto* GV : GlobalVars) {
+    G.MarkGlobalVar(GV);
+  }
   for(Tok = CurTok();
       Tok == Lexer::TOK_FUNCTION || Tok == Lexer::TOK_PROCEDURE;
       Tok = CurTok()) {
@@ -47,8 +51,14 @@ bool Parser::Parse(bool StepLexer) {
   NodeBuilder<IrOpcode::End> EB(&G, FuncNode);
   EB.AddTerminator(getLastCtrlPoint());
   // must 'wait' after all side effects terminate
+  // if there is no consumers
+  auto MAE = LastMemAccess.end();
   for(auto& P : LastModified) {
-    EB.AddEffectDep(P.second);
+    auto* LastMod = P.second;
+    // for non-memory access, if there is no consumers,
+    // well, then it's dead code
+    if(LastMemAccess.find(LastMod) == MAE)
+      EB.AddEffectDep(LastMod);
   }
   auto* EndNode = EB.Build();
 

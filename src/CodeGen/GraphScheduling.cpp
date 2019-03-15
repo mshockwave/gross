@@ -296,6 +296,7 @@ class CFGBuilder {
   // SubGraph will travel nodes in reverse BFS order
   SubGraph SG;
   GraphSchedule& Schedule;
+  Graph& G;
 
   std::vector<Node*> ControlNodes;
 
@@ -324,7 +325,8 @@ class CFGBuilder {
 public:
   CFGBuilder(GraphSchedule& schedule)
     : SG(schedule.getSubGraph()),
-      Schedule(schedule) {}
+      Schedule(schedule),
+      G(Schedule.getGraph()) {}
 
   void Run() {
     BlockPlacement();
@@ -376,9 +378,14 @@ void CFGBuilder::BlockPlacement() {
     }
     case IrOpcode::Alloca: {
       // needs to be placed in the entry block
-      // TODO: tell local alloca from global variable
       auto* EntryBlock = MapBlock(StartNode);
       assert(EntryBlock);
+      NodeProperties<IrOpcode::Start> FuncNP(StartNode);
+      if(FuncNP.name(G) != "main" &&
+         G.IsGlobalVar(N)) {
+        // global var and it's not main function, don't place it
+        continue;
+      }
       auto Pos = EntryBlock->node_cbegin();
       ++Pos;
       AddNodeToBlock(N, EntryBlock, Pos);

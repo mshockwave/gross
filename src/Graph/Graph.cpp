@@ -21,6 +21,20 @@ SubGraph::edge_iterator SubGraph::edge_end() {
 size_t SubGraph::edge_size() { return std::distance(edge_begin(),
                                                     edge_end()); }
 
+void Graph::MarkGlobalVar(Node* N) {
+  assert(N->getOp() == IrOpcode::SrcVarDecl ||
+         N->getOp() == IrOpcode::SrcArrayDecl ||
+         N->getOp() == IrOpcode::Alloca);
+  GlobalVariables.insert(N);
+}
+
+void Graph::ReplaceGlobalVar(Node* Old, Node* New) {
+  if(IsGlobalVar(Old)) {
+    GlobalVariables.erase(Old);
+    MarkGlobalVar(New);
+  }
+}
+
 void Graph::InsertNode(Node* N) {
   Nodes.emplace_back(N);
 }

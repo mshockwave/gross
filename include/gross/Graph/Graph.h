@@ -6,6 +6,7 @@
 #include "gross/Graph/Attribute.h"
 #include <memory>
 #include <iostream>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -87,6 +88,7 @@ class Graph {
 
   // attribute storage (owner of attribute implements)
   std::unordered_map<Node*, std::unique_ptr<AttributeConcept>> Attributes;
+  std::unordered_set<Node*> GlobalVariables;
 
   // recording state of NodeMarkers
   typename Node::MarkerTy MarkerMax;
@@ -124,6 +126,10 @@ public:
 
   void InsertNode(Node* N);
   const_node_iterator RemoveNode(const_node_iterator It);
+
+  void MarkGlobalVar(Node* N);
+  bool IsGlobalVar(Node* N) const { return GlobalVariables.count(N); }
+  void ReplaceGlobalVar(Node* Old, Node* New);
 
   void AddSubRegion(const SubGraph& SubG);
   void AddSubRegion(SubGraph&& SubG);

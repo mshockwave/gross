@@ -352,6 +352,10 @@ Node* Parser::ParseFuncCall() {
         Tok = NextTok();
     }
   }
+  if(CallBuilder.arg_size() != Func->getNumEffectInput()) {
+    Log::E() << "Mismatched amount of actual parameters\n";
+    return nullptr;
+  }
 
   // TODO: side-effects on global vars
   return CallBuilder.Build();

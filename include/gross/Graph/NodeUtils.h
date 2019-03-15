@@ -643,6 +643,8 @@ struct NodeBuilder<IrOpcode::Call> {
     return *this;
   }
 
+  size_t arg_size() const { return Params.size(); }
+
   Node* Build() {
     Params.insert(Params.cbegin(), FuncStub);
     auto* N = new Node(IrOpcode::Call, Params);
