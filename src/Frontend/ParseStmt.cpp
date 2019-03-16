@@ -38,13 +38,19 @@ Node* Parser::ParseAssignment() {
   if(DesigNode->getOp() == IrOpcode::SrcArrayAccess &&
      DesigNode->getNumEffectInput() == 1) {
     // append memory read dependency
-    auto* PrevStore = DesigNode->getEffectInput(0);
-    auto& MemReads = LastMemAccess[PrevStore];
+    auto* OldPrevStore = DesigNode->getEffectInput(0);
+    // since Decl might be modified in ParseExpr (i.e. function call)
+    // we need to retreive the LastModified of Decl again
+    assert(LastModified.count(DNP.decl()));
+    auto* NewPrevStore = LastModified.at(DNP.decl());
+    auto& MemReads = LastMemAccess[NewPrevStore];
     for(auto* MemRead : MemReads) {
       DesigNode->appendEffectInput(MemRead);
     }
     if(!MemReads.empty()) {
-      DesigNode->removeEffectInputAll(PrevStore);
+      DesigNode->removeEffectInputAll(OldPrevStore);
+    } else if(OldPrevStore != NewPrevStore) {
+      DesigNode->ReplaceUseOfWith(OldPrevStore, NewPrevStore, Use::K_EFFECT);
     }
   }
 

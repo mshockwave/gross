@@ -100,6 +100,7 @@ TEST(ParserUnitTest, ParseInterprocedure) {
        << "array[9][4] bar;\n"
        << "function yee(a); {\n"
        << " let bar[0][a] <- a;\n"
+       //<< " let foo <- a;\n"
        << " return bar[0][a]\n"
        << "};\n"
        << "function yoo;\n"

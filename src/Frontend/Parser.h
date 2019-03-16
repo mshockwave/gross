@@ -114,6 +114,14 @@ class Parser {
   inline void NewLastControlPoint() {
     LastControlPoint = std::move(decltype(LastControlPoint)());
   }
+  inline void NewLastModified() {
+    LastModified = std::move(decltype(LastModified)());
+  }
+  inline void NewLastMemAccess() {
+    LastMemAccess = std::move(decltype(LastMemAccess)());
+  }
+
+  void InspectFuncNodeUsages(Node* FuncEnd);
 
   /// placeholder function to avoid link time error
   /// for un-specialized decl template functions
@@ -168,7 +176,8 @@ public:
   Node* ParseReturnStmt();
   Node* ParseFuncCall();
 
-  bool ParseFuncDecl();
+  // return the end node
+  Node* ParseFuncDecl();
 };
 
 class Parser::SymbolLookup {

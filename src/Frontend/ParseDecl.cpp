@@ -1,7 +1,6 @@
 #include "gross/Support/Log.h"
 #include "gross/Graph/Graph.h"
 #include "gross/Graph/NodeUtils.h"
-#include "gross/Graph/AttributeBuilder.h"
 #include "Parser.h"
 
 using namespace gross;
@@ -96,18 +95,18 @@ void Parser::__SupportedParseVarDecls() {
   (void) ParseVarDecl<IrOpcode::SrcArrayDecl>();
 }
 
-bool Parser::ParseFuncDecl() {
+Node* Parser::ParseFuncDecl() {
   auto Tok = CurTok();
   if(Tok != Lexer::TOK_FUNCTION &&
      Tok != Lexer::TOK_PROCEDURE) {
     Log::E() << "Expecting 'function' or 'procedure' here\n";
-    return false;
+    return nullptr;
   }
   Tok = NextTok();
 
   if(Tok != Lexer::TOK_IDENT) {
     Log::E() << "Expect identifier for function\n";
-    return false;
+    return nullptr;
   }
   auto FName = TokBuffer();
   NodeBuilder<IrOpcode::VirtFuncPrototype> FB(&G);
@@ -117,12 +116,14 @@ bool Parser::ParseFuncDecl() {
   // 'CurrentScope' is global scope
   if(FuncLookup.InCurrentScope()) {
     Log::E() << "function has already declared in this scope\n";
-    return false;
+    return nullptr;
   }
   // start of function scope
   NewSymScope();
   // start a new control point record
   NewLastControlPoint();
+  NewLastModified();
+  NewLastMemAccess();
 
   Tok = NextTok();
   if(Tok == Lexer::TOK_L_PARAN) {
@@ -131,13 +132,13 @@ bool Parser::ParseFuncDecl() {
     while(true) {
       if(Tok != Lexer::TOK_IDENT) {
         Log::E() << "Expecting identifier in an argument list\n";
-        return false;
+        return nullptr;
       }
       const auto& ArgName = TokBuffer();
       SymbolLookup ArgLookup(*this, ArgName);
       if(ArgLookup.InCurrentScope()) {
         Log::E() << "argument name has already been taken in this scope\n";
-        return false;
+        return nullptr;
       }
       auto* ArgNode = NodeBuilder<IrOpcode::Argument>(&G, ArgName)
                       .Build();
@@ -150,7 +151,7 @@ bool Parser::ParseFuncDecl() {
         break;
       } else if(Tok != Lexer::TOK_COMMA) {
         Log::E() << "Expecting ',' here\n";
-        return false;
+        return nullptr;
       }
       Tok = NextTok();
     }
@@ -158,7 +159,7 @@ bool Parser::ParseFuncDecl() {
 
   if(Tok != Lexer::TOK_SEMI_COLON) {
     Log::E() << "Expect ';' at the end of function header\n";
-    return false;
+    return nullptr;
   }
   auto* FuncNode = FB.Build();
   // wind back to previous(global) scope and insert
@@ -169,55 +170,15 @@ bool Parser::ParseFuncDecl() {
   setLastCtrlPoint(FuncNode);
 
   (void) NextTok();
-  if(!ParseVarDeclTop()) return false;
+  if(!ParseVarDeclTop()) return nullptr;
   Tok = CurTok();
   if(Tok != Lexer::TOK_L_CUR_BRACKET) {
     Log::E() << "Expecting '{' here\n";
-    return false;
+    return nullptr;
   }
   (void) NextTok();
   std::vector<Node*> FuncBodyStmts;
-  if(!ParseStatements(FuncBodyStmts)) return false;
-  AttributeBuilder FuncAttrBuilder(G);
-  for(auto* N : FuncBodyStmts) {
-    // to see if any of the node access global vars
-    switch(N->getOp()) {
-    case IrOpcode::SrcAssignStmt: {
-      NodeProperties<IrOpcode::SrcAssignStmt> NP(N);
-      NodeProperties<IrOpcode::VirtSrcDesigAccess> ANP(NP.dest());
-      assert(ANP);
-      if(G.IsGlobalVar(ANP.decl()) &&
-         !FuncAttrBuilder.hasAttr<Attr::WriteMem>()) {
-        FuncAttrBuilder.Add<Attr::WriteMem>();
-      }
-      break;
-    }
-    case IrOpcode::SrcVarAccess:
-    case IrOpcode::SrcArrayAccess: {
-      bool Found = false;
-      for(auto* VU : N->value_users()) {
-        if(VU->getOp() != IrOpcode::SrcAssignStmt) {
-          Found = true;
-          break;
-        }
-      }
-      if(Found) {
-        NodeProperties<IrOpcode::VirtSrcDesigAccess> ANP(N);
-        if(G.IsGlobalVar(ANP.decl()) &&
-           !FuncAttrBuilder.hasAttr<Attr::ReadMem>()) {
-          FuncAttrBuilder.Add<Attr::WriteMem>();
-        }
-      }
-      break;
-    }
-    default: continue;
-    }
-  }
-  if(!FuncAttrBuilder.hasAttr<Attr::ReadMem>() &&
-     !FuncAttrBuilder.hasAttr<Attr::WriteMem>()) {
-    FuncAttrBuilder.Add<Attr::NoMem>();
-  }
-  if(!FuncAttrBuilder.empty()) FuncAttrBuilder.Attach(FuncNode);
+  if(!ParseStatements(FuncBodyStmts)) return nullptr;
 
   NodeBuilder<IrOpcode::End> EB(&G, FuncNode);
   EB.AddTerminator(getLastCtrlPoint());
@@ -236,12 +197,12 @@ bool Parser::ParseFuncDecl() {
   Tok = CurTok();
   if(Tok != Lexer::TOK_R_CUR_BRACKET) {
     Log::E() << "Expecting '}' here\n";
-    return false;
+    return nullptr;
   }
   Tok = NextTok();
   if(Tok != Lexer::TOK_SEMI_COLON) {
     Log::E() << "Expect ';' at the end of function decl\n";
-    return false;
+    return nullptr;
   }
   (void) NextTok();
   PopSymScope();
@@ -251,5 +212,5 @@ bool Parser::ParseFuncDecl() {
   G.AddSubRegion(SG);
   (void) NodeBuilder<IrOpcode::FunctionStub>(&G, SG).Build();
 
-  return true;
+  return EndNode;
 }
