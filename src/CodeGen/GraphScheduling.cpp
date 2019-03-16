@@ -392,6 +392,11 @@ void CFGBuilder::BlockPlacement() {
       Schedule.SetScheduled(N);
       continue;
     }
+    case IrOpcode::Argument: {
+      // skip function arguments
+      Schedule.SetScheduled(N);
+      continue;
+    }
     default:
       continue;
     }
@@ -895,6 +900,8 @@ std::ostream& GraphSchedule::printBlock(std::ostream& OS, BasicBlock* BB) {
           (*OffsetBB)->getId().print(OS);
           OS << ">";
         }
+      } else if(VI->getOp() == IrOpcode::Argument) {
+        IrOpcode::Print(G, OS, VI);
       } else {
         printInputNode(VI);
       }

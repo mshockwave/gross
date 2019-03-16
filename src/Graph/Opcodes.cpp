@@ -34,7 +34,18 @@ std::ostream& IrOpcode::Print(const Graph& G, std::ostream& OS, Node* N) {
     OS << "FunctionStub<" << Name << ">";
     break;
   }
-  CASE(Argument, STR(Argument))
+  case IrOpcode::Argument: {
+    // print index of argument as well
+    NodeProperties<IrOpcode::Argument> NP(N);
+    auto* Func = NP.getFuncStart();
+    size_t Idx = 0;
+    for(auto* Arg : Func->effect_inputs()) {
+      if(Arg == N) break;
+      ++Idx;
+    }
+    OS << "Arg<" << Idx << ">";
+    break;
+  }
   // FIXME: print callee name as well
   CASE(Call, STR(Call))
 #define COMMON_OP(OC) CASE(OC, STR(OC))

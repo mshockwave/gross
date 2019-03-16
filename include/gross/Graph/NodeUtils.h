@@ -184,6 +184,18 @@ NODE_PROPERTIES(Start) {
   }
 };
 
+NODE_PROPERTIES(Argument) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(Argument, N) {}
+  Node* getFuncStart() const {
+    assert(NodePtr->effect_users().begin()
+           != NodePtr->effect_users().end());
+    auto* Start = *NodePtr->effect_users().begin();
+    assert(Start->getOp() == IrOpcode::Start);
+    return Start;
+  }
+};
+
 NODE_PROPERTIES(VirtSrcDesigAccess) {
   NodeProperties(Node *N)
     : NODE_PROP_BASE(VirtSrcDesigAccess, N) {}

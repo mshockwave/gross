@@ -204,7 +204,12 @@ TEST(CodeGenUnitTest, PostLoweringFuncCallsTest) {
                   .FuncName("func_post_lower_call2_callee")
                   .AddParameter(Arg1).AddParameter(Arg2)
                   .Build();
+    auto* Sum = NodeBuilder<IrOpcode::BinAdd>(&G)
+                .LHS(Arg1).RHS(Arg2).Build();
+    auto* Return1 = NodeBuilder<IrOpcode::Return>(&G, Sum).Build();
+    Return1->appendControlInput(Func1);
     auto* End1 = NodeBuilder<IrOpcode::End>(&G, Func1)
+                .AddTerminator(Return1)
                 .Build();
     SubGraph SGCallee(End1);
     G.AddSubRegion(SGCallee);
@@ -219,10 +224,10 @@ TEST(CodeGenUnitTest, PostLoweringFuncCallsTest) {
     auto* Call = NodeBuilder<IrOpcode::Call>(&G, CalleeStub)
                  .AddParam(Const1).AddParam(Const2)
                  .Build();
-    auto* Return = NodeBuilder<IrOpcode::Return>(&G, Call).Build();
-    Return->appendControlInput(Func2);
+    auto* Return2 = NodeBuilder<IrOpcode::Return>(&G, Call).Build();
+    Return2->appendControlInput(Func2);
     auto* End2 = NodeBuilder<IrOpcode::End>(&G, Func2)
-                 .AddTerminator(Return)
+                 .AddTerminator(Return2)
                  .Build();
     SubGraph SGCaller(End2);
     G.AddSubRegion(SGCaller);
