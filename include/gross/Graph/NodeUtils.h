@@ -74,6 +74,32 @@ NODE_PROPERTIES(FunctionStub) {
   }
 };
 
+NODE_PROPERTIES(Call) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(Call, N) {}
+
+  Node* getFuncStub() const {
+    assert(NodePtr->getNumValueInput() > 0);
+    return NodePtr->getValueInput(0);
+  }
+
+  size_t getNumParameters() const {
+    assert(NodePtr->getNumValueInput() > 0);
+    return NodePtr->getNumValueInput() - 1;
+  }
+
+  using param_iterator = typename Node::input_iterator;
+  param_iterator param_begin() {
+    return std::next(NodePtr->value_input_begin(), 1);
+  }
+  param_iterator param_end() {
+    return NodePtr->value_input_end();
+  }
+  llvm::iterator_range<param_iterator> params() {
+    return llvm::make_range(param_begin(), param_end());
+  }
+};
+
 NODE_PROPERTIES(VirtSrcDecl) {
   NodeProperties(Node *N)
     : NODE_PROP_BASE(VirtSrcDecl, N) {}

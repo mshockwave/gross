@@ -237,6 +237,26 @@ private:
   std::array<Node*, 3> Vals;
 };
 
+template<>
+struct NodeBuilder<IrOpcode::VirtDLXPassParam> {
+  NodeBuilder(Graph* graph, Node* Val)
+    : G(graph),
+      ParamVal(Val) {}
+
+  Node* Build() {
+    assert(ParamVal);
+    auto* N = new Node(IrOpcode::VirtDLXPassParam,
+                       {ParamVal});
+    ParamVal->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+
+private:
+  Graph* G;
+  Node* ParamVal;
+};
+
 struct StackUtils {
   static constexpr IrOpcode::ID SpReg = IrOpcode::DLXr29;
   static constexpr IrOpcode::ID FpReg = IrOpcode::DLXr28;

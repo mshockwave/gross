@@ -864,7 +864,7 @@ std::ostream& GraphSchedule::printBlock(std::ostream& OS, BasicBlock* BB) {
   for(auto* N : BB->nodes()) {
     assert(BB->getNodeId(N));
     BB->getNodeId(N)->print(OS);
-    OS << " = ";
+    OS << ": ";
 
     // special handle for EffectPhi
     if(N->getOp() == IrOpcode::Phi &&
@@ -891,9 +891,9 @@ std::ostream& GraphSchedule::printBlock(std::ostream& OS, BasicBlock* BB) {
         OS << "r" << Offset;
       } else if(VI->getOp() == IrOpcode::DLXOffset) {
         if(BasicBlock** OffsetBB = BlockOffsets.find_value(VI)) {
-          OS << "&lt;";
+          OS << "<";
           (*OffsetBB)->getId().print(OS);
-          OS << "&gt;";
+          OS << ">";
         }
       } else {
         printInputNode(VI);
@@ -921,6 +921,18 @@ struct GraphSchedule::block_prop_writer {
         // replace with left-justified '\l'
         OutStr[i] = '\\';
         OutStr.insert(OutStr.cbegin() + i + 1, 'l');
+      } else if(OutStr[i] == '<') {
+        // replace with '&lt;'
+        OutStr[i] = '&';
+        OutStr.insert(OutStr.cbegin() + i + 1, ';');
+        OutStr.insert(OutStr.cbegin() + i + 1, 't');
+        OutStr.insert(OutStr.cbegin() + i + 1, 'l');
+      } else if(OutStr[i] == '>') {
+        // replace with '&gt;'
+        OutStr[i] = '&';
+        OutStr.insert(OutStr.cbegin() + i + 1, ';');
+        OutStr.insert(OutStr.cbegin() + i + 1, 't');
+        OutStr.insert(OutStr.cbegin() + i + 1, 'g');
       }
     }
     OS << OutStr << "\"]";

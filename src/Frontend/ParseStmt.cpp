@@ -39,7 +39,7 @@ Node* Parser::ParseAssignment() {
      DesigNode->getNumEffectInput() == 1) {
     // append memory read dependency
     auto* OldPrevStore = DesigNode->getEffectInput(0);
-    // since Decl might be modified in ParseExpr (i.e. function call)
+    // since Decl might be modified in ParseExpr (by function call)
     // we need to retreive the LastModified of Decl again
     assert(LastModified.count(DNP.decl()));
     auto* NewPrevStore = LastModified.at(DNP.decl());

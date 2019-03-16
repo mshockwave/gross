@@ -97,7 +97,6 @@ void PostMachineLowering::ControlFlowLowering() {
 }
 
 void PostMachineLowering::FunctionCallLowering() {
-  // TODO
   // 1. Insert VirtDLXCallsiteBegin
   // 2. Insert VirtDLXPassParam for every actual parameter
   // =======Before Call==========
@@ -106,6 +105,56 @@ void PostMachineLowering::FunctionCallLowering() {
   // 4. Insert ADDI #0, R1 and replace all usages of original
   //    function return value with that.
   // 5. Insert VirtDLXCallsiteEnd
+  std::vector<Node*> Callsites;
+  for(auto* BB : Schedule.rpo_blocks()) {
+    for(auto* N : BB->nodes()) {
+      if(N->getOp() == IrOpcode::Call)
+        Callsites.push_back(N);
+    }
+  }
+
+  for(auto* CS : Callsites) {
+    auto* BB = Schedule.MapBlock(CS);
+    NodeProperties<IrOpcode::Call> CNP(CS);
+    // remove FunctionStub node if any
+    Schedule.RemoveNode(BB, CNP.getFuncStub());
+
+    // add VirtDLXCallsiteBegin and End
+    auto* CallsiteBegin
+      = NodeBuilder<IrOpcode::VirtDLXCallsiteBegin>(&G).Build();
+    Schedule.AddNodeBefore(BB, CS, CallsiteBegin);
+    auto* CallsiteEnd
+      = NodeBuilder<IrOpcode::VirtDLXCallsiteEnd>(&G).Build();
+    Schedule.AddNodeAfter(BB, CS, CallsiteEnd);
+
+    // handle parameter passing
+    for(auto* Param : CNP.params()) {
+      auto* ParamPass
+        = NodeBuilder<IrOpcode::VirtDLXPassParam>(&G, Param).Build();
+      Schedule.AddNodeBefore(BB, CS, ParamPass);
+    }
+
+    // handle return value if any
+    std::vector<Node*> ReturnUsrs;
+    for(auto* VU : CS->value_users()) {
+      ReturnUsrs.push_back(VU);
+    }
+    if(!ReturnUsrs.empty()) {
+      auto* R1 = NodeBuilder<IrOpcode::DLXr1>(&G).Build();
+      auto* NewReturn
+        = NodeBuilder<IrOpcode::VirtDLXBinOps>(&G, IrOpcode::DLXAddI, true)
+          .LHS(R1)
+          .RHS(NodeBuilder<IrOpcode::ConstantInt>(&G, 0).Build())
+          .Build();
+      for(auto* RU : ReturnUsrs) {
+        RU->ReplaceUseOfWith(CS, NewReturn, Use::K_VALUE);
+      }
+      Schedule.AddNodeAfter(BB, CS, NewReturn);
+    }
+
+    // replace Call with BSR
+    // TODO
+  }
 }
 
 void PostMachineLowering::Trimming() {

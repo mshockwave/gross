@@ -6,6 +6,7 @@
 #include "gross/CodeGen/PostMachineLowering.h"
 #include "gtest/gtest.h"
 #include <fstream>
+#include <sstream>
 
 using namespace gross;
 
@@ -143,3 +144,111 @@ TEST(CodeGenUnitTest, PostLoweringNormalCtrlStructures) {
   }
 }
 
+TEST(CodeGenUnitTest, PostLoweringFuncCallsTest) {
+  {
+    // call w/o parameter
+    Graph G;
+    auto* Func1 = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
+                  .FuncName("func_post_lower_call1_callee")
+                  .Build();
+    auto* End1 = NodeBuilder<IrOpcode::End>(&G, Func1)
+                .Build();
+    SubGraph SGCallee(End1);
+    G.AddSubRegion(SGCallee);
+    auto* CalleeStub
+      = NodeBuilder<IrOpcode::FunctionStub>(&G, SGCallee).Build();
+
+    auto* Func2 = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
+                  .FuncName("func_post_lower_call1_caller")
+                  .Build();
+    auto* Call = NodeBuilder<IrOpcode::Call>(&G, CalleeStub)
+                 .Build();
+    auto* Return = NodeBuilder<IrOpcode::Return>(&G, Call).Build();
+    Return->appendControlInput(Func2);
+    auto* End2 = NodeBuilder<IrOpcode::End>(&G, Func2)
+                 .AddTerminator(Return)
+                 .Build();
+    SubGraph SGCaller(End2);
+    G.AddSubRegion(SGCaller);
+    {
+      std::ofstream OF("TestPostLoweringFuncCall1.dot");
+      G.dumpGraphviz(OF);
+    }
+
+    GraphScheduler Scheduler(G);
+    Scheduler.ComputeScheduledGraph();
+    EXPECT_EQ(Scheduler.schedule_size(), 2);
+    size_t Counter = 1;
+    for(auto* FuncSchedule : Scheduler.schedules()) {
+      std::stringstream SS;
+      SS << "TestPostLoweringFuncCall1-"
+         << Counter << ".schedule.dot";
+      std::ofstream OFSchedule(SS.str());
+      FuncSchedule->dumpGraphviz(OFSchedule);
+      SS.str("");
+
+      SS << "TestPostLoweringFuncCall1-"
+         << Counter++ << ".schedule.postlower.dot";
+      PostMachineLowering PostLowering(*FuncSchedule);
+      PostLowering.Run();
+      std::ofstream OFPostLower(SS.str());
+      FuncSchedule->dumpGraphviz(OFPostLower);
+    }
+  }
+  {
+    // call w/ parameters
+    Graph G;
+    auto* Arg1 = NodeBuilder<IrOpcode::Argument>(&G, "a").Build();
+    auto* Arg2 = NodeBuilder<IrOpcode::Argument>(&G, "b").Build();
+    auto* Func1 = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
+                  .FuncName("func_post_lower_call2_callee")
+                  .AddParameter(Arg1).AddParameter(Arg2)
+                  .Build();
+    auto* End1 = NodeBuilder<IrOpcode::End>(&G, Func1)
+                .Build();
+    SubGraph SGCallee(End1);
+    G.AddSubRegion(SGCallee);
+    auto* CalleeStub
+      = NodeBuilder<IrOpcode::FunctionStub>(&G, SGCallee).Build();
+
+    auto* Func2 = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
+                  .FuncName("func_post_lower_call2_caller")
+                  .Build();
+    auto* Const1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 1).Build();
+    auto* Const2 = NodeBuilder<IrOpcode::ConstantInt>(&G, 2).Build();
+    auto* Call = NodeBuilder<IrOpcode::Call>(&G, CalleeStub)
+                 .AddParam(Const1).AddParam(Const2)
+                 .Build();
+    auto* Return = NodeBuilder<IrOpcode::Return>(&G, Call).Build();
+    Return->appendControlInput(Func2);
+    auto* End2 = NodeBuilder<IrOpcode::End>(&G, Func2)
+                 .AddTerminator(Return)
+                 .Build();
+    SubGraph SGCaller(End2);
+    G.AddSubRegion(SGCaller);
+    {
+      std::ofstream OF("TestPostLoweringFuncCall2.dot");
+      G.dumpGraphviz(OF);
+    }
+
+    GraphScheduler Scheduler(G);
+    Scheduler.ComputeScheduledGraph();
+    EXPECT_EQ(Scheduler.schedule_size(), 2);
+    size_t Counter = 1;
+    for(auto* FuncSchedule : Scheduler.schedules()) {
+      std::stringstream SS;
+      SS << "TestPostLoweringFuncCall2-"
+         << Counter << ".schedule.dot";
+      std::ofstream OFSchedule(SS.str());
+      FuncSchedule->dumpGraphviz(OFSchedule);
+      SS.str("");
+
+      SS << "TestPostLoweringFuncCall2-"
+         << Counter++ << ".schedule.postlower.dot";
+      PostMachineLowering PostLowering(*FuncSchedule);
+      PostLowering.Run();
+      std::ofstream OFPostLower(SS.str());
+      FuncSchedule->dumpGraphviz(OFPostLower);
+    }
+  }
+}
