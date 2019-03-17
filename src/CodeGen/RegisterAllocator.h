@@ -12,10 +12,7 @@ namespace gross {
 // Forward declarations
 struct StackUtils;
 
-template<class Target>
-struct LinearScanRegisterAllocator {
-  using target_type = Target;
-
+struct RegisterAllocator {
   struct Location {
     enum Kind {
       K_REG,
@@ -47,8 +44,10 @@ struct LinearScanRegisterAllocator {
       return Location{K_SPILL_PARAM, Idx};
     }
   };
+};
 
-private:
+template<class Target>
+class LinearScanRegisterAllocator : public RegisterAllocator {
   static constexpr size_t NumRegister
     = Target::RegisterFile::size();
   static constexpr size_t FirstCallerSaved
@@ -140,8 +139,6 @@ private:
   void Recycle(Node* N);
 
   void InsertSpillCodes();
-
-  void PostRALowering();
 
   void CommitRegisterNodes();
 

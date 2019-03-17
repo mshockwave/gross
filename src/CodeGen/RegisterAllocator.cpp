@@ -320,29 +320,6 @@ void LinearScanRegisterAllocator<T>::InsertSpillCodes() {
 }
 
 template<class T>
-void LinearScanRegisterAllocator<T>::PostRALowering() {
-  // 1. Insert callee-saved/restore routines
-  //    (TODO: always save SP first!)
-  // 2. Remove PHI nodes
-  // 3. Lowering function call virtual nodes
-  //    (e.g. caller-saved/restore routines)
-
-  // Remove PHI nodes
-  std::vector<Node*> PHIs;
-  for(auto* BB : Schedule.rpo_blocks()) {
-    for(auto* N : BB->nodes()) {
-      if(N->getOp() == IrOpcode::Phi)
-        PHIs.push_back(N);
-    }
-  }
-  for(auto* PN : PHIs) {
-    auto* BB = Schedule.MapBlock(PN);
-    assert(BB);
-    Schedule.RemoveNode(BB, PN);
-  }
-}
-
-template<class T>
 void LinearScanRegisterAllocator<T>::CommitRegisterNodes() {
   // Transform to three-address instructions and replace
   // inputs with assigned registers
@@ -481,8 +458,6 @@ void LinearScanRegisterAllocator<T>::Allocate() {
   }
 
   InsertSpillCodes();
-
-  PostRALowering();
 
   CommitRegisterNodes();
 }
