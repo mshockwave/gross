@@ -93,6 +93,44 @@ void LinearScanRegisterAllocator<T>::ParametersLowering() {
 }
 
 template<class T>
+void LinearScanRegisterAllocator<T>::FunctionReturnLowering() {
+  std::vector<Node*> Returns;
+  for(auto* N : Schedule.rpo_nodes()) {
+    if(N->getOp() == IrOpcode::Return)
+      Returns.push_back(N);
+  }
+
+  if(Returns.empty()) {
+    // insert RET <link register> at the end block
+    auto* EndNode = Schedule.getEndNode();
+    auto* EndBlock = Schedule.MapBlock(EndNode);
+    assert(EndBlock);
+    auto* NewRet
+      = NodeBuilder<IrOpcode::DLXRet>(&G, RegNodes[T::LinkRegister])
+        .Build();
+    Schedule.AddNodeBefore(EndBlock, EndNode, NewRet);
+  } else {
+    for(auto* Return : Returns) {
+      // replace with move to return storage register.
+      // And RET <link register>
+      auto* RetBB = Schedule.MapBlock(Return);
+      assert(RetBB);
+      auto* Move
+        = NodeBuilder<IrOpcode::VirtDLXBinOps>(&G, IrOpcode::DLXAddI, true)
+          .LHS(NodeProperties<IrOpcode::Return>(Return).ReturnVal())
+          .RHS(NodeBuilder<IrOpcode::ConstantInt>(&G, 0).Build())
+          .Build();
+      Assignment[Move] = Location::Register(T::ReturnStorage);
+      Schedule.AddNodeBefore(RetBB, Return, Move);
+      auto* NewRet
+        = NodeBuilder<IrOpcode::DLXRet>(&G, RegNodes[T::LinkRegister])
+          .Build();
+      Schedule.ReplaceNode(RetBB, Return, NewRet);
+    }
+  }
+}
+
+template<class T>
 std::vector<Node*>& LinearScanRegisterAllocator<T>::getOrderedUsers(Node* N) {
   struct InstrOrderFunctor {
     explicit InstrOrderFunctor(GraphSchedule& schedule)
@@ -367,7 +405,8 @@ void LinearScanRegisterAllocator<T>::InsertCalleeSavedCodes(Node* PosAfter) {
     bool FoundTerminate = false;
     for(auto* N : BB->reverse_nodes()) {
       if(N->getOp() == IrOpcode::End ||
-         N->getOp() == IrOpcode::Return) {
+         N->getOp() == IrOpcode::Return ||
+         N->getOp() == IrOpcode::DLXRet) {
         FoundTerminate = true;
       } else if(FoundTerminate) {
         // found insertion point
@@ -434,6 +473,7 @@ void LinearScanRegisterAllocator<T>::CommitRegisterNodes() {
         CurNode->appendValueInput(NewOperands[2]);
         break;
       }
+      case IrOpcode::DLXRet:
       case IrOpcode::Return: {
         std::vector<Node*> ValInputs(CurNode->value_input_begin(),
                                      CurNode->value_input_end());
@@ -526,6 +566,8 @@ void LinearScanRegisterAllocator<T>::Allocate() {
       }
     }
   }
+
+  FunctionReturnLowering();
 
   auto* Pos = InsertSpillCodes();
 

@@ -314,6 +314,26 @@ private:
   Node* ParamVal;
 };
 
+template<>
+struct NodeBuilder<IrOpcode::DLXRet> {
+  NodeBuilder(Graph* graph, Node* LR)
+    : G(graph),
+      LinkReg(LR) {}
+
+  Node* Build() {
+    assert(LinkReg);
+    auto* N = new Node(IrOpcode::DLXRet,
+                       {LinkReg});
+    LinkReg->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+
+private:
+  Graph* G;
+  Node* LinkReg;
+};
+
 struct StackUtils {
   static constexpr IrOpcode::ID SpReg = IrOpcode::DLXr29;
   static constexpr IrOpcode::ID FpReg = IrOpcode::DLXr28;

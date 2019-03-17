@@ -138,6 +138,9 @@ class LinearScanRegisterAllocator : public RegisterAllocator {
   void Spill(Node* N);
   void Recycle(Node* N);
 
+  // do before inserting epilogue!
+  void FunctionReturnLowering();
+
   // return the instruction creating spill slots
   Node* InsertSpillCodes();
 

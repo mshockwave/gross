@@ -105,6 +105,7 @@ void PostMachineLowering::FunctionCallLowering() {
   // 4. Insert ADDI #0, R1 and replace all usages of original
   //    function return value with that.
   // 5. Insert VirtDLXCallsiteEnd
+
   std::vector<Node*> Callsites;
   for(auto* BB : Schedule.rpo_blocks()) {
     for(auto* N : BB->nodes()) {
