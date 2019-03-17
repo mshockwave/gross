@@ -275,6 +275,9 @@ struct StackUtils {
   // slot beyond local var slots
   Node* NonLocalSlotOffset(size_t Idx);
 
+  // spilled parameter slots
+  Node* SpilledParamOffset(size_t Idx);
+
 private:
   GraphSchedule& Schedule;
   Graph& G;

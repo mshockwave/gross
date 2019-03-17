@@ -50,3 +50,10 @@ Node* StackUtils::NonLocalSlotOffset(size_t Idx) {
     = NodeBuilder<IrOpcode::ConstantInt>(&G, Offset).Build();
   return OffsetNode;
 }
+
+Node* StackUtils::SpilledParamOffset(size_t Idx) {
+  auto Offset = static_cast<int32_t>(Idx) * 4;
+  auto* OffsetNode
+    = NodeBuilder<IrOpcode::ConstantInt>(&G, Offset).Build();
+  return OffsetNode;
+}

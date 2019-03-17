@@ -28,10 +28,22 @@ std::ostream& IrOpcode::Print(const Graph& G, std::ostream& OS, Node* N) {
   case IrOpcode::FunctionStub: {
     auto* FuncStart = NodeProperties<IrOpcode::FunctionStub>(N)
                       .getFunctionStart(G);
-    std::string Name = "";
+    std::string Name = "N/A";
     if(FuncStart)
       Name = NodeProperties<IrOpcode::Start>(FuncStart).name(G);
     OS << "FunctionStub<" << Name << ">";
+    break;
+  }
+  case IrOpcode::Call: {
+    assert(N->getNumValueInput() > 0);
+    auto* FuncStub = N->getValueInput(0);
+    assert(FuncStub->getOp() == IrOpcode::FunctionStub);
+    auto* FuncStart = NodeProperties<IrOpcode::FunctionStub>(FuncStub)
+                      .getFunctionStart(G);
+    std::string Name = "N/A";
+    if(FuncStart)
+      Name = NodeProperties<IrOpcode::Start>(FuncStart).name(G);
+    OS << "Call<" << Name << ">";
     break;
   }
   case IrOpcode::Argument: {
@@ -46,8 +58,6 @@ std::ostream& IrOpcode::Print(const Graph& G, std::ostream& OS, Node* N) {
     OS << "Arg<" << Idx << ">";
     break;
   }
-  // FIXME: print callee name as well
-  CASE(Call, STR(Call))
 #define COMMON_OP(OC) CASE(OC, STR(OC))
 #define CONTROL_OP(OC) CASE(OC, STR(OC))
 #define MEMORY_OP(OC) CASE(OC, STR(OC))

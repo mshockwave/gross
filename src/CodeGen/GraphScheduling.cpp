@@ -392,8 +392,11 @@ void CFGBuilder::BlockPlacement() {
       Schedule.SetScheduled(N);
       continue;
     }
+    case IrOpcode::ConstantInt:
+    case IrOpcode::ConstantStr:
+    case IrOpcode::FunctionStub:
     case IrOpcode::Argument: {
-      // skip function arguments
+      // skip these Nodes
       Schedule.SetScheduled(N);
       continue;
     }
@@ -453,9 +456,6 @@ void CFGBuilder::ConnectBlock(Node* CtrlNode) {
     BasicBlock* EntryBlock = nullptr;
     for(auto* CI : CtrlNode->control_inputs()) {
       auto* PrevBB = MapBlock(CI);
-      //assert(PrevBB);
-      // FIXME: should Return node be the side effect
-      // dependency for End node?
       if(!PrevBB) continue;
       if(CI->getOp() == IrOpcode::Start) {
         EntryBlock = PrevBB;
@@ -613,6 +613,9 @@ void PostOrderNodePlacement::Compute() {
       auto* DomBB = GetCommonDominator(UserBBs);
       assert(DomBB);
       // Don't put node in a loop
+      // FIXME: post-order placement is not suitable to do
+      // this kind of optimization as there is no input nodes
+      // scheduling information.
       //DomBB = FindLoopInvariantPos(CurNode, DomBB);
 
       // search from top to bottom within the block,
@@ -632,7 +635,6 @@ void PostOrderNodePlacement::Compute() {
       Schedule.SetScheduled(CurNode);
       continue;
     }
-    // TODO: other dependencies
   }
 }
 } // end namespace _internal

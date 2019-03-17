@@ -17,16 +17,34 @@ struct LinearScanRegisterAllocator {
   using target_type = Target;
 
   struct Location {
-    bool IsRegister;
-    // register number if IsRegister is true
-    // stack slot number otherwise
+    enum Kind {
+      K_REG,
+      K_SPILL_VAL,
+      K_SPILL_PARAM
+    };
+    Kind LocKind;
+
+    // K_REG: register number
+    // K_SPILL_VAL: spilled stack slot
+    // K_SPILL_PARAM: spilled function parameter slot
     size_t Index;
 
+    bool IsRegister() const { return LocKind == K_REG; };
+    bool IsSpilledVal() const {
+      return LocKind == K_SPILL_VAL;
+    };
+    bool IsSpilledParam() const {
+      return LocKind == K_SPILL_PARAM;
+    };
+
     static Location Register(size_t Idx) {
-      return Location{true, Idx};
+      return Location{K_REG, Idx};
     }
-    static Location StackSlot(size_t Idx) {
-      return Location{false, Idx};
+    static Location SpilledVal(size_t Idx) {
+      return Location{K_SPILL_VAL, Idx};
+    }
+    static Location SpilledParam(size_t Idx) {
+      return Location{K_SPILL_PARAM, Idx};
     }
   };
 
@@ -70,6 +88,7 @@ private:
   // then it's reserved register.
   std::array<Node*, NumRegister> RegUsages;
   std::vector<Node*> SpillSlots;
+  std::vector<Node*> SpillParams;
 
   // VirtDLXCallsiteBegin node -> active registers at this moment
   std::unordered_map<Node*, std::bitset<NumRegister>> CallerSaved;
@@ -114,6 +133,7 @@ private:
   }
 
   void LegalizePhiInputs(Node* N);
+  void ParametersLowering();
 
   bool AssignRegister(Node* N);
   void Spill(Node* N);
