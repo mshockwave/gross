@@ -3,6 +3,7 @@
 #include "RegisterAllocator.h"
 #include "Targets.h"
 #include "DLXNodeUtils.h"
+#include "PostRALowering.h"
 #include "gtest/gtest.h"
 #include <fstream>
 
@@ -271,6 +272,13 @@ TEST(CodeGenUnitTest, AdvancedValueAllocationRATest) {
       std::ofstream OF("TestRASmallParams.cfg.ra.dot");
       FuncSchedule->dumpGraphviz(OF);
     }
+
+    PostRALowering PostRA(*FuncSchedule);
+    PostRA.Run();
+    {
+      std::ofstream OF("TestRASmallParams.cfg.ra.postra.dot");
+      FuncSchedule->dumpGraphviz(OF);
+    }
   }
   {
     // w/ more than four function parameters
@@ -353,6 +361,13 @@ TEST(CodeGenUnitTest, AdvancedValueAllocationRATest) {
     RA.Allocate();
     {
       std::ofstream OF("TestRAManyParams.cfg.ra.dot");
+      FuncSchedule->dumpGraphviz(OF);
+    }
+
+    PostRALowering PostRA(*FuncSchedule);
+    PostRA.Run();
+    {
+      std::ofstream OF("TestRAManyParams.cfg.ra.postra.dot");
       FuncSchedule->dumpGraphviz(OF);
     }
   }

@@ -124,13 +124,16 @@ void PostMachineLowering::FunctionCallLowering() {
       = NodeBuilder<IrOpcode::VirtDLXCallsiteBegin>(&G).Build();
     Schedule.AddNodeBefore(BB, CS, CallsiteBegin);
     auto* CallsiteEnd
-      = NodeBuilder<IrOpcode::VirtDLXCallsiteEnd>(&G).Build();
+      = NodeBuilder<IrOpcode::VirtDLXCallsiteEnd>(&G, CallsiteBegin)
+        .Build();
     Schedule.AddNodeAfter(BB, CS, CallsiteEnd);
 
     // handle parameter passing
     for(auto* Param : CNP.params()) {
       auto* ParamPass
-        = NodeBuilder<IrOpcode::VirtDLXPassParam>(&G, Param).Build();
+        = NodeBuilder<IrOpcode::VirtDLXPassParam>(&G, Param)
+          .SetCallsite(CallsiteBegin)
+          .Build();
       Schedule.AddNodeBefore(BB, CS, ParamPass);
     }
 

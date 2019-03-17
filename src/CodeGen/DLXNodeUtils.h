@@ -86,6 +86,34 @@ NODE_PROPERTIES(VirtDLXTerminate) {
   }
 };
 
+NODE_PROPERTIES(VirtDLXCallsiteBegin) {
+  NodeProperties(Node* N)
+    : NODE_PROP_BASE(VirtDLXCallsiteBegin, N) {}
+
+  // the first effect_user
+  Node* getCallsiteEnd() const {
+    assert(NodePtr->effect_users().begin() !=
+           NodePtr->effect_users().end());
+    return *NodePtr->effect_users().begin();
+  }
+
+  size_t param_size() const {
+    auto ItParam = std::next(NodePtr->effect_users().begin(), 1);
+    return std::distance(ItParam,
+                         NodePtr->effect_users().end());
+  }
+};
+
+NODE_PROPERTIES(VirtDLXCallsiteEnd) {
+  NodeProperties(Node* N)
+    : NODE_PROP_BASE(VirtDLXCallsiteEnd, N) {}
+
+  Node* getCallsiteBegin() const {
+    assert(NodePtr->getNumEffectInput() > 0);
+    return NodePtr->getEffectInput(0);
+  }
+};
+
 template<>
 struct NodeBuilder<IrOpcode::VirtDLXBinOps> {
   NodeBuilder(Graph* graph, IrOpcode::ID Op, bool Imm = false)
@@ -238,22 +266,51 @@ private:
 };
 
 template<>
-struct NodeBuilder<IrOpcode::VirtDLXPassParam> {
-  NodeBuilder(Graph* graph, Node* Val)
+struct NodeBuilder<IrOpcode::VirtDLXCallsiteEnd> {
+  NodeBuilder(Graph* graph, Node* Callsite)
     : G(graph),
-      ParamVal(Val) {}
+      CallsiteBegin(Callsite) {}
 
   Node* Build() {
-    assert(ParamVal);
-    auto* N = new Node(IrOpcode::VirtDLXPassParam,
-                       {ParamVal});
-    ParamVal->Users.push_back(N);
+    assert(CallsiteBegin);
+    auto* N = new Node(IrOpcode::VirtDLXCallsiteEnd,
+                       {}, {},
+                       {CallsiteBegin});
+    CallsiteBegin->Users.push_back(N);
     G->InsertNode(N);
     return N;
   }
 
 private:
   Graph* G;
+  Node* CallsiteBegin;
+};
+
+template<>
+struct NodeBuilder<IrOpcode::VirtDLXPassParam> {
+  NodeBuilder(Graph* graph, Node* Val)
+    : G(graph),
+      ParamVal(Val) {}
+
+  NodeBuilder& SetCallsite(Node* N) {
+    CallsiteBegin = N;
+    return *this;
+  }
+
+  Node* Build() {
+    assert(ParamVal && CallsiteBegin);
+    auto* N = new Node(IrOpcode::VirtDLXPassParam,
+                       {ParamVal}, {},
+                       {CallsiteBegin});
+    ParamVal->Users.push_back(N);
+    CallsiteBegin->Users.push_back(N);
+    G->InsertNode(N);
+    return N;
+  }
+
+private:
+  Graph* G;
+  Node* CallsiteBegin;
   Node* ParamVal;
 };
 
@@ -270,7 +327,9 @@ struct StackUtils {
 
   // reserve multiple slots without
   // zero initialized each slot
-  Node* ReserveSlots(size_t Num);
+  Node* ReserveSlots(size_t Num, Node* Val = nullptr);
+
+  Node* RestoreSlot(Node* Dest);
 
   // slot beyond local var slots
   Node* NonLocalSlotOffset(size_t Idx);

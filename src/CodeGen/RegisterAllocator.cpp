@@ -246,22 +246,27 @@ void LinearScanRegisterAllocator<T>::Recycle(Node* N) {
 }
 
 template<class T>
-void LinearScanRegisterAllocator<T>::InsertSpillCodes() {
-  if(SpillSlots.empty() &&
-     SpillParams.empty()) return;
-
+Node* LinearScanRegisterAllocator<T>::InsertSpillCodes() {
+  // find the place next to local var stack slots
   auto* EntryBlock = Schedule.getEntryBlock();
+  assert(EntryBlock);
+  Node* PosAfter = nullptr;
+  for(auto* N : EntryBlock->nodes()) {
+    if(N->getOp() == IrOpcode::Start ||
+       N->getOp() == IrOpcode::Alloca) continue;
+    PosAfter = N;
+    break;
+  }
+  assert(PosAfter);
+
+  if(SpillSlots.empty() &&
+     SpillParams.empty()) return PosAfter;
+
   if(!SpillSlots.empty()) {
     // reserve spill slots
     auto* Reservation = SUtils.ReserveSlots(SpillSlots.size());
-    for(auto NI = EntryBlock->node_cbegin(), NE = EntryBlock->node_cend();
-        NI != NE; ++NI) {
-      auto* N = const_cast<Node*>(*NI);
-      if(N->getOp() == IrOpcode::Start ||
-         N->getOp() == IrOpcode::Alloca) continue;
-      Schedule.AddNode(EntryBlock, NI, Reservation);
-      break;
-    }
+    Schedule.AddNodeAfter(EntryBlock, PosAfter, Reservation);
+    PosAfter = Reservation;
   }
 
   auto* Fp = SUtils.FramePointer();
@@ -317,6 +322,74 @@ void LinearScanRegisterAllocator<T>::InsertSpillCodes() {
   for(auto* SC : ScratchCandidates) {
     Assignment[SC] = Location::Register(27);
   }
+
+  return PosAfter;
+}
+
+template<class T>
+void LinearScanRegisterAllocator<T>::InsertCalleeSavedCodes(Node* PosAfter) {
+  // insert callee-save/restore code (i.e. pro/epilogue)
+  // and caller-save/restore code
+  auto* EntryBlock = Schedule.getEntryBlock();
+  assert(EntryBlock);
+
+  // insert prologue
+  for(auto i = 0U; i < CalleeSaved.size(); ++i) {
+    if(CalleeSaved.test(i)) {
+      auto* Push = SUtils.ReserveSlots(1, RegNodes[i]);
+      // insert instructions in 'reverse' order
+      Schedule.AddNodeAfter(EntryBlock, PosAfter, Push);
+    }
+  }
+
+  // epilogue creator
+  auto createEpilogue = [&](std::vector<Node*>& Epilogue) {
+    for(auto i = 0U; i < CalleeSaved.size(); ++i) {
+      if(CalleeSaved.test(i)) {
+        auto* Pop = SUtils.RestoreSlot(RegNodes[i]);
+        Epilogue.insert(Epilogue.cbegin(), Pop);
+      }
+    }
+    // restore frame pointer to stack pointer
+    Epilogue.insert(
+      Epilogue.cbegin(),
+      NodeBuilder<IrOpcode::VirtDLXBinOps>(&G, IrOpcode::DLXAddI, true)
+      .LHS(SUtils.FramePointer())
+      .RHS(NodeBuilder<IrOpcode::ConstantInt>(&G, 0).Build())
+      .Build()
+    );
+    Assignment[Epilogue.front()] = Location::Register(T::StackPointer);
+  };
+  // insert epilogue
+  // terminate BB -> insert after point
+  std::map<BasicBlock*, Node*> ExitPoints;
+  for(auto* BB : Schedule.rpo_blocks()) {
+    bool FoundTerminate = false;
+    for(auto* N : BB->reverse_nodes()) {
+      if(N->getOp() == IrOpcode::End ||
+         N->getOp() == IrOpcode::Return) {
+        FoundTerminate = true;
+      } else if(FoundTerminate) {
+        // found insertion point
+        ExitPoints.insert({BB, N});
+        break;
+      }
+    }
+  }
+  std::vector<Node*> Epilogue;
+  for(auto& Point : ExitPoints) {
+    auto* BB = Point.first;
+    auto* PosAfter = Point.second;
+    Epilogue.clear();
+    createEpilogue(Epilogue);
+    for(auto* EPN : Epilogue) {
+      Schedule.AddNodeAfter(BB, PosAfter, EPN);
+    }
+  }
+}
+
+template<class T>
+void LinearScanRegisterAllocator<T>::InsertCallerSavedCodes() {
 }
 
 template<class T>
@@ -394,7 +467,6 @@ void LinearScanRegisterAllocator<T>::Allocate() {
   // 3. if no register, spill
   // 4. assign register otherwise
   // 5. recycle any expired register
-  // TODO: handle callsite
 
   std::vector<Node*> PHINodes;
   for(auto* BB : Schedule.rpo_blocks()) {
@@ -418,10 +490,8 @@ void LinearScanRegisterAllocator<T>::Allocate() {
       if(CurNode->getOp() == IrOpcode::VirtDLXCallsiteBegin) {
         // record the current active registers needs to be saved
         std::bitset<NumRegister> ActiveRegs;
-        // stack pointer and link register always need to be saved
-        // TODO: don't use literal register number
-        ActiveRegs[28] = true;
-        ActiveRegs[31] = true;
+        // link register always need to be saved
+        ActiveRegs[T::LinkRegister] = true;
         for(auto i = FirstCallerSaved; i <= LastCallerSaved; ++i) {
           if(RegUsages[i]) ActiveRegs[i] = true;
         }
@@ -457,7 +527,10 @@ void LinearScanRegisterAllocator<T>::Allocate() {
     }
   }
 
-  InsertSpillCodes();
+  auto* Pos = InsertSpillCodes();
+
+  InsertCalleeSavedCodes(Pos);
+  InsertCallerSavedCodes();
 
   CommitRegisterNodes();
 }
