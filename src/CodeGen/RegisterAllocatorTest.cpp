@@ -1,4 +1,5 @@
 #include "gross/CodeGen/GraphScheduling.h"
+#include "gross/CodeGen/PostMachineLowering.h"
 #include "gross/Graph/NodeUtils.h"
 #include "RegisterAllocator.h"
 #include "Targets.h"
@@ -369,6 +370,88 @@ TEST(CodeGenUnitTest, AdvancedValueAllocationRATest) {
     {
       std::ofstream OF("TestRAManyParams.cfg.ra.postra.dot");
       FuncSchedule->dumpGraphviz(OF);
+    }
+  }
+}
+
+TEST(CodeGenUnitTest, InterprocedureRATest) {
+  {
+    // test callsite lowering - w/ # of parameters > 4
+    Graph G;
+    auto* Arg1 = NodeBuilder<IrOpcode::Argument>(&G, "a").Build();
+    auto* Arg2 = NodeBuilder<IrOpcode::Argument>(&G, "b").Build();
+    auto* Arg3 = NodeBuilder<IrOpcode::Argument>(&G, "c").Build();
+    auto* Arg4 = NodeBuilder<IrOpcode::Argument>(&G, "d").Build();
+    auto* Arg5 = NodeBuilder<IrOpcode::Argument>(&G, "e").Build();
+    auto* Arg6 = NodeBuilder<IrOpcode::Argument>(&G, "f").Build();
+    auto* Arg7 = NodeBuilder<IrOpcode::Argument>(&G, "g").Build();
+    auto* Arg8 = NodeBuilder<IrOpcode::Argument>(&G, "h").Build();
+    auto* Func1 = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
+                  .FuncName("func_ra_callsite_lowering_callee")
+                  .AddParameter(Arg1).AddParameter(Arg2).AddParameter(Arg3)
+                  .AddParameter(Arg4).AddParameter(Arg5).AddParameter(Arg6)
+                  .AddParameter(Arg7).AddParameter(Arg8)
+                  .Build();
+    auto* Sum = NodeBuilder<IrOpcode::BinAdd>(&G)
+                .LHS(Arg8).RHS(Arg2).Build();
+    auto* Return1 = NodeBuilder<IrOpcode::Return>(&G, Sum).Build();
+    Return1->appendControlInput(Func1);
+    auto* End1 = NodeBuilder<IrOpcode::End>(&G, Func1)
+                .AddTerminator(Return1)
+                .Build();
+    SubGraph SGCallee(End1);
+    G.AddSubRegion(SGCallee);
+    auto* CalleeStub
+      = NodeBuilder<IrOpcode::FunctionStub>(&G, SGCallee).Build();
+
+    auto* Func2 = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
+                  .FuncName("func_ra_callsite_lowering_caller")
+                  .Build();
+    Node* Consts[8];
+    for(auto i = 0; i < 8; ++i)
+      Consts[i] = NodeBuilder<IrOpcode::ConstantInt>(&G, i + 1).Build();
+    NodeBuilder<IrOpcode::Call> CallBuilder(&G, CalleeStub);
+    for(auto i = 0; i < 8; ++i)
+      CallBuilder.AddParam(Consts[i]);
+    auto* Call = CallBuilder.Build();
+    auto* Return2 = NodeBuilder<IrOpcode::Return>(&G, Call).Build();
+    Return2->appendControlInput(Func2);
+    auto* End2 = NodeBuilder<IrOpcode::End>(&G, Func2)
+                 .AddTerminator(Return2)
+                 .Build();
+    SubGraph SGCaller(End2);
+    G.AddSubRegion(SGCaller);
+    //{
+      //std::ofstream OF("TestRACallsiteLowering.dot");
+      //G.dumpGraphviz(OF);
+    //}
+
+    GraphScheduler Scheduler(G);
+    Scheduler.ComputeScheduledGraph();
+    EXPECT_EQ(Scheduler.schedule_size(), 2);
+    size_t Counter = 1;
+    for(auto* FuncSchedule : Scheduler.schedules()) {
+      std::stringstream SS;
+      //SS << "TestRACallsiteLowering-"
+         //<< Counter << ".schedule.dot";
+      //std::ofstream OFSchedule(SS.str());
+      //FuncSchedule->dumpGraphviz(OFSchedule);
+      //SS.str("");
+
+      SS << "TestRACallsiteLowering-"
+         << Counter << ".schedule.postlower.dot";
+      PostMachineLowering PostLowering(*FuncSchedule);
+      PostLowering.Run();
+      std::ofstream OFPostLower(SS.str());
+      FuncSchedule->dumpGraphviz(OFPostLower);
+      SS.str("");
+
+      SS << "TestRACallsiteLowering-"
+         << Counter++ << ".schedule.postlower.ra.dot";
+      LinearScanRegisterAllocator<CompactDLXTargetTraits> RA(*FuncSchedule);
+      RA.Allocate();
+      std::ofstream OFRA(SS.str());
+      FuncSchedule->dumpGraphviz(OFRA);
     }
   }
 }

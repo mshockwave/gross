@@ -141,6 +141,9 @@ class LinearScanRegisterAllocator : public RegisterAllocator {
   // do before inserting epilogue!
   void FunctionReturnLowering();
 
+  // lower parameter passing
+  void CallsiteLowering();
+
   // return the instruction creating spill slots
   Node* InsertSpillCodes();
 

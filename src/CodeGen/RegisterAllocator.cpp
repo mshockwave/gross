@@ -95,9 +95,11 @@ void LinearScanRegisterAllocator<T>::ParametersLowering() {
 template<class T>
 void LinearScanRegisterAllocator<T>::FunctionReturnLowering() {
   std::vector<Node*> Returns;
-  for(auto* N : Schedule.rpo_nodes()) {
-    if(N->getOp() == IrOpcode::Return)
-      Returns.push_back(N);
+  for(auto* BB : Schedule.rpo_blocks()) {
+    for(auto* N : BB->nodes()) {
+      if(N->getOp() == IrOpcode::Return)
+        Returns.push_back(N);
+    }
   }
 
   if(Returns.empty()) {
@@ -127,6 +129,78 @@ void LinearScanRegisterAllocator<T>::FunctionReturnLowering() {
           .Build();
       Schedule.ReplaceNode(RetBB, Return, NewRet);
     }
+  }
+}
+
+template<class T>
+void LinearScanRegisterAllocator<T>::CallsiteLowering() {
+  // - replace VirtDLXPassParam into either register
+  //   saving or pushing to stack
+  // - insert stack recovering code before CallsiteEnd
+  //   if we push any argument into stack
+
+  std::vector<Node*> Callsites;
+  for(auto* BB : Schedule.rpo_blocks())
+    for(auto* N : BB->nodes()) {
+      if(N->getOp() == IrOpcode::VirtDLXCallsiteBegin)
+        Callsites.push_back(N);
+    }
+
+  std::list<Node*> CSParams;
+  for(auto* CS : Callsites) {
+    NodeProperties<IrOpcode::VirtDLXCallsiteBegin> CSNP(CS);
+    auto* CSEnd = CSNP.getCallsiteEnd();
+    auto* CSBB = Schedule.MapBlock(CS);
+    assert(CSBB);
+    CSParams.assign(CSNP.param_begin(), CSNP.param_end());
+    for(auto Reg = T::RegisterFile::FirstParameter;
+        Reg <= T::RegisterFile::LastParameter && !CSParams.empty();
+        ++Reg) {
+      auto* Param = CSParams.front();
+      assert(Param->getNumValueInput() > 0);
+      auto* ActualParam = Param->getValueInput(0);
+      auto* Move
+        // FIXME: use polyfill move instruction generator
+        = NodeBuilder<IrOpcode::VirtDLXBinOps>(&G, IrOpcode::DLXAddI)
+          .LHS(ActualParam)
+          .RHS(NodeBuilder<IrOpcode::ConstantInt>(&G, 0).Build())
+          .Build();
+      Assignment[Move] = Location::Register(Reg);
+      Schedule.ReplaceNode(CSBB, Param, Move);
+      CSParams.pop_front();
+    }
+
+    // stil have some parameters need to push to stack
+    // (in reverse order)
+    for(auto PI = CSParams.rbegin(), PE = CSParams.rend();
+        PI != PE; ++PI) {
+      auto* Param = *PI;
+      assert(Param->getNumValueInput() > 0);
+      auto* ActualParam = Param->getValueInput(0);
+      auto* Push = SUtils.ReserveSlots(1, ActualParam);
+      Schedule.AddNodeBefore(CSBB, CSParams.front(), Push);
+    }
+    // restore stack before CallsiteEnd if there are
+    // stack parameter
+    if(!CSParams.empty()) {
+      auto ParamSize = CSParams.size();
+      auto* OffsetNode
+        = NodeBuilder<IrOpcode::ConstantInt>(&G, ParamSize * 4).Build();
+      auto* Restore
+        = NodeBuilder<IrOpcode::VirtDLXBinOps>(&G, IrOpcode::DLXAddI, true)
+          .LHS(RegNodes[T::StackPointer])
+          .RHS(OffsetNode)
+          .Build();
+      Assignment[Restore] = Location::Register(T::StackPointer);
+      Schedule.AddNodeBefore(CSBB, CSEnd, Restore);
+    }
+
+    // remove virtual callsite markers
+    for(auto* N : CSParams) {
+      Schedule.RemoveNode(CSBB, N);
+    }
+    Schedule.RemoveNode(CSBB, CS);
+    Schedule.RemoveNode(CSBB, CSEnd);
   }
 }
 
@@ -573,6 +647,8 @@ void LinearScanRegisterAllocator<T>::Allocate() {
 
   InsertCalleeSavedCodes(Pos);
   InsertCallerSavedCodes();
+
+  CallsiteLowering();
 
   CommitRegisterNodes();
 }

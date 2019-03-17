@@ -18,8 +18,6 @@ private:
   Graph& G;
   RAQueryFunctorTy RAQuery;
 
-  void CallsiteLowering();
-
   static constexpr size_t PeepholeMaxIterations = 10;
   void RunPeepholes();
   // peephole callbacks. Return true if changes

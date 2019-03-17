@@ -11,22 +11,11 @@ PostRALowering::PostRALowering(GraphSchedule& schedule,
     RAQuery(RACallback) {}
 
 void PostRALowering::Run() {
-  // TODO: move callee/caller context save/restore
-  // to RA.
   // - Peephole optimizations
   //   - Remove PHI nodes
   //   - Remove redundant move
   //   - Remove redundnat load/store
-  // - Lowering function call virtual nodes
-  //    (i.e. parameter passing)
-
-  CallsiteLowering();
-
   RunPeepholes();
-}
-
-void PostRALowering::CallsiteLowering() {
-  // TODO
 }
 
 void PostRALowering::RunPeepholes() {

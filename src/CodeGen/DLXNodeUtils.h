@@ -97,10 +97,18 @@ NODE_PROPERTIES(VirtDLXCallsiteBegin) {
     return *NodePtr->effect_users().begin();
   }
 
-  size_t param_size() const {
-    auto ItParam = std::next(NodePtr->effect_users().begin(), 1);
-    return std::distance(ItParam,
-                         NodePtr->effect_users().end());
+  using param_iterator = typename Node::effect_user_iterator;
+  param_iterator param_begin() {
+    return std::next(NodePtr->effect_users().begin(), 1);
+  }
+  param_iterator param_end() {
+    return NodePtr->effect_users().end();
+  }
+  llvm::iterator_range<param_iterator> params() {
+    return llvm::make_range(param_begin(), param_end());
+  }
+  size_t param_size() {
+    return std::distance(param_begin(), param_end());
   }
 };
 
