@@ -95,8 +95,6 @@ GraphReduction CSEReducer::ReduceMemoryLoad(Node* N) {
     if(EU == N) continue;
     NodeProperties<IrOpcode::VirtMemOps> MNP(EU);
     assert(MNP.BaseAddr() == RefNP.BaseAddr());
-    // FIXME: need to handle arithmetic equivilance
-    // (e.g. commutative)
     if(MNP.Offset() == RefNP.Offset())
       Worklist.push_back(EU);
   }

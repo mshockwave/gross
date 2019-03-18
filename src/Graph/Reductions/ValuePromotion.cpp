@@ -86,7 +86,10 @@ GraphReduction ValuePromotion::ReduceVarAccess(Node* VarAccess) {
       AllocaNode = Decl;
     } else if(Decl->getOp() == IrOpcode::SrcVarDecl) {
       // we really need a stack slot
+      auto* WordSize = NodeBuilder<IrOpcode::ConstantInt>(&G, 4)
+                       .Build();
       AllocaNode = NodeBuilder<IrOpcode::Alloca>(&G)
+                   .Size(WordSize)
                    .Build();
       Replace(Decl, AllocaNode);
     } else {
@@ -127,6 +130,11 @@ GraphReduction ValuePromotion::ReduceMemAccess(Node* MemAccess) {
                  .LHS(OffsetNode).RHS(*IA)
                  .Build();
   }
+  // memory operations are byte-addressing
+  auto* WordSize = NodeBuilder<IrOpcode::ConstantInt>(&G, 4).Build();
+  OffsetNode = NodeBuilder<IrOpcode::BinMul>(&G)
+               .LHS(OffsetNode).RHS(WordSize)
+               .Build();
   auto* MemLoadNode = NodeBuilder<IrOpcode::MemLoad>(&G)
                       .BaseAddr(ArrayDecl).Offset(OffsetNode)
                       .Build();
@@ -162,8 +170,15 @@ GraphReduction ValuePromotion::ReduceArrayDecl(Node* ArrayDecl) {
             .Build();
   }
 
+  auto* WordSize = NodeBuilder<IrOpcode::ConstantInt>(&G, 4).Build();
+  Accum = NodeBuilder<IrOpcode::BinMul>(&G)
+          .LHS(Accum).RHS(WordSize)
+          .Build();
   auto* AllocaNode = NodeBuilder<IrOpcode::Alloca>(&G)
                      .Size(Accum).Build();
+  if(G.IsGlobalVar(ArrayDecl)) {
+    G.ReplaceGlobalVar(ArrayDecl, AllocaNode);
+  }
   return Replace(AllocaNode);
 }
 
