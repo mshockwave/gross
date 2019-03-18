@@ -407,6 +407,16 @@ NODE_PROPERTIES(Phi) {
   }
 };
 
+NODE_PROPERTIES(Alloca) {
+  NodeProperties(Node *N)
+    : NODE_PROP_BASE(Alloca, N) {}
+
+  Node* Size() const {
+    assert(NodePtr->getNumValueInput() > 0);
+    return NodePtr->getValueInput(0);
+  }
+};
+
 NODE_PROPERTIES(VirtGlobalValues) {
   NodeProperties(Node *N)
     : NODE_PROP_BASE(VirtGlobalValues, N) {}

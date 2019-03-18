@@ -90,18 +90,25 @@ void GraphSchedule::SortRPONodes() {
   RPONodes.push_back(PE.EndNode);
 }
 
-size_t GraphSchedule::getNumLocalAllocas() {
-  size_t Sum = 0U;
-  auto NI = rpo_node_begin();
-  ++NI; // skip start node
-  for(auto NE = rpo_node_end(); NI != NE; ++NI) {
-    auto* N = *NI;
-    if(N->getOp() == IrOpcode::Alloca)
-      Sum++;
-    else
-      break;
+// return # of words in current local allocation
+size_t GraphSchedule::getWordAllocaSize() {
+  size_t TotalSize = 0U;
+  for(auto* BB : rpo_blocks()) {
+    for(auto* N : BB->nodes()) {
+      NodeProperties<IrOpcode::Alloca> ANP(N);
+      if(!ANP) continue;
+      auto* Size = ANP.Size();
+      assert(Size->getOp() == IrOpcode::ConstantInt &&
+             "dynamic size allocation?");
+      TotalSize +=
+        NodeProperties<IrOpcode::ConstantInt>(Size).as<size_t>(G);
+    }
   }
-  return Sum;
+  // ceil(TotalSize / 4)
+  if(TotalSize % 4)
+    return (TotalSize >> 2) + 1;
+  else
+    return (TotalSize >> 2);
 }
 
 BasicBlock* GraphSchedule::NewBasicBlock() {

@@ -156,7 +156,7 @@ public:
   Node* getStartNode() const { return RPONodes.front(); }
   Node* getEndNode() const { return RPONodes.back(); }
 
-  size_t getNumLocalAllocas();
+  size_t getWordAllocaSize();
 
   using rpo_node_iterator = typename decltype(RPONodes)::iterator;
   rpo_node_iterator rpo_node_begin() { return RPONodes.begin(); }

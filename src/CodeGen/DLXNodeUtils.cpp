@@ -57,8 +57,8 @@ Node* StackUtils::RestoreSlot(Node* Dest) {
 }
 
 Node* StackUtils::NonLocalSlotOffset(size_t Idx) {
-  size_t NumLocal = Schedule.getNumLocalAllocas();
-  auto Offset = static_cast<int32_t>(NumLocal + Idx + 1) * 4 * -1;
+  size_t AllocaSlots = Schedule.getWordAllocaSize();
+  auto Offset = static_cast<int32_t>(AllocaSlots + Idx + 1) * 4 * -1;
   auto* OffsetNode
     = NodeBuilder<IrOpcode::ConstantInt>(&G, Offset).Build();
   return OffsetNode;

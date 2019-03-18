@@ -130,14 +130,17 @@ void LinearScanRegisterAllocator<T>::FunctionReturnLowering() {
       // And RET <link register>
       auto* RetBB = Schedule.MapBlock(Return);
       assert(RetBB);
-      auto* Move
-        = CreateMove(NodeProperties<IrOpcode::Return>(Return).ReturnVal());
+      auto* RetVal = NodeProperties<IrOpcode::Return>(Return).ReturnVal();
+      auto* Move = CreateMove(RetVal);
       Assignment[Move] = Location::Register(T::ReturnStorage);
       Schedule.AddNodeBefore(RetBB, Return, Move);
       auto* NewRet
         = NodeBuilder<IrOpcode::DLXRet>(&G, RegNodes[T::LinkRegister])
           .Build();
       Schedule.ReplaceNode(RetBB, Return, NewRet);
+      Return->ReplaceUseOfWith(RetVal,
+                               NodeBuilder<IrOpcode::ConstantInt>(&G, 0)
+                               .Build(), Use::K_VALUE);
     }
   }
 }
