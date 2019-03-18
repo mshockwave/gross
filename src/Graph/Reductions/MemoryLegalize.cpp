@@ -48,8 +48,8 @@ GraphReduction MemoryLegalize::Reduce(Node* N) {
   return NoChange();
 }
 
-/// ===== MemAllocationLowering =====
-Node* MemAllocationLowering::MergeAllocas(const std::set<Node*>& Allocas) {
+/// ===== DLXMemoryLegalize =====
+Node* DLXMemoryLegalize::MergeAllocas(const std::set<Node*>& Allocas) {
   auto* TotalSize = NodeBuilder<IrOpcode::ConstantInt>(&G, 0).Build();
   // alloca -> offset
   std::unordered_map<Node*, Node*> Offsets;
@@ -70,6 +70,11 @@ Node* MemAllocationLowering::MergeAllocas(const std::set<Node*>& Allocas) {
   for(auto& Pair : Offsets) {
     auto* Alloca = Pair.first;
     auto* Offset = Pair.second;
+    // transform to top-down addressing
+    Offset = NodeBuilder<IrOpcode::BinSub>(&G)
+             .LHS(Offset).RHS(TotalSize)
+             .Build();
+
     // do not append offset on the base address of
     // memory operations
     MemUsrs.clear();
@@ -90,7 +95,7 @@ Node* MemAllocationLowering::MergeAllocas(const std::set<Node*>& Allocas) {
   return MergedAlloca;
 }
 
-void MemAllocationLowering::RunOnFunction(SubGraph& SG) {
+void DLXMemoryLegalize::RunOnFunction(SubGraph& SG) {
   std::set<Node*> LocalAllocas;
   for(auto* N : SG.nodes()) {
     if(N->getOp() == IrOpcode::Alloca &&
@@ -100,7 +105,7 @@ void MemAllocationLowering::RunOnFunction(SubGraph& SG) {
   (void) MergeAllocas(LocalAllocas);
 }
 
-void MemAllocationLowering::Run() {
+void DLXMemoryLegalize::Run() {
   // local allocas
   for(auto& SG : G.subregions()) {
     RunOnFunction(SG);

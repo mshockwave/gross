@@ -1,27 +1,28 @@
 #include "gross/Graph/Reductions/MemoryLegalize.h"
 #include "gross/Graph/Reductions/ValuePromotion.h"
+#include "gross/Graph/Reductions/Peephole.h"
 #include "gross/Graph/NodeUtils.h"
 #include "gtest/gtest.h"
 #include <fstream>
 
 using namespace gross;
 
-TEST(GRMemoryLegalizeUnitTest, MemAllocaLoweringTest) {
+TEST(GRMemoryLegalizeUnitTest, DLXMemLegalizeTest) {
   {
     Graph G;
     // local alloca merging
     auto* Func = NodeBuilder<IrOpcode::VirtFuncPrototype>(&G)
-                 .FuncName("func_alloca_merge")
+                 .FuncName("func_dlx_mem_legal_alloca_merge")
                  .Build();
     auto* ArrayDecl = NodeBuilder<IrOpcode::SrcArrayDecl>(&G)
                       .SetSymbolName("barArray")
-                      .AddConstDim(94)
-                      .AddConstDim(87)
+                      .AddConstDim(9)
+                      .AddConstDim(4)
                       .Build();
     auto* ArrayDecl2 = NodeBuilder<IrOpcode::SrcArrayDecl>(&G)
                        .SetSymbolName("fooArray")
-                       .AddConstDim(94)
-                       .AddConstDim(87)
+                       .AddConstDim(8)
+                       .AddConstDim(7)
                        .Build();
     auto* Pred = NodeBuilder<IrOpcode::ConstantInt>(&G, 1).Build();
     auto* IfBranch = NodeBuilder<IrOpcode::If>(&G)
@@ -33,9 +34,9 @@ TEST(GRMemoryLegalizeUnitTest, MemAllocaLoweringTest) {
                     .IfStmt(IfBranch)
                     .Build();
 
-    auto* Dim1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 9).Build();
-    auto* Dim2 = NodeBuilder<IrOpcode::ConstantInt>(&G, 4).Build();
-    auto* Dim3 = NodeBuilder<IrOpcode::ConstantInt>(&G, 8).Build();
+    auto* Dim1 = NodeBuilder<IrOpcode::ConstantInt>(&G, 4).Build();
+    auto* Dim2 = NodeBuilder<IrOpcode::ConstantInt>(&G, 5).Build();
+    auto* Dim3 = NodeBuilder<IrOpcode::ConstantInt>(&G, 6).Build();
     auto* Dim4 = NodeBuilder<IrOpcode::ConstantInt>(&G, 7).Build();
 
     auto* ArrayAccess1 = NodeBuilder<IrOpcode::SrcArrayAccess>(&G)
@@ -75,14 +76,20 @@ TEST(GRMemoryLegalizeUnitTest, MemAllocaLoweringTest) {
     G.AddSubRegion(FuncSG);
     GraphReducer::RunWithEditor<ValuePromotion>(G);
     {
-      std::ofstream OF("TestAllocaMerging.mem2reg.dot");
+      std::ofstream OF("TestDLXMemLegalize.mem2reg.dot");
       G.dumpGraphviz(OF);
     }
 
-    MemAllocationLowering AllocaLowering(G);
-    AllocaLowering.Run();
+    DLXMemoryLegalize MemLegalize(G);
+    MemLegalize.Run();
     {
-      std::ofstream OF("TestAllocaMerging.mem2reg.after.dot");
+      std::ofstream OF("TestDLXMemLegalize.mem2reg.after.dot");
+      G.dumpGraphviz(OF);
+    }
+
+    GraphReducer::RunWithEditor<PeepholeReducer>(G);
+    {
+      std::ofstream OF("TestDLXMemLegalize.mem2reg.legal.ph.dot");
       G.dumpGraphviz(OF);
     }
   }

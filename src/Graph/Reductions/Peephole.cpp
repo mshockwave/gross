@@ -26,8 +26,6 @@ GraphReduction PeepholeReducer::ReduceArithmetic(Node* N) {
     case IrOpcode::BinSub: {
       auto LHSVal = LNP.as<int32_t>(G),
            RHSVal = RNP.as<int32_t>(G);
-      // only handle non-negative result
-      if(LHSVal < RHSVal) return NoChange();
       auto* NewNode
         = NodeBuilder<IrOpcode::ConstantInt>(&G, LHSVal - RHSVal).Build();
       return Replace(NewNode);
