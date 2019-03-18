@@ -503,6 +503,26 @@ void LinearScanRegisterAllocator<T>::InsertCalleeSavedCodes(Node* PosAfter) {
 
 template<class T>
 void LinearScanRegisterAllocator<T>::InsertCallerSavedCodes() {
+  for(auto& Pair : CallerSaved) {
+    auto* CS = Pair.first;
+    NodeProperties<IrOpcode::VirtDLXCallsiteBegin> CSNP(CS);
+    assert(CSNP);
+    auto* CSEnd = CSNP.getCallsiteEnd();
+    auto* CSBB = Schedule.MapBlock(CS);
+    assert(CSBB);
+    auto& State = Pair.second;
+
+    for(auto i = 0U; i < State.size(); ++i) {
+      if(State.test(i)) {
+        // save
+        auto* Push = SUtils.ReserveSlots(1, RegNodes[i]);
+        Schedule.AddNodeBefore(CSBB, CS, Push);
+        // restore
+        auto* Pop = SUtils.RestoreSlot(RegNodes[i]);
+        Schedule.AddNodeAfter(CSBB, CSEnd, Pop);
+      }
+    }
+  }
 }
 
 template<class T>
@@ -604,7 +624,8 @@ void LinearScanRegisterAllocator<T>::Allocate() {
       if(CurNode->getOp() == IrOpcode::VirtDLXCallsiteBegin) {
         // record the current active registers needs to be saved
         std::bitset<NumRegister> ActiveRegs;
-        // link register always need to be saved
+        // frame pointer and link register always need to be saved
+        ActiveRegs[T::FramePointer] = true;
         ActiveRegs[T::LinkRegister] = true;
         for(auto i = FirstCallerSaved; i <= LastCallerSaved; ++i) {
           if(RegUsages[i]) ActiveRegs[i] = true;
