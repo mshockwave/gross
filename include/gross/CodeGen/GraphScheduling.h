@@ -2,7 +2,6 @@
 #define GROSS_CODEGEN_GRAPHSCHEDULING_H
 #include "boost/iterator/iterator_facade.hpp"
 #include "boost/iterator/transform_iterator.hpp"
-#include "gross/CodeGen/Function.h"
 #include "gross/CodeGen/BasicBlock.h"
 #include "gross/Graph/Graph.h"
 #include "gross/Graph/NodeMarker.h"

@@ -1,8 +1,8 @@
-#include "gross/CodeGen/PreMachineLowering.h"
 #include "gross/Graph/NodeUtils.h"
 #include "gross/Graph/Graph.h"
 #include "gtest/gtest.h"
 #include "DLXNodeUtils.h"
+#include "PreMachineLowering.h"
 #include <iterator>
 #include <fstream>
 

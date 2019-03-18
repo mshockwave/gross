@@ -3,7 +3,7 @@
 #include "boost/graph/graph_concepts.hpp"
 #include "gross/Graph/NodeUtils.h"
 #include "gross/CodeGen/GraphScheduling.h"
-#include "gross/CodeGen/PostMachineLowering.h"
+#include "PostMachineLowering.h"
 #include "gtest/gtest.h"
 #include <fstream>
 #include <sstream>
