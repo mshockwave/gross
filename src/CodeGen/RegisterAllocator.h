@@ -152,6 +152,8 @@ class LinearScanRegisterAllocator : public RegisterAllocator {
   void InsertCalleeSavedCodes(Node* PosBefore);
   void InsertCallerSavedCodes();
 
+  void MemAllocationLowering();
+
   void CommitRegisterNodes();
 
 public:

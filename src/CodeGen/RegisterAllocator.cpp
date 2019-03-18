@@ -539,9 +539,43 @@ void LinearScanRegisterAllocator<T>::InsertCallerSavedCodes() {
 }
 
 template<class T>
+void LinearScanRegisterAllocator<T>::MemAllocationLowering() {
+  // replace user of Alloca with frame pointer. And replace Alloca
+  // instruction with local var reservation.
+  // For global variables, replace it with global pointer.
+
+  // there should be only one Alloca (after merged by DLXMemoryLegalize)
+  auto* EntryBB = Schedule.getEntryBlock();
+  Node* Alloca = nullptr;
+  for(auto* N : EntryBB->nodes()) {
+    if(N->getOp() == IrOpcode::Alloca) {
+      Alloca = N;
+      break;
+    }
+  }
+  if(Alloca) {
+    Assignment[Alloca] = Location::Register(T::FramePointer);
+    size_t NumSlots = Schedule.getWordAllocaSize();
+    assert(NumSlots);
+    auto* Reservation = SUtils.ReserveSlots(NumSlots);
+    Schedule.ReplaceNode(EntryBB, Alloca, Reservation);
+  }
+
+  for(auto* GV : G.global_vars()) {
+    if(GV->getOp() == IrOpcode::Alloca)
+      Assignment[GV] = Location::Register(T::GlobalPointer);
+  }
+}
+
+template<class T>
 void LinearScanRegisterAllocator<T>::CommitRegisterNodes() {
   // Transform to three-address instructions and replace
   // inputs with assigned registers
+  auto skipInput = [](Node* VI) -> bool {
+    return (VI->getOp() == IrOpcode::ConstantInt ||
+            VI->getOp() == IrOpcode::DLXOffset ||
+            NodeProperties<IrOpcode::VirtDLXRegisters>(VI));
+  };
 
   for(auto* CurBB : Schedule.rpo_blocks()) {
     for(auto* CurNode : CurBB->nodes()) {
@@ -563,9 +597,7 @@ void LinearScanRegisterAllocator<T>::CommitRegisterNodes() {
         // inputs
         for(auto i = 0; i < 2; ++i) {
           auto* VI = CurNode->getValueInput(i);
-          if(VI->getOp() == IrOpcode::ConstantInt ||
-             VI->getOp() == IrOpcode::DLXOffset ||
-             NodeProperties<IrOpcode::VirtDLXRegisters>(VI)) {
+          if(skipInput(VI)) {
             NewOperands[i + 1] = VI;
           } else {
             assert(Assignment.count(VI));
@@ -683,6 +715,8 @@ void LinearScanRegisterAllocator<T>::Allocate() {
   InsertCallerSavedCodes();
 
   CallsiteLowering();
+
+  MemAllocationLowering();
 
   CommitRegisterNodes();
 }
