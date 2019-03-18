@@ -105,6 +105,8 @@ class LinearScanRegisterAllocator : public RegisterAllocator {
   // value node -> register number or stack slot
   std::map<Node*, Location> Assignment;
 
+  Node* CreateMove(Node* From);
+
   size_t FindGeneralRegister() {
     // pick from caller-saved registers first
     auto check = [this](size_t Idx) -> bool {

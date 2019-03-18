@@ -35,6 +35,21 @@ LinearScanRegisterAllocator(GraphSchedule& schedule)
     RegUsages[R] = PH;
 }
 
+template<class T>
+Node* LinearScanRegisterAllocator<T>::CreateMove(Node* From) {
+  assert(From);
+  auto* LHSVal = From;
+  auto* RHSVal = NodeBuilder<IrOpcode::ConstantInt>(&G, 0).Build();
+  if(LHSVal->getOp() == IrOpcode::ConstantInt) {
+    RHSVal = LHSVal;
+    LHSVal = RegNodes[0]; // zero register
+  }
+  auto* Move
+    = NodeBuilder<IrOpcode::VirtDLXBinOps>(&G, IrOpcode::DLXAddI, true)
+      .LHS(LHSVal).RHS(RHSVal).Build();
+  return Move;
+}
+
 // 'move' every input values to a new value
 template<class T>
 void LinearScanRegisterAllocator<T>::LegalizePhiInputs(Node* PN) {
@@ -51,9 +66,7 @@ void LinearScanRegisterAllocator<T>::LegalizePhiInputs(Node* PN) {
   for(auto i = 0; i < 2; ++i) {
     auto* BB = InputBBs[i];
     auto* Val = Inputs[i];
-    auto* Move
-      = NodeBuilder<IrOpcode::VirtDLXBinOps>(&G, IrOpcode::DLXAddI, true)
-        .LHS(Val).RHS(Zero).Build();
+    auto* Move = CreateMove(Val);
     PN->ReplaceUseOfWith(Val, Move, Use::K_VALUE);
     // insert at the end of BB
     for(auto NI = BB->node_rbegin(), NE = BB->node_rend();
@@ -118,10 +131,7 @@ void LinearScanRegisterAllocator<T>::FunctionReturnLowering() {
       auto* RetBB = Schedule.MapBlock(Return);
       assert(RetBB);
       auto* Move
-        = NodeBuilder<IrOpcode::VirtDLXBinOps>(&G, IrOpcode::DLXAddI, true)
-          .LHS(NodeProperties<IrOpcode::Return>(Return).ReturnVal())
-          .RHS(NodeBuilder<IrOpcode::ConstantInt>(&G, 0).Build())
-          .Build();
+        = CreateMove(NodeProperties<IrOpcode::Return>(Return).ReturnVal());
       Assignment[Move] = Location::Register(T::ReturnStorage);
       Schedule.AddNodeBefore(RetBB, Return, Move);
       auto* NewRet
@@ -159,12 +169,7 @@ void LinearScanRegisterAllocator<T>::CallsiteLowering() {
       auto* Param = CSParams.front();
       assert(Param->getNumValueInput() > 0);
       auto* ActualParam = Param->getValueInput(0);
-      auto* Move
-        // FIXME: use polyfill move instruction generator
-        = NodeBuilder<IrOpcode::VirtDLXBinOps>(&G, IrOpcode::DLXAddI)
-          .LHS(ActualParam)
-          .RHS(NodeBuilder<IrOpcode::ConstantInt>(&G, 0).Build())
-          .Build();
+      auto* Move = CreateMove(ActualParam);
       Assignment[Move] = Location::Register(Reg);
       Schedule.ReplaceNode(CSBB, Param, Move);
       CSParams.pop_front();
