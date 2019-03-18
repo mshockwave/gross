@@ -370,23 +370,22 @@ Node* LinearScanRegisterAllocator<T>::InsertSpillCodes() {
   // find the place next to local var stack slots
   auto* EntryBlock = Schedule.getEntryBlock();
   assert(EntryBlock);
-  Node* PosAfter = nullptr;
+  Node* PosBefore = nullptr;
   for(auto* N : EntryBlock->nodes()) {
     if(N->getOp() == IrOpcode::Start ||
        N->getOp() == IrOpcode::Alloca) continue;
-    PosAfter = N;
+    PosBefore = N;
     break;
   }
-  assert(PosAfter);
+  assert(PosBefore);
 
   if(SpillSlots.empty() &&
-     SpillParams.empty()) return PosAfter;
+     SpillParams.empty()) return PosBefore;
 
   if(!SpillSlots.empty()) {
     // reserve spill slots
     auto* Reservation = SUtils.ReserveSlots(SpillSlots.size());
-    Schedule.AddNodeAfter(EntryBlock, PosAfter, Reservation);
-    PosAfter = Reservation;
+    Schedule.AddNodeBefore(EntryBlock, PosBefore, Reservation);
   }
 
   auto* Fp = SUtils.FramePointer();
@@ -443,22 +442,28 @@ Node* LinearScanRegisterAllocator<T>::InsertSpillCodes() {
     Assignment[SC] = Location::Register(27);
   }
 
-  return PosAfter;
+  return PosBefore;
 }
 
 template<class T>
-void LinearScanRegisterAllocator<T>::InsertCalleeSavedCodes(Node* PosAfter) {
+void LinearScanRegisterAllocator<T>::InsertCalleeSavedCodes(Node* PosBefore) {
   // insert callee-save/restore code (i.e. pro/epilogue)
-  // and caller-save/restore code
   auto* EntryBlock = Schedule.getEntryBlock();
   assert(EntryBlock);
 
+  // save current stack position as frame pointer
+  // right after Start
+  auto* MoveToFP = CreateMove(RegNodes[T::StackPointer]);
+  Assignment[MoveToFP] = Location::Register(T::FramePointer);
+  auto* StartNode = Schedule.getStartNode();
+  Schedule.AddNodeAfter(EntryBlock, StartNode, MoveToFP);
+
   // insert prologue
-  for(auto i = 0U; i < CalleeSaved.size(); ++i) {
+  for(int i = CalleeSaved.size() - 1; i >= 0; --i) {
     if(CalleeSaved.test(i)) {
       auto* Push = SUtils.ReserveSlots(1, RegNodes[i]);
       // insert instructions in 'reverse' order
-      Schedule.AddNodeAfter(EntryBlock, PosAfter, Push);
+      Schedule.AddNodeBefore(EntryBlock, PosBefore, Push);
     }
   }
 

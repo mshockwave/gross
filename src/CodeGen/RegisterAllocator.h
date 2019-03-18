@@ -146,10 +146,10 @@ class LinearScanRegisterAllocator : public RegisterAllocator {
   // lower parameter passing
   void CallsiteLowering();
 
-  // return the instruction creating spill slots
+  // return the instruction right after spill slots
   Node* InsertSpillCodes();
 
-  void InsertCalleeSavedCodes(Node* NextPos);
+  void InsertCalleeSavedCodes(Node* PosBefore);
   void InsertCallerSavedCodes();
 
   void CommitRegisterNodes();
