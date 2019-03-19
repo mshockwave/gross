@@ -61,12 +61,43 @@ private:
 };
 
 void GraphSchedule::SortRPONodes() {
+  auto BackEdgePatcher = [](const Use& OrigEdge) -> Use {
+    auto* Source = OrigEdge.Source;
+    NodeProperties<IrOpcode::Phi> PNP(Source);
+    if(PNP && PNP.CtrlPivot()->getOp() == IrOpcode::Loop) {
+      // check if it is backedge
+      Node* Backedge = nullptr;
+      if(Source->getNumValueInput() &&
+         !Source->getNumEffectInput()) {
+        // normal value phi
+        assert(Source->getNumValueInput() >= 2);
+        // backedge is always the second input
+        Backedge = Source->getValueInput(1);
+      } else {
+        // effect phi
+        assert(Source->getNumEffectInput() >= 2);
+        Backedge = Source->getEffectInput(1);
+      }
+      if(Backedge == OrigEdge.Dest) {
+        // reverse!
+        Use Copy(OrigEdge);
+        Copy.Source = OrigEdge.Dest;
+        Copy.Dest = OrigEdge.Source;
+        return std::move(Copy);
+      }
+    }
+    return OrigEdge;
+  };
+  getSubGraph().SetEdgePatcher(BackEdgePatcher);
+
   RPONodesVisitor::PostEntity PE;
   RPONodesVisitor Vis(RPONodes, PE);
   std::unordered_map<Node*, boost::default_color_type> ColorStorage;
   StubColorMap<decltype(ColorStorage), Node> ColorMap(ColorStorage);
   boost::depth_first_search(getSubGraph(), Vis, std::move(ColorMap));
   assert(PE.StartNode && PE.EndNode);
+
+  getSubGraph().ClearEdgePatcher();
 
   for(auto NI = RPONodes.cbegin(); NI != RPONodes.cend();) {
     auto* N = const_cast<Node*>(*NI);

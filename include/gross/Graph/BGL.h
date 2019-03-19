@@ -218,7 +218,8 @@ out_edges(gross::Node* u, const T& g) {
   // for now, we don't care about the kind of edge
   using edge_it_t
     = typename boost::graph_traits<T>::out_edge_iterator;
-  gross::Use::BuilderFunctor functor(u);
+  gross::Use::BuilderFunctor functor(u, gross::Use::K_NONE,
+                                     g.GetEdgePatcher());
   return std::make_pair(
     edge_it_t(u->inputs().begin(), functor),
     edge_it_t(u->inputs().end(), functor)

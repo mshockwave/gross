@@ -14,66 +14,88 @@
 
 using namespace gross;
 
-TEST(FullPipelineIntegrateTest, TestBasicCtrlStructure) {
-  std::ifstream IF("full_pipeline1.txt");
+static std::string MakeName(size_t Idx,
+                            const char* Base, const char* Ext) {
+  std::stringstream SS;
+  SS << Base << Idx << "." << Ext;
+  return SS.str();
+}
 
-  Graph G;
-  Parser P(IF, G);
-  (void) P.getLexer().getNextToken();
-  P.NewSymScope(); // global scope
+static std::string MakeName(size_t Idx, size_t Idx2,
+                            const char* Base, const char* Ext) {
+  std::stringstream SS;
+  SS << Base << Idx << "-" << Idx2 << "." << Ext;
+  return SS.str();
+}
 
-  ASSERT_TRUE(P.ParseFuncDecl());
-  {
-    std::ofstream OF("TestBasicCtrlStructure1.parsed.dot");
-    G.dumpGraphviz(OF);
-  }
+TEST(FullPipelineIntegrateTest, TestBasicCtrlStructures) {
+  for(auto Idx = 1; Idx <= 2; ++Idx) {
+    std::ifstream IF(MakeName(Idx, "full_pipeline", "txt"));
 
-  // Middle-end
-  GraphReducer::RunWithEditor<ValuePromotion>(G);
-  GraphReducer::RunWithEditor<MemoryLegalize>(G);
-  GraphReducer::RunWithEditor<PeepholeReducer>(G);
-  {
-    std::ofstream OF("TestBasicCtrlStructure1.peephole.dot");
-    G.dumpGraphviz(OF);
-  }
-  GraphReducer::RunWithEditor<CSEReducer>(G);
+    Graph G;
+    Parser P(IF, G);
+    (void) P.getLexer().getNextToken();
+    P.NewSymScope(); // global scope
 
-  // Preparation
-  DLXMemoryLegalize DLXMemLegalize(G);
-  DLXMemLegalize.Run();
-  GraphReducer::RunWithEditor<PeepholeReducer>(G);
-  {
-    std::ofstream OF("TestBasicCtrlStructure1.dlxmemlegalize.dot");
-    G.dumpGraphviz(OF);
-  }
-  GraphReducer::RunWithEditor<PreMachineLowering>(G);
-  // Lower to CFG
-  GraphScheduler Scheduler(G);
-  Scheduler.ComputeScheduledGraph();
-  size_t Counter = 1;
-  for(auto* FuncSchedule : Scheduler.schedules()) {
-    std::stringstream SS;
-    PostMachineLowering PostLowering(*FuncSchedule);
-    PostLowering.Run();
-    SS << "TestBasicCtrlStructure1-"
-       << Counter << ".postlowering.dot";
-    std::ofstream OFPostLower(SS.str());
-    FuncSchedule->dumpGraphviz(OFPostLower);
-    SS.str("");
+    ASSERT_TRUE(P.ParseFuncDecl());
+    {
+      std::ofstream OF(MakeName(Idx,
+                                "TestFullBasicCtrlStructure", "parsed.dot"));
+      G.dumpGraphviz(OF);
+    }
 
-    SS << "TestBasicCtrlStructure1-"
-       << Counter << ".ra.dot";
-    LinearScanRegisterAllocator<CompactDLXTargetTraits> RA(*FuncSchedule);
-    RA.Allocate();
-    std::ofstream OFRA(SS.str());
-    FuncSchedule->dumpGraphviz(OFRA);
-    SS.str("");
+    // Middle-end
+    GraphReducer::RunWithEditor<ValuePromotion>(G);
+    GraphReducer::RunWithEditor<MemoryLegalize>(G);
+    GraphReducer::RunWithEditor<PeepholeReducer>(G);
+    {
+      std::ofstream OF(MakeName(Idx,
+                                "TestFullBasicCtrlStructure", "peephole.dot"));
+      G.dumpGraphviz(OF);
+    }
+    GraphReducer::RunWithEditor<CSEReducer>(G);
 
-    SS << "TestBasicCtrlStructure1-"
-       << Counter++ << ".postra.dot";
-    PostRALowering PostRA(*FuncSchedule);
-    PostRA.Run();
-    std::ofstream OFPostRA(SS.str());
-    FuncSchedule->dumpGraphviz(OFPostRA);
+    // Preparation
+    DLXMemoryLegalize DLXMemLegalize(G);
+    DLXMemLegalize.Run();
+    GraphReducer::RunWithEditor<PeepholeReducer>(G);
+    {
+      std::ofstream OF(MakeName(Idx,
+                                "TestFullBasicCtrlStructure",
+                                "dlxmemlegalize.dot"));
+      G.dumpGraphviz(OF);
+    }
+    GraphReducer::RunWithEditor<PreMachineLowering>(G);
+    // Lower to CFG
+    GraphScheduler Scheduler(G);
+    Scheduler.ComputeScheduledGraph();
+    size_t Counter = 1;
+    for(auto* FuncSchedule : Scheduler.schedules()) {
+      std::ofstream OFSchedule(MakeName(Idx, Counter,
+                                        "TestFullBasicCtrlStructure",
+                                        "scheduled.dot"));
+      FuncSchedule->dumpGraphviz(OFSchedule);
+
+      PostMachineLowering PostLowering(*FuncSchedule);
+      PostLowering.Run();
+      std::ofstream OFPostLower(MakeName(Idx, Counter,
+                                         "TestFullBasicCtrlStructure",
+                                         "postlower.dot"));
+      FuncSchedule->dumpGraphviz(OFPostLower);
+
+      LinearScanRegisterAllocator<CompactDLXTargetTraits> RA(*FuncSchedule);
+      RA.Allocate();
+      std::ofstream OFRA(MakeName(Idx, Counter,
+                                  "TestFullBasicCtrlStructure",
+                                  "ra.dot"));
+      FuncSchedule->dumpGraphviz(OFRA);
+
+      PostRALowering PostRA(*FuncSchedule);
+      PostRA.Run();
+      std::ofstream OFPostRA(MakeName(Idx, Counter++,
+                                      "TestFullBasicCtrlStructure",
+                                      "postra.dot"));
+      FuncSchedule->dumpGraphviz(OFPostRA);
+    }
   }
 }

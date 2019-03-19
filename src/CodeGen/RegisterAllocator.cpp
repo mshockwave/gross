@@ -613,14 +613,14 @@ void LinearScanRegisterAllocator<T>::CommitRegisterNodes() {
         CurNode->appendValueInput(NewOperands[2]);
         break;
       }
+      case IrOpcode::DLXStW:
+      case IrOpcode::DLXStX:
       case IrOpcode::DLXRet:
       case IrOpcode::Return: {
         std::vector<Node*> ValInputs(CurNode->value_input_begin(),
                                      CurNode->value_input_end());
         for(auto* VI : ValInputs) {
-          if(VI->getOp() != IrOpcode::ConstantInt &&
-             VI->getOp() != IrOpcode::DLXOffset &&
-             !NodeProperties<IrOpcode::VirtDLXRegisters>(VI)) {
+          if(!skipInput(VI)) {
             assert(Assignment.count(VI));
             auto& Loc = Assignment[VI];
             assert(Loc.IsRegister() && "still not in register?");

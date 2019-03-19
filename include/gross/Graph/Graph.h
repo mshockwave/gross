@@ -19,13 +19,23 @@ class SubGraph {
   // only hold the tail node, lazily travel the graph when needed
   Node* TailNode;
 
+  typename Use::BuilderFunctor::PatcherTy EdgePatcher;
+
 public:
-  SubGraph() : TailNode(nullptr) {}
+  SubGraph() : TailNode(nullptr), EdgePatcher(nullptr) {}
 
   explicit SubGraph(Node* Tail) : TailNode(Tail) {}
 
   bool operator==(const SubGraph& Other) const {
     return TailNode == Other.TailNode;
+  }
+
+  void SetEdgePatcher(Use::BuilderFunctor::PatcherTy Patcher) {
+    EdgePatcher = Patcher;
+  }
+  void ClearEdgePatcher() { EdgePatcher = nullptr; }
+  const Use::BuilderFunctor::PatcherTy& GetEdgePatcher() const {
+    return EdgePatcher;
   }
 
   using node_iterator = lazy_node_iterator<SubGraph, false>;
@@ -99,10 +109,21 @@ class Graph {
   // recording state of NodeMarkers
   typename Node::MarkerTy MarkerMax;
 
+  typename Use::BuilderFunctor::PatcherTy EdgePatcher;
+
 public:
   Graph()
     : DeadNode(nullptr),
-      MarkerMax(0U) {}
+      MarkerMax(0U),
+      EdgePatcher(nullptr) {}
+
+  void SetEdgePatcher(Use::BuilderFunctor::PatcherTy Patcher) {
+    EdgePatcher = Patcher;
+  }
+  void ClearEdgePatcher() { EdgePatcher = nullptr; }
+  const Use::BuilderFunctor::PatcherTy& GetEdgePatcher() const {
+    return EdgePatcher;
+  }
 
   using node_iterator = typename decltype(Nodes)::iterator;
   using const_node_iterator = typename decltype(Nodes)::const_iterator;

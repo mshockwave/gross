@@ -5,6 +5,7 @@
 #include "gross/Support/iterator_range.h"
 #include "boost/container_hash/hash.hpp"
 #include "boost/iterator/filter_iterator.hpp"
+#include <functional>
 #include <unordered_map>
 #include <vector>
 #include <utility>
@@ -54,17 +55,26 @@ struct Use {
     Node* From;
     Use::Kind DepKind;
 
+    using PatcherTy = std::function<Use(const Use&)>;
+    PatcherTy PatchFunctor;
+
     // will have problem if one just
     // delcare edge iterator without initialize
     // BuilderFunctor() = delete;
     BuilderFunctor() = default;
 
     explicit
-    BuilderFunctor(Node* F, Use::Kind K = K_NONE)
-      : From(F), DepKind(K) {}
+    BuilderFunctor(Node* F, Use::Kind K = K_NONE,
+                   PatcherTy Patcher = nullptr)
+      : From(F), DepKind(K),
+        PatchFunctor(Patcher) {}
 
     Use operator()(Node* To) const {
-      return Use(From, To, DepKind);
+      Use E(From, To, DepKind);
+      if(PatchFunctor)
+        return PatchFunctor(E);
+      else
+        return std::move(E);
     }
   };
 };

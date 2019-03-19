@@ -14,6 +14,7 @@ set(_TEST_INPUT_FILES
     memory1.txt
     memory2.txt
     full_pipeline1.txt
+    full_pipeline2.txt
     )
 
 if(GROSS_ENABLE_UNIT_TESTS)
