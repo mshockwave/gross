@@ -11,6 +11,8 @@ class ValuePromotion : public GraphEditor {
   GraphReduction ReduceMemAccess(Node* N);
   GraphReduction ReducePhiNode(Node* N);
 
+  void appendValueUsage(Node* Usr, Node* Src, Node* Val);
+
   Graph& G;
   Node* DeadNode;
 

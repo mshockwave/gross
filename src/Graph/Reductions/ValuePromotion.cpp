@@ -10,7 +10,7 @@ ValuePromotion::ValuePromotion(GraphEditor::Interface* editor)
     DeadNode(NodeBuilder<IrOpcode::Dead>(&G).Build()) {}
 
 // Append value usage only on meaningful nodes
-static void appendValueUsage(Node* Usr, Node* Val) {
+void ValuePromotion::appendValueUsage(Node* Usr, Node* Src, Node* Val) {
   switch(Usr->getOp()) {
   case IrOpcode::End:
   case IrOpcode::Start:
@@ -19,6 +19,20 @@ static void appendValueUsage(Node* Usr, Node* Val) {
   case IrOpcode::Loop:
     // these ctrl nodes will not use the defined values
     return;
+  case IrOpcode::Phi: {
+    // special handle for PHI
+    // reserve space for value inputs
+    while(Usr->getNumValueInput() < Usr->getNumEffectInput()) {
+      Usr->appendValueInput(DeadNode);
+    }
+    size_t InputIdx = 0U;
+    for(; InputIdx < Usr->getNumEffectInput(); ++InputIdx) {
+      if(Src == Usr->getEffectInput(InputIdx)) break;
+    }
+    assert(InputIdx < Usr->getNumEffectInput());
+    Usr->setValueInput(InputIdx, Val);
+    break;
+  }
   default:
     Usr->appendValueInput(Val);
   }
@@ -37,8 +51,10 @@ GraphReduction ValuePromotion::ReduceAssignment(Node* Assign) {
     return ReduceMemAssignment(Assign);
 
   auto* SrcVal = NP.source();
-  for(Node* Usr : Assign->effect_users()) {
-    appendValueUsage(Usr, SrcVal);
+  std::vector<Node*> EffectUsrs(Assign->effect_users().begin(),
+                                Assign->effect_users().end());
+  for(Node* Usr : EffectUsrs) {
+    appendValueUsage(Usr, Assign, SrcVal);
   }
   return Replace(DeadNode);
 }
@@ -187,15 +203,19 @@ GraphReduction ValuePromotion::ReduceArrayDecl(Node* ArrayDecl) {
 // all the effect user(of this node) into value usages.
 GraphReduction ValuePromotion::ReducePhiNode(Node* PHI) {
   unsigned NumDead = 0;
+  unsigned NumValidInput = 0;
   for(auto* EI : PHI->effect_inputs()){
     if(EI == DeadNode) ++NumDead;
   }
-  if(NumDead && NumDead == PHI->getNumValueInput()) {
+  for(auto* VI : PHI->value_inputs()) {
+    if(VI != DeadNode) ++NumValidInput;
+  }
+  if(NumDead && NumDead == NumValidInput) {
     // replace all effect usages with value usages
     std::vector<Node*> EUsrs(PHI->effect_users().begin(),
                              PHI->effect_users().end());
     for(auto* EU : EUsrs) {
-      appendValueUsage(EU, PHI);
+      appendValueUsage(EU, PHI, PHI);
       Revisit(EU);
     }
     PHI->ReplaceWith(DeadNode, Use::K_EFFECT);
