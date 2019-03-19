@@ -349,6 +349,8 @@ void CFGBuilder::BlockPlacement() {
   auto* EndNode = Schedule.getEndNode();
 
   for(auto* N : Schedule.rpo_nodes()) {
+    if(Schedule.IsNodeScheduled(N)) continue;
+
     switch(N->getOp()) {
     case IrOpcode::Start:
     case IrOpcode::End:

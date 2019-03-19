@@ -290,8 +290,13 @@ NODE_PROPERTIES(If) {
     return nullptr;
   }
   Node* FalseBranch() {
+    // IfFalse or 'not true branch'
     for(auto* CU : NodePtr->control_users()) {
       if(CU->getOp() == IrOpcode::IfFalse)
+        return CU;
+    }
+    for(auto* CU : NodePtr->control_users()) {
+      if(CU->getOp() != IrOpcode::IfTrue)
         return CU;
     }
     return nullptr;

@@ -156,7 +156,7 @@ Node* Parser::ParseIfStmt() {
     for(auto* BrTable : BrTables) {
       for(auto& P : *BrTable) {
         auto& Store = P.first;
-        if(!InitEffects.count(Store)) continue;
+        //if(!InitEffects.count(Store)) continue;
         JoinTable[Store].insert(P.second.begin(),
                                 P.second.end());
       }

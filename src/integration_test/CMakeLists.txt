@@ -5,6 +5,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 set(_TEST_SOURCE_FILES
     ValueAssignmentTest.cpp
     MemoryTest.cpp
+    FullPipelineTest.cpp
     )
 set(_TEST_INPUT_FILES
     value_assignment1.txt
@@ -12,6 +13,7 @@ set(_TEST_INPUT_FILES
     value_assignment3.txt
     memory1.txt
     memory2.txt
+    full_pipeline1.txt
     )
 
 if(GROSS_ENABLE_UNIT_TESTS)
@@ -36,6 +38,7 @@ if(GROSS_ENABLE_UNIT_TESTS)
     $<TARGET_OBJECTS:GrossFrontend>
     $<TARGET_OBJECTS:GrossGraph>
     $<TARGET_OBJECTS:GrossGraphReductions>
+    $<TARGET_OBJECTS:GrossCodeGen>
     gtest_main)
   gtest_add_tests(TARGET GrossIntegrationTest)
 

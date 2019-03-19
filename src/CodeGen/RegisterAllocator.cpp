@@ -219,6 +219,7 @@ std::vector<Node*>& LinearScanRegisterAllocator<T>::getOrderedUsers(Node* N) {
       : Schedule(schedule) {}
 
     bool operator()(const Node* Val1, const Node* Val2) const noexcept {
+      if(Val1 == Val2) return true;
       auto* N1 = const_cast<Node*>(Val1);
       auto* N2 = const_cast<Node*>(Val2);
       auto* BB1 = Schedule.MapBlock(N1);
