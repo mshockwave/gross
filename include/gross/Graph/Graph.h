@@ -77,6 +77,8 @@ struct hash<gross::SubGraph> {
 namespace gross {
 // Forward declarations
 struct AttributeBuilder;
+template<class T>
+struct NodeMarker;
 
 // Owner of nodes
 class Graph {
@@ -111,11 +113,18 @@ class Graph {
 
   typename Use::BuilderFunctor::PatcherTy EdgePatcher;
 
+  // used to marked node index that is inserted in certain
+  // period
+  NodeMarker<uint16_t>* NodeIdxMarker;
+  uint16_t NodeIdxCounter;
+
 public:
   Graph()
     : DeadNode(nullptr),
       MarkerMax(0U),
-      EdgePatcher(nullptr) {}
+      EdgePatcher(nullptr),
+      NodeIdxMarker(nullptr),
+      NodeIdxCounter(0U) {}
 
   void SetEdgePatcher(Use::BuilderFunctor::PatcherTy Patcher) {
     EdgePatcher = Patcher;
@@ -124,6 +133,12 @@ public:
   const Use::BuilderFunctor::PatcherTy& GetEdgePatcher() const {
     return EdgePatcher;
   }
+
+  void SetNodeIdxMarker(NodeMarker<uint16_t>* Marker) {
+    NodeIdxMarker = Marker;
+    NodeIdxCounter = 0U;
+  }
+  void ClearNodeIdxMarker() { NodeIdxMarker = nullptr; }
 
   using node_iterator = typename decltype(Nodes)::iterator;
   using const_node_iterator = typename decltype(Nodes)::const_iterator;

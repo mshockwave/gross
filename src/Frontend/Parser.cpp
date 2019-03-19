@@ -1,10 +1,28 @@
 #include "gross/Support/Log.h"
 #include "gross/Graph/Graph.h"
 #include "gross/Graph/NodeUtils.h"
+#include "gross/Graph/NodeMarker.h"
 #include "gross/Graph/AttributeBuilder.h"
 #include "Parser.h"
 
 using namespace gross;
+
+void Parser::SetNodeIdxMarker(NodeMarker<uint16_t>* Marker) {
+  NodeIdxMarker = Marker;
+  G.SetNodeIdxMarker(Marker);
+}
+void Parser::ClearNodeIdxMarker() {
+  NodeIdxMarker = nullptr;
+  G.ClearNodeIdxMarker();
+}
+
+uint16_t Parser::GetNodeIdx(Node* N) {
+  assert(NodeIdxMarker);
+  return NodeIdxMarker->Get(N);
+}
+uint16_t Parser::GetCurrentNodeIdx() {
+  return GetNodeIdx(G.getNode(G.node_size() - 1));
+}
 
 void Parser::InspectFuncNodeUsages(Node* FuncEnd) {
   assert(FuncEnd);

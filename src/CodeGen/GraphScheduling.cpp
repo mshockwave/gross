@@ -32,6 +32,7 @@ struct GraphSchedule::RPONodesVisitor
     case IrOpcode::End:
       PE.EndNode = N;
       return;
+#if 0
     case IrOpcode::If:
     case IrOpcode::Loop:
       return;
@@ -45,6 +46,7 @@ struct GraphSchedule::RPONodesVisitor
       }
       break;
     }
+#endif
     default: break;
     }
     Trace.push_back(N);
@@ -52,7 +54,7 @@ struct GraphSchedule::RPONodesVisitor
 
   RPONodesVisitor(std::vector<Node*>& trace,
                   PostEntity& entity)
-    : Trace(trace), PE(entity){}
+    : Trace(trace), PE(entity) {}
 
 private:
   std::vector<Node*>& Trace;
@@ -85,6 +87,16 @@ void GraphSchedule::SortRPONodes() {
         Copy.Dest = OrigEdge.Source;
         return std::move(Copy);
       }
+    } else if(Source->getOp() == IrOpcode::Loop) {
+      assert(Source->getNumControlInput() >= 2);
+      auto* Backedge = Source->getControlInput(1);
+      if(Backedge == OrigEdge.Dest) {
+        // reverse!
+        Use Copy(OrigEdge);
+        Copy.Source = OrigEdge.Dest;
+        Copy.Dest = OrigEdge.Source;
+        return std::move(Copy);
+      }
     }
     return OrigEdge;
   };
@@ -99,6 +111,7 @@ void GraphSchedule::SortRPONodes() {
 
   getSubGraph().ClearEdgePatcher();
 
+#if 0
   for(auto NI = RPONodes.cbegin(); NI != RPONodes.cend();) {
     auto* N = const_cast<Node*>(*NI);
     if(PE.BranchStarts.count(N)) {
@@ -117,8 +130,16 @@ void GraphSchedule::SortRPONodes() {
       ++NI;
     }
   }
+#endif
   RPONodes.insert(RPONodes.cbegin(), PE.StartNode);
   RPONodes.push_back(PE.EndNode);
+}
+
+void GraphSchedule::dumpRPONodes() {
+  size_t Idx = 0;
+  for(auto* N : RPONodes) {
+    IrOpcode::Print(G, std::cout << Idx++ << ": ", N) << "\n";
+  }
 }
 
 // return # of words in current local allocation

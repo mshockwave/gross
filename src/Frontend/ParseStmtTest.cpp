@@ -2,6 +2,7 @@
 #include "ParserTest.h"
 #include "gross/Graph/Graph.h"
 #include "gross/Graph/NodeUtils.h"
+#include "gross/Graph/NodeMarker.h"
 #include "gtest/gtest.h"
 #include <algorithm>
 #include <sstream>
@@ -260,6 +261,8 @@ TEST(ParserUnitTest, TestWhileStmt) {
     Parser P(SS, G);
     (void) P.getLexer().getNextToken();
     SetMockContext(P,G);
+    NodeMarker<uint16_t> NodeIdxMarker(G, 100);
+    P.SetNodeIdxMarker(&NodeIdxMarker);
     ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
 
     EXPECT_TRUE(P.ParseAssignment());
@@ -288,6 +291,8 @@ TEST(ParserUnitTest, TestComplexWhileStmt) {
     Parser P(SS, G);
     (void) P.getLexer().getNextToken();
     SetMockContext(P,G);
+    NodeMarker<uint16_t> NodeIdxMarker(G, 100);
+    P.SetNodeIdxMarker(&NodeIdxMarker);
     ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
 
     EXPECT_TRUE(P.ParseAssignment());
@@ -312,6 +317,8 @@ TEST(ParserUnitTest, TestComplexWhileStmt) {
     Parser P(SS, G);
     (void) P.getLexer().getNextToken();
     SetMockContext(P,G);
+    NodeMarker<uint16_t> NodeIdxMarker(G, 100);
+    P.SetNodeIdxMarker(&NodeIdxMarker);
     ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
 
     EXPECT_TRUE(P.ParseAssignment());
@@ -340,6 +347,8 @@ TEST(ParserUnitTest, TestComplexWhileStmt) {
     Parser P(SS, G);
     (void) P.getLexer().getNextToken();
     SetMockContext(P,G);
+    NodeMarker<uint16_t> NodeIdxMarker(G, 100);
+    P.SetNodeIdxMarker(&NodeIdxMarker);
     ASSERT_TRUE(P.ParseVarDecl<IrOpcode::SrcVarDecl>());
 
     EXPECT_TRUE(P.ParseAssignment());

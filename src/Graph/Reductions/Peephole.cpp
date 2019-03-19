@@ -37,7 +37,14 @@ GraphReduction PeepholeReducer::ReduceArithmetic(Node* N) {
         = NodeBuilder<IrOpcode::ConstantInt>(&G, LHSVal * RHSVal).Build();
       return Replace(NewNode);
     }
-    // do not handle div for now
+    case IrOpcode::BinDiv: {
+      // integer divistion
+      auto LHSVal = LNP.as<int32_t>(G),
+           RHSVal = RNP.as<int32_t>(G);
+      auto* NewNode
+        = NodeBuilder<IrOpcode::ConstantInt>(&G, LHSVal / RHSVal).Build();
+      return Replace(NewNode);
+    }
     default:
       return NoChange();
     }

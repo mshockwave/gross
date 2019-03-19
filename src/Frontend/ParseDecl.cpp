@@ -1,6 +1,7 @@
 #include "gross/Support/Log.h"
 #include "gross/Graph/Graph.h"
 #include "gross/Graph/NodeUtils.h"
+#include "gross/Graph/NodeMarker.h"
 #include "Parser.h"
 
 using namespace gross;
@@ -112,6 +113,10 @@ Node* Parser::ParseFuncDecl() {
   NodeBuilder<IrOpcode::VirtFuncPrototype> FB(&G);
   FB.FuncName(FName);
 
+  // for the entire function
+  NodeMarker<uint16_t> NodeIdxMarker(G, 10000);
+  SetNodeIdxMarker(&NodeIdxMarker);
+
   SymbolLookup FuncLookup(*this, FName);
   // 'CurrentScope' is global scope
   if(FuncLookup.InCurrentScope()) {
@@ -211,6 +216,8 @@ Node* Parser::ParseFuncDecl() {
   SubGraph SG(EndNode);
   G.AddSubRegion(SG);
   (void) NodeBuilder<IrOpcode::FunctionStub>(&G, SG).Build();
+
+  ClearNodeIdxMarker();
 
   return EndNode;
 }

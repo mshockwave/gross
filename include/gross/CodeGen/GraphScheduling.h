@@ -171,6 +171,8 @@ public:
     return llvm::make_range(po_node_begin(), po_node_end());
   }
 
+  void dumpRPONodes();
+
   using block_iterator = typename decltype(Blocks)::iterator;
   using const_block_iterator = typename decltype(Blocks)::const_iterator;
   using reverse_block_iterator

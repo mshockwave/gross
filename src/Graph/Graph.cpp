@@ -1,6 +1,7 @@
 #include "gross/Graph/Graph.h"
 #include "gross/Graph/BGL.h"
 #include "gross/Graph/NodeUtils.h"
+#include "gross/Graph/NodeMarker.h"
 #include "boost/graph/graphviz.hpp"
 #include <algorithm>
 #include <iterator>
@@ -37,6 +38,8 @@ void Graph::ReplaceGlobalVar(Node* Old, Node* New) {
 
 void Graph::InsertNode(Node* N) {
   Nodes.emplace_back(N);
+  if(NodeIdxMarker)
+    NodeIdxMarker->Set(N, NodeIdxCounter++);
 }
 
 typename Graph::const_node_iterator

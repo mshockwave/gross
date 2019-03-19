@@ -20,6 +20,8 @@ class Graph;
 class Node;
 template<IrOpcode::ID OC>
 struct NodeBuilder;
+template<class T>
+struct NodeMarker;
 
 // Just a small wrapper providing
 // iterable stack implementation
@@ -121,6 +123,8 @@ class Parser {
     LastMemAccess = std::move(decltype(LastMemAccess)());
   }
 
+  NodeMarker<uint16_t>* NodeIdxMarker;
+
   void InspectFuncNodeUsages(Node* FuncEnd);
 
   /// placeholder function to avoid link time error
@@ -130,7 +134,8 @@ class Parser {
 public:
   Parser(std::istream& IS, Graph& graph)
     : G(graph),
-      Lex(IS) {}
+      Lex(IS),
+      NodeIdxMarker(nullptr) {}
 
   Lexer& getLexer() { return Lex; }
 
@@ -148,6 +153,11 @@ public:
   inline void setLastCtrlPoint(Node* N) {
     (*LastControlPoint.CurEntryMutable())[0] = N;
   }
+
+  void SetNodeIdxMarker(NodeMarker<uint16_t>* Marker);
+  uint16_t GetNodeIdx(Node*);
+  uint16_t GetCurrentNodeIdx();
+  void ClearNodeIdxMarker();
 
   /// For each ParseXXX, it would expect the lexer cursor
   /// starting on the first token of its semantic rule.

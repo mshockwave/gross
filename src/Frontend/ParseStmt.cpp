@@ -1,6 +1,7 @@
 #include "gross/Support/Log.h"
 #include "gross/Graph/Graph.h"
 #include "gross/Graph/NodeUtils.h"
+#include "gross/Graph/NodeMarker.h"
 #include "Parser.h"
 #include <unordered_set>
 #include <unordered_map>
@@ -206,6 +207,8 @@ Node* Parser::ParseWhileStmt() {
     Log::E() << "Expecting 'while' here\n";
     return nullptr;
   }
+  auto PreBodyNodeIdx = GetCurrentNodeIdx();
+
   (void) NextTok();
   auto* RelNode = ParseRelation();
   if(!RelNode) return nullptr;
@@ -290,6 +293,8 @@ Node* Parser::ParseWhileStmt() {
   };
   LastModified.CloseAffineScope<>(PHINodeCallback);
 
+  auto LastBodyNodeIdx = GetCurrentNodeIdx();
+
   // fixup statements in the body
   std::vector<Node*> Worklist;
   for(auto& P : FixupMap) {
@@ -297,8 +302,11 @@ Node* Parser::ParseWhileStmt() {
     auto* PHI = P.second;
     Worklist.clear();
     for(auto* EU : OrigVal->effect_users()) {
-      if(EU == PHI) continue;
-      Worklist.push_back(EU);
+      if(EU != PHI &&
+         (GetNodeIdx(EU) > PreBodyNodeIdx &&
+          GetNodeIdx(EU) <= LastBodyNodeIdx)) {
+        Worklist.push_back(EU);
+      }
     }
     for(auto* N : Worklist)
       N->ReplaceUseOfWith(OrigVal, PHI, Use::K_EFFECT);

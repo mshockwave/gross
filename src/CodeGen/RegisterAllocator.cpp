@@ -69,17 +69,18 @@ void LinearScanRegisterAllocator<T>::LegalizePhiInputs(Node* PN) {
     auto* Move = CreateMove(Val);
     PN->ReplaceUseOfWith(Val, Move, Use::K_VALUE);
     // insert at the end of BB
-    for(auto NI = BB->node_rbegin(), NE = BB->node_rend();
-        NI != NE; ++NI) {
-      if(NodeProperties<IrOpcode::VirtDLXTerminate>(*NI))
+    Node* PosAfter = nullptr;
+    for(auto* N : BB->reverse_nodes()) {
+      if(NodeProperties<IrOpcode::VirtDLXTerminate>(N)) {
         continue;
-      if(NI == BB->node_rbegin()) {
-        Schedule.AddNode(BB, Move);
-      } else {
-        Schedule.AddNodeBefore(BB, *(--NI), Move);
       }
+      PosAfter = N;
       break;
     }
+    if(PosAfter)
+      Schedule.AddNodeAfter(BB, PosAfter, Move);
+    else
+      Schedule.AddNode(BB, BB->node_cbegin(), Move);
   }
 }
 
@@ -247,6 +248,13 @@ private:
     // cache miss
     std::vector<Node*> ValUsrs(N->value_users().begin(),
                                N->value_users().end());
+    // only those reside in Blocks
+    for(auto NI = ValUsrs.begin(); NI != ValUsrs.end();) {
+      if(!Schedule.MapBlock(*NI))
+        NI = ValUsrs.erase(NI);
+      else
+        ++NI;
+    }
     std::sort(ValUsrs.begin(), ValUsrs.end(),
               InstrOrderFunctor(Schedule));
     OrderedUsers.insert({N, std::move(ValUsrs)});
@@ -429,7 +437,8 @@ Node* LinearScanRegisterAllocator<T>::InsertSpillCodes() {
       // no need to re-load on PHI nodes
       if(VU->getOp() == IrOpcode::Phi) continue;
       auto* BB = Schedule.MapBlock(VU);
-      assert(BB);
+      // not in any block
+      if(!BB) continue;
       auto* Load = NodeBuilder<IrOpcode::DLXLdW>(&G)
                    .BaseAddr(Fp).Offset(SlotOffset)
                    .Build();
