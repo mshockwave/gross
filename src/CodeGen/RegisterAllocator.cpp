@@ -657,6 +657,15 @@ void LinearScanRegisterAllocator<T>::Allocate() {
   // 4. assign register otherwise
   // 5. recycle any expired register
 
+  // skip builtin functions
+  auto* Stub
+    = NodeBuilder<IrOpcode::FunctionStub>(&G, Schedule.getSubGraph())
+      .Build();
+  if(NodeProperties<IrOpcode::FunctionStub>(Stub)
+     .hasAttribute<Attr::IsBuiltin>(G)) {
+    return;
+  }
+
   std::vector<Node*> PHINodes;
   for(auto* BB : Schedule.rpo_blocks()) {
     for(auto* N : BB->nodes()) {

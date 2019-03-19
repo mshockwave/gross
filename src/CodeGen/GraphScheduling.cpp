@@ -437,6 +437,19 @@ void CFGBuilder::BlockPlacement() {
       Schedule.SetScheduled(N);
       continue;
     }
+    case IrOpcode::Call: {
+      if(N->getNumControlInput() > 0) {
+        auto* PrevCtrl = N->getControlInput(0);
+        auto* BB = MapBlock(PrevCtrl);
+        assert(BB && "previous control not visited yet?");
+        // add after the first(control) node
+        auto Pos = BB->node_cbegin();
+        ++Pos;
+        AddNodeToBlock(N, BB, Pos);
+        Schedule.SetScheduled(N);
+      }
+      continue;
+    }
     case IrOpcode::Alloca: {
       // needs to be placed in the entry block
       auto* EntryBlock = MapBlock(StartNode);

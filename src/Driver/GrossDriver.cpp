@@ -74,7 +74,6 @@ int main(int argc, char** argv) {
 
   Graph G;
   Parser P(IF, G);
-  P.NewSymScope(); // global scope
 
   if(!P.Parse(true)) {
     Log::E() << "Failed to parse\n";
@@ -125,7 +124,7 @@ int main(int argc, char** argv) {
 
     PostMachineLowering PostLowering(*FuncSchedule);
     PostLowering.Run();
-    if(GrossOpts.count("dump-post-lower")) {
+    if(GrossOpts.count("dump-post-lowering")) {
       std::ofstream OF(MakeName(Counter,
                                 InputFileName, "postlower.dot"));
       FuncSchedule->dumpGraphviz(OF);

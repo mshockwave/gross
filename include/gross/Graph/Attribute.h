@@ -6,7 +6,9 @@ namespace gross {
 enum class Attr {
   NoMem,
   ReadMem,
-  WriteMem
+  WriteMem,
+  HasSideEffect, // enviornment side-effects
+  IsBuiltin
 };
 
 // Forward declaration
@@ -56,6 +58,14 @@ ATTRIBUTE_IMPL(WriteMem) {
   Attr Kind() const override { return Attr::WriteMem; }
 };
 
+// Environment side-effects (e.g. read/write output)
+ATTRIBUTE_IMPL(HasSideEffect) {
+  Attr Kind() const override { return Attr::HasSideEffect; }
+};
+// Is builtin functions
+ATTRIBUTE_IMPL(IsBuiltin) {
+  Attr Kind() const override { return Attr::IsBuiltin; }
+};
 #undef ATTRIBUTE_IMPL
 } // end namespace gross
 #endif

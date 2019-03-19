@@ -137,7 +137,8 @@ void GraphReducer::runImpl(_detail::ReducerConcept* Reducer) {
     for(auto NI = G.node_cbegin(); NI != G.node_cend();) {
       auto* N = const_cast<Node*>(Graph::GetNodeFromIt(NI));
       if(TrimMarker.Get(N) == ReductionState::Unvisited &&
-         !NodeProperties<IrOpcode::VirtGlobalValues>(N)) {
+         !NodeProperties<IrOpcode::VirtGlobalValues>(N) &&
+         !G.IsGlobalVar(N)) {
         NI = G.RemoveNode(NI);
       } else {
         ++NI;

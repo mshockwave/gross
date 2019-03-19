@@ -22,6 +22,7 @@ template<IrOpcode::ID OC>
 struct NodeBuilder;
 template<class T>
 struct NodeMarker;
+struct AttributeBuilder;
 
 // Just a small wrapper providing
 // iterable stack implementation
@@ -126,6 +127,9 @@ class Parser {
   NodeMarker<uint16_t>* NodeIdxMarker;
 
   void InspectFuncNodeUsages(Node* FuncEnd);
+
+  void InstallBuiltin(const std::string& name, size_t NumArgs,
+                      AttributeBuilder&& AttrBuilder);
 
   /// placeholder function to avoid link time error
   /// for un-specialized decl template functions

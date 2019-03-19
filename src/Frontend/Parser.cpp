@@ -4,6 +4,7 @@
 #include "gross/Graph/NodeMarker.h"
 #include "gross/Graph/AttributeBuilder.h"
 #include "Parser.h"
+#include <sstream>
 
 using namespace gross;
 
@@ -69,6 +70,23 @@ void Parser::InspectFuncNodeUsages(Node* FuncEnd) {
       }
       break;
     }
+    case IrOpcode::Call: {
+      auto* Stub = NodeProperties<IrOpcode::Call>(N).getFuncStub();
+      NodeProperties<IrOpcode::FunctionStub> StubNP(Stub);
+      assert(StubNP);
+      // propagate attributes
+      // FIXME: use iteration
+      if(StubNP.hasAttribute<Attr::WriteMem>(G)) {
+        FuncAttrBuilder.Add<Attr::WriteMem>();
+      }
+      if(StubNP.hasAttribute<Attr::ReadMem>(G)) {
+        FuncAttrBuilder.Add<Attr::ReadMem>();
+      }
+      if(StubNP.hasAttribute<Attr::HasSideEffect>(G)) {
+        FuncAttrBuilder.Add<Attr::HasSideEffect>();
+      }
+      break;
+    }
     default: continue;
     }
   }
@@ -77,6 +95,28 @@ void Parser::InspectFuncNodeUsages(Node* FuncEnd) {
     FuncAttrBuilder.Add<Attr::NoMem>();
   }
   if(!FuncAttrBuilder.empty()) FuncAttrBuilder.Attach(FuncNode);
+}
+
+void Parser::InstallBuiltin(const std::string& name, size_t NumArgs,
+                            AttributeBuilder&& AttrBuilder) {
+  NodeBuilder<IrOpcode::VirtFuncPrototype> FB(&G);
+  FB.FuncName(name.c_str());
+  for(auto i = 0; i < NumArgs; ++i) {
+    std::stringstream SS;
+    SS << "arg" << i;
+    auto* Param = NodeBuilder<IrOpcode::Argument>(&G, SS.str()).Build();
+    FB.AddParameter(Param);
+  }
+  auto* FuncNode = FB.Build();
+  CurSymTable().insert({name, FuncNode});
+
+  NodeBuilder<IrOpcode::End> EB(&G, FuncNode);
+  auto* EndNode = EB.Build();
+  AttrBuilder.Attach(FuncNode);
+
+  SubGraph SG(EndNode);
+  G.AddSubRegion(SG);
+  (void) NodeBuilder<IrOpcode::FunctionStub>(&G, SG).Build();
 }
 
 /// Parse computation
@@ -101,6 +141,10 @@ bool Parser::Parse(bool StepLexer) {
   auto* FuncNode = FB.Build();
   CurSymTable().insert({"main", FuncNode});
 
+  // for the entire function
+  NodeMarker<uint16_t> NodeIdxMarker(G, 10000);
+  SetNodeIdxMarker(&NodeIdxMarker);
+
   std::vector<Node*> GlobalVars;
   if(!ParseVarDeclTop(&GlobalVars)) return false;
   for(auto* GV : GlobalVars) {
@@ -118,6 +162,21 @@ bool Parser::Parse(bool StepLexer) {
       G.MarkGlobalVar(GV);
     }
   }
+
+  // builtins
+  InstallBuiltin("InputNum", 0,
+                 std::move(AttributeBuilder(G)
+                           .Add<Attr::IsBuiltin>()
+                           .Add<Attr::NoMem>()));
+  InstallBuiltin("OutputNum", 1,
+                 std::move(AttributeBuilder(G)
+                           .Add<Attr::IsBuiltin>()
+                           .Add<Attr::HasSideEffect>()));
+  InstallBuiltin("OutputNewline", 0,
+                 std::move(AttributeBuilder(G)
+                           .Add<Attr::IsBuiltin>()
+                           .Add<Attr::HasSideEffect>()));
+
   for(Tok = CurTok();
       Tok == Lexer::TOK_FUNCTION || Tok == Lexer::TOK_PROCEDURE;
       Tok = CurTok()) {
@@ -171,6 +230,8 @@ bool Parser::Parse(bool StepLexer) {
   SubGraph SG(EndNode);
   G.AddSubRegion(SG);
   (void) NodeBuilder<IrOpcode::FunctionStub>(&G, SG).Build();
+
+  ClearNodeIdxMarker();
 
   return true;
 }

@@ -374,6 +374,10 @@ Node* Parser::ParseFuncCall() {
 
   auto* CallNode = CallBuilder.Build();
   NodeProperties<IrOpcode::FunctionStub> StubNP(FuncStub);
+  if(StubNP.hasAttribute<Attr::HasSideEffect>(G, Func)) {
+    CallNode->appendControlInput(getLastCtrlPoint());
+    setLastCtrlPoint(CallNode);
+  }
   if(StubNP.hasAttribute<Attr::NoMem>(G, Func)) {
     return CallNode;
   }
