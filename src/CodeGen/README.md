@@ -10,6 +10,7 @@ individual phases: Pre and PostMachineLowering. Primary reason to do so is becau
    3. **RPONodePlacement** _(TBD)_ solves the problems in previous phase. Since all the inputs of a given node have been scheduled.
 3. **PostMachineLowering** phase lowers rest of the control-flow-sensitive nodes. For example: jumps, function calls and function prologue/epilogues. Also, this phase removes all the PHIs that only have effect inputs/output(i.e. EffectPhi)
 4. **RegisterAllocator** phase assign physical registers to instructions. Currently we adopt linear scan register allocation.
+5. **PostRALowering** continue lowering some nodes that is previously required by RA. Also do some house cleaning.
 
 # ABI
 The origin DLX architecture doesn't give a concrete ABI definition. It only specified the following special registers:
