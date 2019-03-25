@@ -170,24 +170,41 @@ Node* Parser::ParseIfStmt() {
   auto PHINodeCallback = [&,this](affine_table_type& JoinTable,
                                   const std::vector<table_type*>& BrTables) {
     std::unordered_map<Node*, std::vector<Node*>> Variants;
+    std::unordered_map<Node*, Node*> InitVals;
     for(auto& Pair : JoinTable) {
-      Variants[Pair.first].push_back(Pair.second);
+      InitVals[Pair.first] = Pair.second;
     }
-    for(auto* BrTable : BrTables)
-      for(auto& Pair : *BrTable)
-        Variants[Pair.first].push_back(Pair.second);
+    const size_t NumBranches = BrTables.size() >= 2? BrTables.size() : 2;
+
+    size_t Idx = 0U;
+    for(auto* BrTable : BrTables) {
+      for(auto& Pair : *BrTable) {
+        auto* Decl = Pair.first;
+        if(!Variants.count(Decl)) {
+          // right before first write, initialize with
+          // amount of slots matches NumBranches
+          if(!InitVals.count(Decl)) {
+            InitVals[Decl] = getInitialValue(Decl);
+          }
+          auto* InitVal = InitVals.at(Decl);
+          Variants[Decl].assign(NumBranches, InitVal);
+        }
+        assert(Variants[Decl].size() == NumBranches);
+        Variants[Decl][Idx] = Pair.second;
+      }
+      Idx++;
+    }
 
     // create PHI nodes for those whose list has more than one element
     for(auto& VP : Variants) {
       auto& Variant = VP.second;
-      // Note: assume there won't be cases where a var is uninitialized
-      // before IfStmt but only assigned in one of the branches
-      if(Variant.size() < 2) continue;
       // only take the last two
       const auto VSize = Variant.size();
+      assert(VSize >= 2);
       Node *N1 = Variant.at(VSize - 2),
            *N2 = Variant.at(VSize - 1);
       if(N1 == N2) continue;
+      assert(N1 && N2);
       NodeBuilder<IrOpcode::Phi> PB(&G);
       PB.SetCtrlMerge(MergeNode);
       PB.AddEffectInput(N1)
