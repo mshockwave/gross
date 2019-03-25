@@ -91,7 +91,7 @@ GraphReduction CSEReducer::ReduceMemoryLoad(Node* N) {
 
   std::vector<Node*> Worklist;
   for(auto* EU : LastStore->effect_users()) {
-    assert(EU->getOp() == IrOpcode::MemLoad);
+    if(EU->getOp() != IrOpcode::MemLoad) continue;
     if(EU == N) continue;
     NodeProperties<IrOpcode::VirtMemOps> MNP(EU);
     assert(MNP.BaseAddr() == RefNP.BaseAddr());

@@ -134,7 +134,7 @@ Node* Parser::ParseFuncDecl() {
   if(Tok == Lexer::TOK_L_PARAN) {
     // Argument list
     Tok = NextTok();
-    while(true) {
+    while(Tok != Lexer::TOK_R_PARAN) {
       if(Tok != Lexer::TOK_IDENT) {
         Log::E() << "Expecting identifier in an argument list\n";
         return nullptr;
@@ -151,15 +151,10 @@ Node* Parser::ParseFuncDecl() {
       CurSymTable().insert({ArgName, ArgNode});
 
       Tok = NextTok();
-      if(Tok == Lexer::TOK_R_PARAN) {
+      if(Tok == Lexer::TOK_COMMA)
         Tok = NextTok();
-        break;
-      } else if(Tok != Lexer::TOK_COMMA) {
-        Log::E() << "Expecting ',' here\n";
-        return nullptr;
-      }
-      Tok = NextTok();
     }
+    Tok = NextTok();
   }
 
   if(Tok != Lexer::TOK_SEMI_COLON) {

@@ -52,7 +52,7 @@ Node* Parser::ParseArrayAccessDesignator(Node* DeclNode, Node* Effect,
 
   if(!Effect) {
     // create initial state
-    Effect = NodeBuilder<IrOpcode::SrcInitialArray>(&G, DeclNode).Build();
+    Effect = getInitialValue(DeclNode);
     LastModified[DeclNode] = Effect;
   }
 
@@ -88,7 +88,7 @@ Node* Parser::ParseGlobalVarAccessDesignator(Node* DeclNode, Node* Effect) {
   assert(NodeProperties<IrOpcode::SrcArrayDecl>(DeclNode));
   if(!Effect) {
     // create initial state
-    Effect = NodeBuilder<IrOpcode::SrcInitialArray>(&G, DeclNode).Build();
+    Effect = getInitialValue(DeclNode);
     LastModified[DeclNode] = Effect;
   }
 

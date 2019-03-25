@@ -258,7 +258,7 @@ Node* Parser::ParseWhileStmt() {
     auto& InitEffects = *(JoinTable.CurEntry());
     for(auto& P : LoopBack) {
       auto& Store = P.first;
-      if(!InitEffects.count(Store)) continue;
+      //if(!InitEffects.count(Store)) continue;
       JoinTable[Store].insert(P.second.begin(),
                               P.second.end());
     }
@@ -276,7 +276,10 @@ Node* Parser::ParseWhileStmt() {
     auto& InitVals = *(JoinTable.CurEntry());
     for(auto& P : LoopBack) {
       auto& Decl = P.first;
-      if(!InitVals.count(Decl)) continue;
+      if(!InitVals.count(Decl)) {
+        // use initial value instead
+        InitVals[Decl] = getInitialValue(Decl);
+      }
       // ignore duplicate values
       if(InitVals[Decl] == P.second) continue;
       auto* PHI = NodeBuilder<IrOpcode::Phi>(&G)

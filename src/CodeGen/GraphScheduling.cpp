@@ -454,10 +454,8 @@ void CFGBuilder::BlockPlacement() {
       // needs to be placed in the entry block
       auto* EntryBlock = MapBlock(StartNode);
       assert(EntryBlock);
-      NodeProperties<IrOpcode::Start> FuncNP(StartNode);
-      if(FuncNP.name(G) != "main" &&
-         G.IsGlobalVar(N)) {
-        // global var and it's not main function, don't place it
+      if(G.IsGlobalVar(N)) {
+        Schedule.SetScheduled(N);
         continue;
       }
       auto Pos = EntryBlock->node_cbegin();

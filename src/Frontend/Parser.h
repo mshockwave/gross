@@ -114,11 +114,16 @@ class Parser {
   // {MemStore, accessor}
   AffineRecordTable<Node*, std::set<Node*>> LastMemAccess;
   AffineContainer<std::array<Node*,1>> LastControlPoint;
+  std::unordered_map<Node*, Node*> InitialValCache;
+
+  Node* getInitialValue(Node* Decl);
+
   inline void NewLastControlPoint() {
     LastControlPoint = std::move(decltype(LastControlPoint)());
   }
   inline void NewLastModified() {
     LastModified = std::move(decltype(LastModified)());
+    InitialValCache.clear();
   }
   inline void NewLastMemAccess() {
     LastMemAccess = std::move(decltype(LastMemAccess)());

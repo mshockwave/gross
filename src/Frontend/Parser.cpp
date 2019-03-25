@@ -25,6 +25,16 @@ uint16_t Parser::GetCurrentNodeIdx() {
   return GetNodeIdx(G.getNode(G.node_size() - 1));
 }
 
+Node* Parser::getInitialValue(Node* Decl) {
+  if(!InitialValCache.count(Decl)) {
+    // create one
+    auto* N = NodeBuilder<IrOpcode::SrcInitialArray>(&G, Decl)
+              .Build();
+    InitialValCache[Decl] = N;
+  }
+  return InitialValCache.at(Decl);
+}
+
 void Parser::InspectFuncNodeUsages(Node* FuncEnd) {
   assert(FuncEnd);
   SubGraph SG(FuncEnd);
@@ -172,7 +182,7 @@ bool Parser::Parse(bool StepLexer) {
                  std::move(AttributeBuilder(G)
                            .Add<Attr::IsBuiltin>()
                            .Add<Attr::HasSideEffect>()));
-  InstallBuiltin("OutputNewline", 0,
+  InstallBuiltin("OutputNewLine", 0,
                  std::move(AttributeBuilder(G)
                            .Add<Attr::IsBuiltin>()
                            .Add<Attr::HasSideEffect>()));

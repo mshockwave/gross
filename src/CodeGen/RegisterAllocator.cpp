@@ -386,7 +386,9 @@ Node* LinearScanRegisterAllocator<T>::InsertSpillCodes() {
     PosBefore = N;
     break;
   }
-  assert(PosBefore);
+  if(!PosBefore) {
+    PosBefore = Schedule.getEndNode();
+  }
 
   if(SpillSlots.empty() &&
      SpillParams.empty()) return PosBefore;

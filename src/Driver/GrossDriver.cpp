@@ -105,10 +105,18 @@ int main(int argc, char** argv) {
   // Preparation
   DLXMemoryLegalize DLXMemLegalize(G);
   DLXMemLegalize.Run();
+  if(GrossOpts.count("dump-pre-lowering")) {
+    std::ofstream OF(MakeName(InputFileName, "prelower1.dot"));
+    G.dumpGraphviz(OF);
+  }
   GraphReducer::RunWithEditor<PeepholeReducer>(G);
+  if(GrossOpts.count("dump-pre-lowering")) {
+    std::ofstream OF(MakeName(InputFileName, "prelower2.dot"));
+    G.dumpGraphviz(OF);
+  }
   GraphReducer::RunWithEditor<PreMachineLowering>(G);
   if(GrossOpts.count("dump-pre-lowering")) {
-    std::ofstream OF(MakeName(InputFileName, "prelower.dot"));
+    std::ofstream OF(MakeName(InputFileName, "prelower3.dot"));
     G.dumpGraphviz(OF);
   }
   // Lower to CFG

@@ -154,10 +154,6 @@ GraphReduction PeepholeReducer::Reduce(Node* N) {
     return ReduceRelation(N);
   case IrOpcode::Phi:
     return DeadPHIElimination(N);
-  case IrOpcode::SrcInitialArray: {
-    // no need to be here anymore
-    return Replace(DeadNode);
-  }
   default:
     return NoChange();
   }
