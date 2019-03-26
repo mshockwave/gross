@@ -20,7 +20,7 @@ cd build
 cmake -G <generator> ..
 ```
 There are two important CMake variables:
-1. `CMAKE_BUILD_TYPE`. Set to `Release`, `Debug` or [more advance configuration](https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html). Note that it's set to `Debug` and you're using clang, the following sanitizer will be turned on:
+1. `CMAKE_BUILD_TYPE`. Set to `Release`, `Debug` or [more advance configuration](https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html). Note that if it's set to `Debug` and you're using clang, the following sanitizer will be turned on by default:
    1. Address Sanitizer (ASAN)
    2. Undefined Behavior Sanitizer (UBSAN)
 2. `GROSS_ENABLE_UNIT_TESTS` will add unit tests and integration tests to build targets.

@@ -84,6 +84,8 @@ GraphReduction CSEReducer::ReduceArithmetic(Node* N) {
   return NoChange();
 }
 
+// Scan all the MemLoad users from the last MemStore
+// and merge if others have identical offset node
 GraphReduction CSEReducer::ReduceMemoryLoad(Node* N) {
   if(N->getNumEffectInput() != 1) return NoChange();
   auto* LastStore = N->getEffectInput(0);
@@ -95,6 +97,9 @@ GraphReduction CSEReducer::ReduceMemoryLoad(Node* N) {
     if(EU == N) continue;
     NodeProperties<IrOpcode::VirtMemOps> MNP(EU);
     assert(MNP.BaseAddr() == RefNP.BaseAddr());
+    // just do pointer compare as other optimization
+    // (e.g. peephole, arithmetic CSE) would take care
+    // for us
     if(MNP.Offset() == RefNP.Offset())
       Worklist.push_back(EU);
   }
