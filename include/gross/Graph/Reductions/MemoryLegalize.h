@@ -8,7 +8,7 @@ struct MemoryLegalize : public GraphEditor {
   explicit MemoryLegalize(GraphEditor::Interface* editor);
 
   static constexpr
-  const char* name() { return "memory-normalize"; }
+  const char* name() { return "memory-legalize"; }
 
   GraphReduction Reduce(Node* N);
 
