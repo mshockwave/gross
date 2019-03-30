@@ -1,6 +1,8 @@
 # GROSS
 > _GRaph cOmpiler Solely for cS241_
 
+[![Build Status](https://travis-ci.org/mshockwave/gross.svg?branch=master)](https://travis-ci.org/mshockwave/gross)
+
 GROSS is a research compiler used for studying non-traditional Graph IR, which has advantages on both code optimization and code generations.
 
 This compiler was originally created as a class project in Advanced Compiler Construction(CS241) in UC Irvine. The class was instructed by [Prof. Michael Franz](http://www.michaelfranz.com/).

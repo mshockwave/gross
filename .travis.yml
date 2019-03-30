@@ -153,7 +153,6 @@ before_install:
   # install ninja
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       brew update > /dev/null;
-      brew upgrade > /dev/null;
       brew install ninja;
     fi
 
