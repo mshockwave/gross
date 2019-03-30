@@ -1,9 +1,5 @@
 language: cpp
 
-env:
-  - RELEASE=true
-  - RELEASE=false
-
 matrix:
   include:
     - os: linux
@@ -166,14 +162,8 @@ install:
 before_script:
   - mkdir build
   - cd build
-  - if [[ "$RELEASE" == true ]]; then
-      cmake -G "Ninja" -DCMAKE_BUILT_TYPE=Release ..
-    else
-      cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Debug -DGROSS_ENABLE_UNIT_TESTS=True ..
-    fi
+  - cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Debug -DGROSS_ENABLE_UNIT_TESTS=True ..
 
 script:
   - ninja
-  - if [[ "$RELEASE" != true ]]; then
-      ninja check-gross
-    fi
+  - ninja check-gross
