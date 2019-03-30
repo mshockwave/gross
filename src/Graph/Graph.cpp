@@ -42,9 +42,9 @@ void Graph::InsertNode(Node* N) {
     NodeIdxMarker->Set(N, NodeIdxCounter++);
 }
 
-typename Graph::const_node_iterator
-Graph::RemoveNode(typename Graph::const_node_iterator NI) {
-  auto* N = const_cast<Node*>(NI->get());
+typename Graph::node_iterator
+Graph::RemoveNode(typename Graph::node_iterator NI) {
+  auto* N = NI->get();
   if(!N->IsDead()) {
     auto* DeadNode = NodeBuilder<IrOpcode::Dead>(this).Build();
     N->Kill(DeadNode);

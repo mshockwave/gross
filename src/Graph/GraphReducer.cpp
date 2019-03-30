@@ -44,18 +44,18 @@ void GraphReducer::Replace(Node* N, Node* Replacement) {
 void GraphReducer::Revisit(Node* N) {
   if(RSMarker.Get(N) == ReductionState::Visited) {
     RSMarker.Set(N, ReductionState::Revisit);
-    RevisitStack.insert(RevisitStack.cbegin(), N);
+    RevisitStack.insert(RevisitStack.begin(), N);
   }
 }
 
 void GraphReducer::Push(Node* N) {
   RSMarker.Set(N, ReductionState::OnStack);
-  ReductionStack.insert(ReductionStack.cbegin(), N);
+  ReductionStack.insert(ReductionStack.begin(), N);
 }
 
 void GraphReducer::Pop() {
   auto* TopNode = ReductionStack.front();
-  ReductionStack.erase(ReductionStack.cbegin());
+  ReductionStack.erase(ReductionStack.begin());
   RSMarker.Set(TopNode, ReductionState::Visited);
 }
 
@@ -115,7 +115,7 @@ void GraphReducer::runOnFunctionGraph(SubGraph& SG,
 
     while(!RevisitStack.empty()) {
       Node* N = RevisitStack.front();
-      RevisitStack.erase(RevisitStack.cbegin());
+      RevisitStack.erase(RevisitStack.begin());
 
       if(RSMarker.Get(N) == ReductionState::Revisit) {
         Push(N);
@@ -134,8 +134,8 @@ void GraphReducer::runImpl(_detail::ReducerConcept* Reducer) {
     for(auto& SG : G.subregions()) {
       DFSVisit(SG, TrimMarker);
     }
-    for(auto NI = G.node_cbegin(); NI != G.node_cend();) {
-      auto* N = const_cast<Node*>(Graph::GetNodeFromIt(NI));
+    for(auto NI = G.node_begin(); NI != G.node_end();) {
+      auto* N = Graph::GetNodeFromIt(NI);
       if(TrimMarker.Get(N) == ReductionState::Unvisited &&
          !NodeProperties<IrOpcode::VirtGlobalValues>(N) &&
          !G.IsGlobalVar(N)) {

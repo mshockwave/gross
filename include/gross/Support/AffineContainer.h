@@ -1,11 +1,13 @@
 #ifndef GROSS_SUPPORT_AFFINECONTAINER_H
 #define GROSS_SUPPORT_AFFINECONTAINER_H
 #include <array>
+#include <functional>
 #include <list>
 #include <set>
 #include <memory>
 #include <unordered_map>
 #include <vector>
+#include <cassert>
 
 namespace gross {
 template<class ContainerTy,
@@ -96,7 +98,7 @@ public:
     size_t CurBr = CurScope->CurBranch();
     auto* CurTable = CurScope->Branches.at(CurBr);
     PrevScope = CurScope;
-    CurScope = ScopeStack.insert(ScopeStack.cend(),
+    CurScope = ScopeStack.insert(ScopeStack.end(),
                                  Scope(CurTable, CurBr));
   }
   // create and switch to the new branch

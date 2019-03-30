@@ -28,7 +28,7 @@ Node::Node(IrOpcode::ID OC,
 
 void Node::appendNodeInput(unsigned& Size, unsigned Offset,
                            Node* NewNode) {
-  auto It = Inputs.cbegin();
+  auto It = Inputs.begin();
   std::advance(It, Size + Offset);
   Inputs.insert(It, NewNode);
   Size += 1;
@@ -41,18 +41,18 @@ void Node::setNodeInput(unsigned Index, unsigned Size, unsigned Offset,
   Size += Offset;
   assert(Index < Size);
   Node* OldNode = Inputs[Index];
-  auto It = std::find(OldNode->Users.cbegin(), OldNode->Users.cend(),
+  auto It = std::find(OldNode->Users.begin(), OldNode->Users.end(),
                       this);
-  assert(It != OldNode->Users.cend());
+  assert(It != OldNode->Users.end());
   OldNode->Users.erase(It);
   Inputs[Index] = NewNode;
   NewNode->Users.push_back(this);
 }
 
 void Node::cleanupRemoveNodeInput(Node* OldInput) {
-  auto It = std::find(OldInput->Users.cbegin(), OldInput->Users.cend(),
+  auto It = std::find(OldInput->Users.begin(), OldInput->Users.end(),
                       this);
-  assert(It != OldInput->Users.cend());
+  assert(It != OldInput->Users.end());
   OldInput->Users.erase(It);
 }
 
@@ -63,14 +63,14 @@ void Node::removeNodeInput(unsigned Index, unsigned& Size, unsigned Offset) {
   assert(Index < S);
   Node* OldNode = Inputs[Index];
   cleanupRemoveNodeInput(OldNode);
-  Inputs.erase(Inputs.cbegin() + Index);
+  Inputs.erase(Inputs.begin() + Index);
   Size -= 1;
 }
 
 void Node::removeNodeInputAll(Node* Target, unsigned& Size, unsigned Offset) {
-  auto I = Inputs.cbegin() + Offset;
-  while(I != (Inputs.cbegin() + Size + Offset)) {
-    auto* N = const_cast<Node*>(*I);
+  auto I = Inputs.begin() + Offset;
+  while(I != (Inputs.begin() + Size + Offset)) {
+    auto* N = *I;
     if(N == Target) {
       // remove
       cleanupRemoveNodeInput(N);

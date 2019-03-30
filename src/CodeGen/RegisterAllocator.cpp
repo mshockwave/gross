@@ -80,7 +80,7 @@ void LinearScanRegisterAllocator<T>::LegalizePhiInputs(Node* PN) {
     if(PosAfter)
       Schedule.AddNodeAfter(BB, PosAfter, Move);
     else
-      Schedule.AddNode(BB, BB->node_cbegin(), Move);
+      Schedule.AddNode(BB, BB->node_begin(), Move);
   }
 }
 
@@ -484,12 +484,12 @@ void LinearScanRegisterAllocator<T>::InsertCalleeSavedCodes(Node* PosBefore) {
     for(auto i = 0U; i < CalleeSaved.size(); ++i) {
       if(CalleeSaved.test(i)) {
         auto* Pop = SUtils.RestoreSlot(RegNodes[i]);
-        Epilogue.insert(Epilogue.cbegin(), Pop);
+        Epilogue.insert(Epilogue.begin(), Pop);
       }
     }
     // restore frame pointer to stack pointer
     Epilogue.insert(
-      Epilogue.cbegin(),
+      Epilogue.begin(),
       NodeBuilder<IrOpcode::VirtDLXBinOps>(&G, IrOpcode::DLXAddI, true)
       .LHS(SUtils.FramePointer())
       .RHS(NodeBuilder<IrOpcode::ConstantInt>(&G, 0).Build())

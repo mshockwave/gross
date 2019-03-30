@@ -713,7 +713,7 @@ struct NodeBuilder<IrOpcode::Call> {
   size_t arg_size() const { return Params.size(); }
 
   Node* Build() {
-    Params.insert(Params.cbegin(), FuncStub);
+    Params.insert(Params.begin(), FuncStub);
     auto* N = new Node(IrOpcode::Call, Params);
     for(auto* P : Params)
       P->Users.push_back(N);
@@ -1210,7 +1210,7 @@ struct NodeBuilder<IrOpcode::End> {
     std::vector<Node*> CtrlDeps;
     if(!TermNodes.empty())
       CtrlDeps = std::move(TermNodes);
-    CtrlDeps.insert(CtrlDeps.cbegin(), StartNode);
+    CtrlDeps.insert(CtrlDeps.begin(), StartNode);
     auto* N = new Node(IrOpcode::End,
                        {}, CtrlDeps, EffectDeps);
     for(auto* TN : CtrlDeps)

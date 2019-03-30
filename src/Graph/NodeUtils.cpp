@@ -17,7 +17,7 @@ Node* gross::FindNearestCtrlPoint(Node* N) {
       else
         BFSQueue.push_back(N);
     }
-    BFSQueue.erase(BFSQueue.cbegin());
+    BFSQueue.erase(BFSQueue.begin());
   }
   return nullptr;
 }

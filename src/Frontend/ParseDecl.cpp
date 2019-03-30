@@ -11,6 +11,7 @@ bool Parser::ParseTypeDecl(NodeBuilder<OC>& NB) {
   gross_unreachable("Unimplemented");
   return false;
 }
+namespace gross {
 template<>
 bool Parser::ParseTypeDecl(NodeBuilder<IrOpcode::SrcVarDecl>& NB) {
   (void) NextTok();
@@ -33,6 +34,7 @@ bool Parser::ParseTypeDecl(NodeBuilder<IrOpcode::SrcArrayDecl>& NB) {
   }
   return true;
 }
+} // end namespace gross
 
 template<IrOpcode::ID OC>
 bool Parser::ParseVarDecl(std::vector<Node*>* Results) {

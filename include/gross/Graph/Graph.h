@@ -167,7 +167,7 @@ public:
   }
 
   void InsertNode(Node* N);
-  const_node_iterator RemoveNode(const_node_iterator It);
+  node_iterator RemoveNode(node_iterator It);
 
   void MarkGlobalVar(Node* N);
   bool IsGlobalVar(Node* N) const { return GlobalVariables.count(N); }

@@ -44,11 +44,11 @@ class GraphSchedule {
     void AddDomChild(BasicBlock* DN) { Dominants.push_back(DN); }
     bool RemoveDomChild(BasicBlock* DN) {
       auto It
-        = gross::find_if(const_doms(),
-                         [=](const BasicBlock* BB) -> bool {
-                           return const_cast<BasicBlock*>(BB) == DN;
+        = gross::find_if(doms(),
+                         [=](BasicBlock* BB) -> bool {
+                           return BB == DN;
                          });
-      if(It == dom_cend()) return false;
+      if(It == dom_end()) return false;
       Dominants.erase(It);
       return true;
     }
@@ -248,7 +248,7 @@ public:
     if(BB->AddNodeAfter(Pos, N))
       Node2Block[N] = BB;
   }
-  void AddNode(BasicBlock* BB, typename BasicBlock::const_node_iterator Pos,
+  void AddNode(BasicBlock* BB, typename BasicBlock::node_iterator Pos,
                Node* N) {
     BB->AddNode(Pos, N);
     Node2Block[N] = BB;

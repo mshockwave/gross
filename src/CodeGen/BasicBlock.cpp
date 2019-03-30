@@ -46,7 +46,7 @@ bool BasicBlock::RemoveSuccBlock(BasicBlock* BB) {
   }
 }
 
-void BasicBlock::AddNode(typename BasicBlock::const_node_iterator Pos,
+void BasicBlock::AddNode(typename BasicBlock::node_iterator Pos,
                          Node* N) {
   LastNodeId = SeqNodeId::AdvanceFrom(LastNodeId);
   NodeIds.insert({N, LastNodeId});
@@ -54,32 +54,32 @@ void BasicBlock::AddNode(typename BasicBlock::const_node_iterator Pos,
 }
 
 bool BasicBlock::AddNodeBefore(Node* Before, Node* N) {
-  auto NodeIt = gross::find_if(const_nodes(),
-                               [=](const Node* Target) -> bool {
-                                 return const_cast<Node*>(Target) == Before;
+  auto NodeIt = gross::find_if(nodes(),
+                               [=](Node* Target) -> bool {
+                                 return Target == Before;
                                });
-  if(NodeIt == node_cend()) return false;
+  if(NodeIt == node_end()) return false;
   AddNode(NodeIt, N);
   return true;
 }
 
 bool BasicBlock::AddNodeAfter(Node* After, Node* N) {
-  auto NodeIt = gross::find_if(const_nodes(),
-                               [=](const Node* Target) -> bool {
-                                 return const_cast<Node*>(Target) == After;
+  auto NodeIt = gross::find_if(nodes(),
+                               [=](Node* Target) -> bool {
+                                 return Target == After;
                                });
-  if(NodeIt == node_cend()) return false;
+  if(NodeIt == node_end()) return false;
   AddNode(++NodeIt, N);
   return true;
 }
 
 std::pair<bool, typename BasicBlock::node_iterator>
 BasicBlock::RemoveNode(Node* N) {
-  auto NodeIt = gross::find_if(const_nodes(),
-                               [=](const Node* Target) -> bool {
-                                 return const_cast<Node*>(Target) == N;
+  auto NodeIt = gross::find_if(nodes(),
+                               [=](Node* Target) -> bool {
+                                 return Target == N;
                                });
-  if(NodeIt == node_cend())
+  if(NodeIt == node_end())
     return std::make_pair(false, node_end());
   NodeIds.erase(N);
   return std::make_pair(true, NodeSequence.erase(NodeIt));

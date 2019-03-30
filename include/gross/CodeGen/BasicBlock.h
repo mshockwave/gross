@@ -146,11 +146,11 @@ private:
   // (e.g. Node <-> BB mapping) we want GraphSchedule be the only
   // interface to manage nodes in BB. Thus putting the rest APIs
   // as private.
-  void AddNode(const_node_iterator Pos, Node* N);
+  void AddNode(node_iterator Pos, Node* N);
   bool AddNodeBefore(Node* Before, Node* N);
   bool AddNodeAfter(Node* After, Node* N);
   void AddNode(Node* N) {
-    AddNode(node_cend(), N);
+    AddNode(node_end(), N);
   }
 
   std::pair<bool, node_iterator> RemoveNode(Node* N);

@@ -122,7 +122,7 @@ class lazy_node_iterator
 
   void increment() {
     NodeT Top = Queue.front();
-    Queue.erase(Queue.cbegin());
+    Queue.erase(Queue.begin());
     for(NodeT N : Top->inputs()) {
       if(Visited.count(N)) continue;
       Enqueue(N);

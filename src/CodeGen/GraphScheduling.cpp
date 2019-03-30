@@ -111,27 +111,7 @@ void GraphSchedule::SortRPONodes() {
 
   getSubGraph().ClearEdgePatcher();
 
-#if 0
-  for(auto NI = RPONodes.cbegin(); NI != RPONodes.cend();) {
-    auto* N = const_cast<Node*>(*NI);
-    if(PE.BranchStarts.count(N)) {
-      NodeProperties<IrOpcode::VirtIfBranches> BNP(N);
-      assert(BNP);
-      auto* Br = BNP.BranchPoint();
-      NI = RPONodes.insert(NI, Br);
-      auto* PrevCtrl = Br->getControlInput(0);
-      if(PrevCtrl->getOp() == IrOpcode::Loop) {
-        NI = RPONodes.insert(NI, PrevCtrl);
-        std::advance(NI, 3);
-      } else {
-        std::advance(NI, 2);
-      }
-    } else {
-      ++NI;
-    }
-  }
-#endif
-  RPONodes.insert(RPONodes.cbegin(), PE.StartNode);
+  RPONodes.insert(RPONodes.begin(), PE.StartNode);
   RPONodes.push_back(PE.EndNode);
 }
 
@@ -368,7 +348,7 @@ class CFGBuilder {
   }
   void AddNodeToBlock(Node* N,
                       BasicBlock* BB,
-                      typename BasicBlock::const_node_iterator Pos) {
+                      typename BasicBlock::node_iterator Pos) {
     Schedule.AddNode(BB, Pos, N);
   }
 
@@ -431,7 +411,7 @@ void CFGBuilder::BlockPlacement() {
       auto* BB = MapBlock(PrevCtrl);
       assert(BB && "previous control not visited yet?");
       // add after the first(control) node
-      auto Pos = BB->node_cbegin();
+      auto Pos = BB->node_begin();
       ++Pos;
       AddNodeToBlock(N, BB, Pos);
       Schedule.SetScheduled(N);
@@ -443,7 +423,7 @@ void CFGBuilder::BlockPlacement() {
         auto* BB = MapBlock(PrevCtrl);
         assert(BB && "previous control not visited yet?");
         // add after the first(control) node
-        auto Pos = BB->node_cbegin();
+        auto Pos = BB->node_begin();
         ++Pos;
         AddNodeToBlock(N, BB, Pos);
         Schedule.SetScheduled(N);
@@ -458,7 +438,7 @@ void CFGBuilder::BlockPlacement() {
         Schedule.SetScheduled(N);
         continue;
       }
-      auto Pos = EntryBlock->node_cbegin();
+      auto Pos = EntryBlock->node_begin();
       ++Pos;
       AddNodeToBlock(N, EntryBlock, Pos);
       Schedule.SetScheduled(N);
@@ -693,9 +673,9 @@ void PostOrderNodePlacement::Compute() {
       // search from top to bottom within the block,
       // insert right before a value user if any. Otherwise
       // insert at the end
-      auto NI = DomBB->node_cbegin();
-      for(auto NE = DomBB->node_cend(); NI != NE; ++NI) {
-        auto* N = const_cast<Node*>(*NI);
+      auto NI = DomBB->node_begin();
+      for(auto NE = DomBB->node_end(); NI != NE; ++NI) {
+        auto* N = *NI;
         if(UserNodes.count(N)) break;
         // insert before terminate instructions
         // FIXME: Is there any other way to generalize this
@@ -1001,19 +981,19 @@ struct GraphSchedule::block_prop_writer {
       if(OutStr[i] == '\n') {
         // replace with left-justified '\l'
         OutStr[i] = '\\';
-        OutStr.insert(OutStr.cbegin() + i + 1, 'l');
+        OutStr.insert(OutStr.begin() + i + 1, 'l');
       } else if(OutStr[i] == '<') {
         // replace with '&lt;'
         OutStr[i] = '&';
-        OutStr.insert(OutStr.cbegin() + i + 1, ';');
-        OutStr.insert(OutStr.cbegin() + i + 1, 't');
-        OutStr.insert(OutStr.cbegin() + i + 1, 'l');
+        OutStr.insert(OutStr.begin() + i + 1, ';');
+        OutStr.insert(OutStr.begin() + i + 1, 't');
+        OutStr.insert(OutStr.begin() + i + 1, 'l');
       } else if(OutStr[i] == '>') {
         // replace with '&gt;'
         OutStr[i] = '&';
-        OutStr.insert(OutStr.cbegin() + i + 1, ';');
-        OutStr.insert(OutStr.cbegin() + i + 1, 't');
-        OutStr.insert(OutStr.cbegin() + i + 1, 'g');
+        OutStr.insert(OutStr.begin() + i + 1, ';');
+        OutStr.insert(OutStr.begin() + i + 1, 't');
+        OutStr.insert(OutStr.begin() + i + 1, 'g');
       }
     }
     OS << OutStr << "\"]";

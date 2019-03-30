@@ -47,7 +47,7 @@ public:
     Storage.emplace_front(std::forward<Args>(args)...);
   }
 
-  void pop() { Storage.erase(Storage.cbegin()); }
+  void pop() { Storage.erase(Storage.begin()); }
 
   T pop_val() {
     T val = top();
