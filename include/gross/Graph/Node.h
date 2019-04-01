@@ -51,32 +51,34 @@ struct Use {
     return !(RHS == *this);
   }
 
-  struct BuilderFunctor {
-    Node* From;
-    Use::Kind DepKind;
+  struct BuilderFunctor;
+};
 
-    using PatcherTy = std::function<Use(const Use&)>;
-    PatcherTy PatchFunctor;
+struct Use::BuilderFunctor {
+  Node* From;
+  Use::Kind DepKind;
 
-    // will have problem if one just
-    // delcare edge iterator without initialize
-    // BuilderFunctor() = delete;
-    BuilderFunctor() = default;
+  using PatcherTy = std::function<Use(const Use&)>;
+  PatcherTy PatchFunctor;
 
-    explicit
-    BuilderFunctor(Node* F, Use::Kind K = K_NONE,
-                   PatcherTy Patcher = nullptr)
-      : From(F), DepKind(K),
-        PatchFunctor(Patcher) {}
+  // will have problem if one just
+  // delcare edge iterator without initialize
+  // BuilderFunctor() = delete;
+  BuilderFunctor() = default;
 
-    Use operator()(Node* To) const {
-      Use E(From, To, DepKind);
-      if(PatchFunctor)
-        return PatchFunctor(E);
-      else
-        return std::move(E);
-    }
-  };
+  explicit
+  BuilderFunctor(Node* F, Use::Kind K = K_NONE,
+                 PatcherTy Patcher = nullptr)
+    : From(F), DepKind(K),
+      PatchFunctor(Patcher) {}
+
+  Use operator()(Node* To) const {
+    Use E(From, To, DepKind);
+    if(PatchFunctor)
+      return PatchFunctor(E);
+    else
+      return std::move(E);
+  }
 };
 
 class Node {

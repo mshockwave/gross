@@ -120,7 +120,7 @@ class GraphSchedule {
     if(!LoopTree.count(Header)) {
       LoopTree.insert({
         Header,
-        gross::make_unique<LoopTreeNode>(Header)
+        std::move(gross::make_unique<LoopTreeNode>(Header))
       });
     }
     return LoopTree[Header].get();
