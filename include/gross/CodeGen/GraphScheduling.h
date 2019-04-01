@@ -118,10 +118,10 @@ class GraphSchedule {
 
   LoopTreeNode* GetOrCreateLoopNode(BasicBlock* Header) {
     if(!LoopTree.count(Header)) {
-      LoopTree.insert({
+      LoopTree.insert(std::make_pair(
         Header,
-        std::move(gross::make_unique<LoopTreeNode>(Header))
-      });
+        gross::make_unique<LoopTreeNode>(Header)
+      ));
     }
     return LoopTree[Header].get();
   }
